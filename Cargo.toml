@@ -1,9 +1,40 @@
 [package]
 name = "ckb-integration-test"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
+homepage = "https://github.com/nervosnetwork/ckb"
+repository = "https://github.com/nervosnetwork/ckb"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "2" }
+toml = "0.5.0"
+ckb-jsonrpc-types = "0.42.0"
+ckb-app-config = "0.42.0"
+ckb-network = "0.42.0"
+ckb-channel = "0.42.0"
+ckb-types = "0.42.0"
+ckb-hash = "0.42.0"
+ckb-util = "0.42.0"
+ckb-chain-spec = "0.42.0"
+ckb-crypto = "0.42.0"
+ckb-dao-utils = "0.42.0"
+ckb-resource = "0.42.0"
+ckb-async-runtime = "0.42.0"
+ckb-stop-handler = "0.42.0"
+ckb-logger = "0.42.0"
+ckb-logger-config = "0.42.0"
+ckb-logger-service = "0.42.0"
+ckb-error = "0.42.0"
+ckb-constant = "0.42.0"
+tempfile = "3.0"
+reqwest = { version = "0.10.9", features = ["blocking", "json"] }
+rand = "0.7"
+faketime = "0.2"
+serde_json = "1.0"
+lazy_static = "1.4.0"
+byteorder = "1.3.1"
+ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", rev = "a916095be49837ea4fa309fcdc7728c64a15802f" }
+fs_extra = "1.2.0"
