@@ -10,6 +10,7 @@ impl Case for Networking {
         CaseOptions {
             make_all_nodes_out_of_ibd: true,
             make_all_nodes_connected: false,
+            make_all_nodes_synced: false,
             node_options: vec![
                 (
                     "ckb-v1",

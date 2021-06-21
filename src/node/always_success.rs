@@ -1,7 +1,8 @@
 use crate::node::Node;
+use ckb_types::packed::CellInput;
 use ckb_types::{
     bytes,
-    core::ScriptHashType,
+    core::{cell::CellMeta, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{CellDep, CellOutput, OutPoint, Script},
     prelude::*,
 };
@@ -32,6 +33,21 @@ impl Node {
             OutPoint::new(genesis_cellbase_hash, SYSTEM_CELL_ALWAYS_SUCCESS_INDEX);
         CellDep::new_builder()
             .out_point(always_success_out_point)
+            .build()
+    }
+
+    pub fn always_success_transaction(&self, cell: &CellMeta) -> TransactionView {
+        TransactionBuilder::default()
+            .input(CellInput::new(cell.out_point.clone(), 0))
+            .output(
+                CellOutput::new_builder()
+                    .lock(cell.cell_output.lock())
+                    .type_(cell.cell_output.type_())
+                    .capacity(cell.capacity().pack())
+                    .build(),
+            )
+            .output_data(Default::default())
+            .cell_dep(self.always_success_cell_dep())
             .build()
     }
 }
