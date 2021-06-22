@@ -40,9 +40,9 @@ pub trait Case: Send {
         }
         let nodes = Nodes::from(nodes);
         if case_options.make_all_nodes_connected_and_synced {
-            nodes.p2p_connect();
             let any_node = nodes.get_node(first_node_name.unwrap());
             any_node.mine(1);
+            nodes.p2p_connect();
             nodes.waiting_for_sync();
         } else if case_options.make_all_nodes_connected {
             nodes.p2p_connect();
