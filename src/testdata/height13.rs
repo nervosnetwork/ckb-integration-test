@@ -9,8 +9,8 @@ impl Testdata for Height13TestData {
         let node_options = NodeOptions {
             ckb_binary: CKB_V1_BINARY.lock().clone(),
             initial_database: "db/empty",
-            chain_spec: "config/ckb-v1",
-            app_config: "spec/ckb-v1",
+            chain_spec: "spec/ckb-v1",
+            app_config: "config/ckb-v1",
         };
         let mut node = Node::init(self.testdata_name(), self.testdata_name(), node_options);
         node.start();

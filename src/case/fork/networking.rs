@@ -8,17 +8,17 @@ pub struct Networking;
 impl Case for Networking {
     fn case_options(&self) -> CaseOptions {
         CaseOptions {
-            make_all_nodes_out_of_ibd: true,
             make_all_nodes_connected: false,
             make_all_nodes_synced: false,
+            make_all_nodes_connected_and_synced: false,
             node_options: vec![
                 (
                     "ckb-v1",
                     NodeOptions {
                         ckb_binary: CKB_V1_BINARY.lock().clone(),
                         initial_database: "db/Height13TestData",
-                        chain_spec: "config/ckb-v1",
-                        app_config: "spec/ckb-v1",
+                        chain_spec: "spec/ckb-v1",
+                        app_config: "config/ckb-v1",
                     },
                 ),
                 (
@@ -26,8 +26,8 @@ impl Case for Networking {
                     NodeOptions {
                         ckb_binary: CKB_V2_BINARY.lock().clone(),
                         initial_database: "db/Height13TestData",
-                        chain_spec: "config/ckb-v1",
-                        app_config: "spec/ckb-v1",
+                        chain_spec: "spec/ckb-v1",
+                        app_config: "config/ckb-v1",
                     },
                 ),
             ]
