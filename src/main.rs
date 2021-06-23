@@ -96,8 +96,13 @@ fn clap_app() -> App<'static, 'static> {
 }
 
 fn init_logger(_clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuard {
+    let filter = match env::var("RUST_LOG") {
+        Ok(filter) if filter.is_empty() => None,
+        Ok(filter) => Some(filter.to_string()),
+        Err(_) => None,
+    };
     let config = ckb_logger_config::Config {
-        filter: Some("info".to_string()),
+        filter,
         log_to_file: false,
         log_to_stdout: true,
         ..Default::default()

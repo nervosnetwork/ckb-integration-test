@@ -171,7 +171,8 @@ impl Node {
                 Ok(None) => sleep(std::time::Duration::from_secs(1)),
                 Ok(Some(status)) => {
                     error!(
-                        "node crashed, {}, log_path: {}",
+                        "{} node crashed, {}, log_path: {}",
+                        self.node_name(),
                         status,
                         self.log_path().display()
                     );
@@ -179,7 +180,8 @@ impl Node {
                 }
                 Err(error) => {
                     error!(
-                        "node crashed with reason: {}, log_path: {}",
+                        "{} node crashed with reason: {}, log_path: {}",
+                        self.node_name(),
                         error,
                         self.log_path().display()
                     );

@@ -16,7 +16,8 @@ pub trait Testdata {
 pub fn all_testdata_generators() -> Vec<Box<dyn Testdata>> {
     vec![
         Box::new(height13::Height13TestData),
-        Box::new(epoch2::Epoch2TestData),
+        Box::new(epoch2::Epoch2V1TestData),
+        Box::new(epoch2::Epoch2V2TestData),
     ]
 }
 

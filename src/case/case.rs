@@ -1,7 +1,7 @@
-use crate::case::{CaseOptions, CASE_NAME};
-use crate::info;
+use crate::case::CaseOptions;
 use crate::node::Node;
 use crate::nodes::Nodes;
+use crate::{info, CASE_NAME};
 use std::collections::HashMap;
 
 pub fn run_case(case: Box<dyn Case>) {

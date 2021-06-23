@@ -1,4 +1,5 @@
 pub mod case;
+pub mod logger;
 pub mod node;
 pub mod nodes;
 pub mod rpc;
@@ -8,8 +9,13 @@ pub mod util;
 use ckb_util::Mutex;
 use clap::{value_t, ArgMatches};
 use lazy_static::lazy_static;
+use std::cell::RefCell;
 use std::env::current_dir;
 use std::path::PathBuf;
+
+thread_local! {
+    pub static CASE_NAME: RefCell<String> = RefCell::new(String::new());
+}
 
 lazy_static! {
     pub static ref CKB_V1_BINARY: Mutex<PathBuf> = Mutex::new(PathBuf::new());

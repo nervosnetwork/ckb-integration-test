@@ -1,5 +1,4 @@
 use crate::case::{Case, CaseOptions};
-use crate::error;
 use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
 use crate::util::since_from_relative_timestamp;
@@ -15,6 +14,7 @@ use std::time::Duration;
 // TODO enforce RFC0221_EPOCH be the same with `params.fork` in spec.toml
 // TODO enforce RFC0221_EPOCH near by "db/Epoch2TestData"
 // TODO Nodes in same case should have the same `initial_database`
+// TODO Db version is related to ckb binary version. How to solve it?
 pub const RFC0221_EPOCH: u64 = 1_979_121_768_857_602; // EpochNumberWithFraction::new(2, 50, 1800)
 
 // 1. before rfc0221, node_v1 and node_v2 reject tx, until it mature for old rule;
@@ -40,7 +40,7 @@ impl Case for BeforeRFC0221Switch {
                     "ckb-v1",
                     NodeOptions {
                         ckb_binary: CKB_V1_BINARY.lock().clone(),
-                        initial_database: "db/Epoch2TestData",
+                        initial_database: "db/Epoch2V1TestData",
                         chain_spec: "spec/ckb-v1",
                         app_config: "config/ckb-v1",
                     },
@@ -49,7 +49,7 @@ impl Case for BeforeRFC0221Switch {
                     "ckb-v2",
                     NodeOptions {
                         ckb_binary: CKB_V2_BINARY.lock().clone(),
-                        initial_database: "db/Epoch2TestData",
+                        initial_database: "db/empty",
                         chain_spec: "spec/rfc0221",
                         app_config: "config/ckb-v1",
                     },
@@ -116,7 +116,6 @@ impl Case for BeforeRFC0221Switch {
                     "before rfc0221, tx is immature for node_v2 according to old rule and should be failed to submit, but got: {:?}",
                     result,
                 );
-                error!("******** DEBUG error : {:?}", result);
             }
 
             sleep(Duration::from_secs(1));
@@ -172,7 +171,7 @@ fn committed_timestamp(node: &Node, block_number: BlockNumber) -> u64 {
 //                     "ckb-v1",
 //                     NodeOptions {
 //                         ckb_binary: CKB_V1_BINARY.lock().clone(),
-//                         initial_database: "db/Epoch2TestData",
+//                         initial_database: "db/Epoch2V1TestData",
 //                         chain_spec: "spec/ckb-v1",
 //                         app_config: "config/ckb-v1",
 //                     },
@@ -181,7 +180,7 @@ fn committed_timestamp(node: &Node, block_number: BlockNumber) -> u64 {
 //                     "ckb-v2",
 //                     NodeOptions {
 //                         ckb_binary: CKB_V2_BINARY.lock().clone(),
-//                         initial_database: "db/Epoch2TestData",
+//                         initial_database: "db/Epoch2V2TestData",
 //                         chain_spec: "spec/rfc0221",
 //                         app_config: "config/ckb-v1",
 //                     },

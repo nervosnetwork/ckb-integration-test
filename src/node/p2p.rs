@@ -1,10 +1,10 @@
+use crate::debug;
 use crate::node::Node;
-use crate::trace;
 use crate::util::wait_until;
 
 impl Node {
     pub fn p2p_connect(&self, other: &Node) {
-        trace!("Node::p2p_connect start");
+        debug!("Node::p2p_connect start");
         let other_node_id = other.node_id().to_string();
         let other_p2p_address = other.p2p_address();
 
@@ -25,7 +25,7 @@ impl Node {
                 other.node_id(),
             );
         }
-        trace!("Node::p2p_connect end");
+        debug!("Node::p2p_connect end");
     }
 
     pub fn p2p_connect_uncheck(&self, other: &Node) {

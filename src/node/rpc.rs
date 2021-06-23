@@ -1,3 +1,4 @@
+use crate::debug;
 use crate::node::Node;
 use ckb_jsonrpc_types::TxPoolInfo;
 use ckb_types::{
@@ -29,16 +30,29 @@ impl Node {
     }
 
     pub fn get_tip_block(&self) -> BlockView {
+        debug!("START Node::get_tip_block(\"{}\")", self.node_name());
         let rpc_client = self.rpc_client();
         let tip_number = rpc_client.get_tip_block_number();
-        rpc_client
+        let block = rpc_client
             .get_block_by_number(tip_number)
-            .expect("tip block exists")
-            .into()
+            .expect("tip block exists");
+        debug!(
+            "END Node::get_tip_block(\"{}\"), block: {:?}",
+            self.node_name(),
+            block
+        );
+        block.into()
     }
 
     pub fn get_tip_block_number(&self) -> BlockNumber {
-        self.rpc_client().get_tip_block_number()
+        debug!("START Node::get_tip_block_number(\"{}\")", self.node_name());
+        let block_number = self.rpc_client().get_tip_block_number();
+        debug!(
+            "END Node::get_tip_block_number(\"{}\"), block_number: {}",
+            self.node_name(),
+            block_number
+        );
+        block_number
     }
 
     pub fn get_block(&self, hash: Byte32) -> BlockView {
