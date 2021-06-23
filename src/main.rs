@@ -97,6 +97,7 @@ fn clap_app() -> App<'static, 'static> {
 
 fn init_logger(_clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuard {
     let config = ckb_logger_config::Config {
+        filter: Some("info".to_string()),
         log_to_file: false,
         log_to_stdout: true,
         ..Default::default()

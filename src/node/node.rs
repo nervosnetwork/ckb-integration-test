@@ -1,13 +1,12 @@
 use crate::node::NodeOptions;
 use crate::rpc::RpcClient;
 use crate::util::{find_available_port, temp_path};
-use crate::TESTDATA_DIR;
+use crate::{error, TESTDATA_DIR};
 use ckb_indexer::{
     indexer::Indexer,
     store::{RocksdbStore, Store},
 };
 use ckb_jsonrpc_types::{Consensus, LocalNode};
-use ckb_logger::error;
 use ckb_types::core::BlockView;
 use fs_extra::dir::CopyOptions;
 use std::fs;

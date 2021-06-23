@@ -1,6 +1,6 @@
 use crate::node::Node;
+use crate::trace;
 use crate::util::wait_until;
-use ckb_logger::trace;
 
 impl Node {
     pub fn p2p_connect(&self, other: &Node) {

@@ -22,3 +22,4 @@ serde_json = "1.0"
 lazy_static = "1.4.0"
 ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", rev = "a916095be49837ea4fa309fcdc7728c64a15802f" }
 fs_extra = "1.2.0"
+log = "0.4"
