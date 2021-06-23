@@ -56,17 +56,9 @@ fn clap_app() -> App<'static, 'static> {
                         .long("testdata-dir")
                         .takes_value(true)
                         .value_name("PATH")
+                        .default_value("./testdata")
                         .help("Path to testdata base directory"),
-                )
-                .arg(
-                    Arg::with_name("logger-filter")
-                        .long("logger-filter")
-                        .takes_value(true)
-                        .value_name("LOGGER-DIRECTIVES")
-                        .default_value("info,ckb-integration-test=debug")
-                        .help("Logger filter of ckb-integration-test process, not included ckb processes")
-                )
-            ,
+                ),
         )
         .subcommand(
             SubCommand::with_name("generate-testdata")
@@ -90,6 +82,7 @@ fn clap_app() -> App<'static, 'static> {
                         .long("testdata-dir")
                         .takes_value(true)
                         .value_name("PATH")
+                        .default_value("./testdata")
                         .help("Output directory path of generating testdata"),
                 ),
         )
