@@ -51,6 +51,11 @@ impl Node {
         let p2p_port = find_available_port();
         let working_dir =
             prepare_working_dir(&case_name, &node_name, &node_options, rpc_port, p2p_port);
+        crate::info!(
+            "[Node {}] INIT, log_path: {}/data/logs/run.log",
+            node_name,
+            working_dir.display()
+        );
         Self {
             case_name,
             node_name,
@@ -157,6 +162,11 @@ impl Node {
     }
 
     pub fn stop(&mut self) {
+        crate::info!(
+            "[Node {}] STOP, log_path: {}/data/logs/run.log",
+            self.node_name(),
+            self.working_dir().display()
+        );
         drop(self._guard.take())
     }
 

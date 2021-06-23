@@ -1,6 +1,7 @@
 use ckb_integration_test::{case, init_ckb_binaries, init_testdata_dir, testdata};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::env;
+use std::net::ToSocketAddrs;
 use std::process::exit;
 
 fn main() {
@@ -97,9 +98,9 @@ fn clap_app() -> App<'static, 'static> {
 
 fn init_logger(_clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuard {
     let filter = match env::var("RUST_LOG") {
-        Ok(filter) if filter.is_empty() => None,
+        Ok(filter) if filter.is_empty() => Some("info".to_string()),
         Ok(filter) => Some(filter.to_string()),
-        Err(_) => None,
+        Err(_) => Some("info".to_string()),
     };
     let config = ckb_logger_config::Config {
         filter,

@@ -1,19 +1,7 @@
 use crate::case::CaseOptions;
 use crate::node::Node;
 use crate::nodes::Nodes;
-use crate::{info, CASE_NAME};
 use std::collections::HashMap;
-
-pub fn run_case(case: Box<dyn Case>) {
-    CASE_NAME.with(|c| {
-        *c.borrow_mut() = case.case_name().to_string();
-    });
-
-    info!("START");
-    let nodes = case.before_run();
-    case.run(nodes);
-    info!("END");
-}
 
 pub trait Case: Send {
     fn case_name(&self) -> &str {
@@ -29,11 +17,6 @@ pub trait Case: Send {
         let mut first_node_name = None;
         for (node_name, node_options) in case_options.node_options.iter() {
             let mut node = Node::init(case_name, node_name, node_options.clone());
-            info!(
-                "Started node, node_name: {}, log_path: {}",
-                node.node_name(),
-                node.log_path().display(),
-            );
             node.start();
             nodes.insert(node_name.to_string(), node);
             if first_node_name.is_none() {

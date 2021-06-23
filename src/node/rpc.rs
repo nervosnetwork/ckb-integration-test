@@ -30,14 +30,13 @@ impl Node {
     }
 
     pub fn get_tip_block(&self) -> BlockView {
-        debug!("START Node::get_tip_block(\"{}\")", self.node_name());
         let rpc_client = self.rpc_client();
         let tip_number = rpc_client.get_tip_block_number();
         let block = rpc_client
             .get_block_by_number(tip_number)
             .expect("tip block exists");
         debug!(
-            "END Node::get_tip_block(\"{}\"), block: {:?}",
+            "[Node {}] Node::get_tip_block(), block: {:?}",
             self.node_name(),
             block
         );
@@ -45,10 +44,9 @@ impl Node {
     }
 
     pub fn get_tip_block_number(&self) -> BlockNumber {
-        debug!("START Node::get_tip_block_number(\"{}\")", self.node_name());
         let block_number = self.rpc_client().get_tip_block_number();
         debug!(
-            "END Node::get_tip_block_number(\"{}\"), block_number: {}",
+            "[Node {}] Node::get_tip_block_number(), block_number: {}",
             self.node_name(),
             block_number
         );
