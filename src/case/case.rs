@@ -1,21 +1,18 @@
-use crate::case::CaseOptions;
+use crate::case::{CaseOptions, CASE_NAME};
+use crate::info;
 use crate::node::Node;
 use crate::nodes::Nodes;
 use std::collections::HashMap;
 
-pub fn run_case(c: Box<dyn Case>) {
-    println!("Start running case \"{}\"", c.case_name());
-    let nodes = c.before_run();
-    for node in nodes.nodes() {
-        println!(
-            "Started node, case_name: {}, node_name: {}, log_path: {}",
-            node.case_name(),
-            node.node_name(),
-            node.log_path().display(),
-        );
-    }
-    c.run(nodes);
-    println!("End running case \"{}\"", c.case_name());
+pub fn run_case(case: Box<dyn Case>) {
+    CASE_NAME.with(|c| {
+        *c.borrow_mut() = case.case_name().to_string();
+    });
+
+    info!("START");
+    let nodes = case.before_run();
+    case.run(nodes);
+    info!("END");
 }
 
 pub trait Case: Send {
@@ -32,6 +29,11 @@ pub trait Case: Send {
         let mut first_node_name = None;
         for (node_name, node_options) in case_options.node_options.iter() {
             let mut node = Node::init(case_name, node_name, node_options.clone());
+            info!(
+                "Started node, node_name: {}, log_path: {}",
+                node.node_name(),
+                node.log_path().display(),
+            );
             node.start();
             nodes.insert(node_name.to_string(), node);
             if first_node_name.is_none() {
@@ -40,22 +42,28 @@ pub trait Case: Send {
         }
         let nodes = Nodes::from(nodes);
         if case_options.make_all_nodes_connected_and_synced {
-            let any_node = nodes.get_node(first_node_name.unwrap());
-            any_node.mine(1);
-            nodes.p2p_connect();
-            nodes.waiting_for_sync();
-        } else if case_options.make_all_nodes_connected {
-            nodes.p2p_connect();
-        } else if case_options.make_all_nodes_synced {
-            let any_node = nodes.get_node(first_node_name.unwrap());
-            any_node.mine(1);
-            let tip_block = any_node.get_tip_block();
             for node in nodes.nodes() {
-                if node.node_name() != any_node.node_name() {
-                    node.submit_block(&tip_block);
-                }
+                node.mine(1);
             }
+            nodes.p2p_connect();
+            let any_node = nodes.get_node(first_node_name.unwrap());
+            any_node.mine(1);
             nodes.waiting_for_sync();
+        } else {
+            if case_options.make_all_nodes_connected {
+                nodes.p2p_connect();
+            }
+            if case_options.make_all_nodes_synced {
+                let any_node = nodes.get_node(first_node_name.unwrap());
+                any_node.mine(1);
+                let tip_block = any_node.get_tip_block();
+                for node in nodes.nodes() {
+                    if node.node_name() != any_node.node_name() {
+                        node.submit_block(&tip_block);
+                    }
+                }
+                nodes.waiting_for_sync();
+            }
         }
         nodes
     }

@@ -1,4 +1,5 @@
 use crate::case::{Case, CaseOptions};
+use crate::error;
 use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
 use crate::util::since_from_relative_timestamp;
@@ -115,7 +116,7 @@ impl Case for BeforeRFC0221Switch {
                     "before rfc0221, tx is immature for node_v2 according to old rule and should be failed to submit, but got: {:?}",
                     result,
                 );
-                println!("******** DEBUG error : {:?}", result);
+                error!("******** DEBUG error : {:?}", result);
             }
 
             sleep(Duration::from_secs(1));
