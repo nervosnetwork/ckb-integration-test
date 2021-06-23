@@ -15,10 +15,11 @@ pub trait Case: Send {
         let case_options = self.case_options();
         let mut nodes = HashMap::new();
         let mut first_node_name = None;
-        for (node_name, node_options) in case_options.node_options.iter() {
-            let mut node = Node::init(case_name, node_name, node_options.clone());
+        for node_options in case_options.node_options.iter() {
+            let mut node = Node::init(case_name, node_options.clone());
+            let node_name = node.node_name().to_string();
             node.start();
-            nodes.insert(node_name.to_string(), node);
+            nodes.insert(node_name.clone(), node);
             if first_node_name.is_none() {
                 first_node_name = Some(node_name);
             }
@@ -29,7 +30,7 @@ pub trait Case: Send {
                 node.mine(1);
             }
             nodes.p2p_connect();
-            let any_node = nodes.get_node(first_node_name.unwrap());
+            let any_node = nodes.get_node(first_node_name.as_ref().unwrap());
             any_node.mine(1);
             nodes.waiting_for_sync();
         } else {
@@ -37,7 +38,7 @@ pub trait Case: Send {
                 nodes.p2p_connect();
             }
             if case_options.make_all_nodes_synced {
-                let any_node = nodes.get_node(first_node_name.unwrap());
+                let any_node = nodes.get_node(first_node_name.as_ref().unwrap());
                 any_node.mine(1);
                 let tip_block = any_node.get_tip_block();
                 for node in nodes.nodes() {

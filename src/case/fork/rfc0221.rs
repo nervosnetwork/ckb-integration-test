@@ -34,24 +34,20 @@ impl Case for RFC0221BeforeSwitch {
             make_all_nodes_synced: true,
             make_all_nodes_connected_and_synced: true,
             node_options: vec![
-                (
-                    "ckb-fork0",
-                    NodeOptions {
-                        ckb_binary: CKB_FORK0_BINARY.lock().clone(),
-                        initial_database: "db/Epoch2V1TestData",
-                        chain_spec: "spec/ckb-fork0",
-                        app_config: "config/ckb-fork0",
-                    },
-                ),
-                (
-                    "ckb-fork2021",
-                    NodeOptions {
-                        ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
-                        initial_database: "db/empty",
-                        chain_spec: "spec/ckb-fork2021",
-                        app_config: "config/ckb-fork0",
-                    },
-                ),
+                NodeOptions {
+                    node_name: "ckb-fork0",
+                    ckb_binary: CKB_FORK0_BINARY.lock().clone(),
+                    initial_database: "db/Epoch2V1TestData",
+                    chain_spec: "spec/ckb-fork0",
+                    app_config: "config/ckb-fork0",
+                },
+                NodeOptions {
+                    node_name: "ckb-fork2021",
+                    ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
+                    initial_database: "db/empty",
+                    chain_spec: "spec/ckb-fork2021",
+                    app_config: "config/ckb-fork0",
+                },
             ]
             .into_iter()
             .collect(),
@@ -155,24 +151,20 @@ impl Case for RFC0221AfterSwitch {
             make_all_nodes_synced: true,
             make_all_nodes_connected_and_synced: true,
             node_options: vec![
-                (
-                    "ckb-fork0",
-                    NodeOptions {
-                        ckb_binary: CKB_FORK0_BINARY.lock().clone(),
-                        initial_database: "db/Epoch2V1TestData",
-                        chain_spec: "spec/ckb-fork0",
-                        app_config: "config/ckb-fork0",
-                    },
-                ),
-                (
-                    "ckb-fork2021",
-                    NodeOptions {
-                        ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
-                        initial_database: "db/Epoch2V2TestData",
-                        chain_spec: "spec/ckb-fork2021",
-                        app_config: "config/ckb-fork0",
-                    },
-                ),
+                NodeOptions {
+                    node_name: "ckb-fork0",
+                    ckb_binary: CKB_FORK0_BINARY.lock().clone(),
+                    initial_database: "db/Epoch2V1TestData",
+                    chain_spec: "spec/ckb-fork0",
+                    app_config: "config/ckb-fork0",
+                },
+                NodeOptions {
+                    node_name: "ckb-fork2021",
+                    ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
+                    initial_database: "db/Epoch2V2TestData",
+                    chain_spec: "spec/ckb-fork2021",
+                    app_config: "config/ckb-fork0",
+                },
             ]
             .into_iter()
             .collect(),

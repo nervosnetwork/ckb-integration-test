@@ -29,7 +29,6 @@ impl Drop for ProcessGuard {
 
 pub struct Node {
     pub(super) case_name: String,
-    pub(super) node_name: String,
     pub(super) node_options: NodeOptions,
 
     pub(super) working_dir: PathBuf,
@@ -44,21 +43,18 @@ pub struct Node {
 }
 
 impl Node {
-    pub fn init<S: ToString>(case_name: S, node_name: S, node_options: NodeOptions) -> Self {
+    pub fn init<S: ToString>(case_name: S, node_options: NodeOptions) -> Self {
         let case_name = case_name.to_string();
-        let node_name = node_name.to_string();
         let rpc_port = find_available_port();
         let p2p_port = find_available_port();
-        let working_dir =
-            prepare_working_dir(&case_name, &node_name, &node_options, rpc_port, p2p_port);
+        let working_dir = prepare_working_dir(&case_name, &node_options, rpc_port, p2p_port);
         crate::info!(
             "[Node {}] INIT, log_path: {}/data/logs/run.log",
-            node_name,
+            node_options.node_name,
             working_dir.display()
         );
         Self {
             case_name,
-            node_name,
             node_options,
             working_dir,
             rpc_client: RpcClient::new(&format!("http://127.0.0.1:{}/", rpc_port)),
@@ -114,7 +110,7 @@ impl Node {
     }
 
     pub fn node_name(&self) -> &str {
-        &self.node_name
+        &self.node_options.node_name
     }
 
     pub fn node_options(&self) -> &NodeOptions {
@@ -205,12 +201,11 @@ impl Node {
 
 fn prepare_working_dir(
     case_name: &str,
-    node_name: &str,
     node_options: &NodeOptions,
     rpc_port: u16,
     p2p_port: u16,
 ) -> PathBuf {
-    let working_dir: PathBuf = temp_path(&case_name, &node_name);
+    let working_dir: PathBuf = temp_path(&case_name, &node_options.node_name);
     let target_database = &working_dir.join("data/db");
     let source_database = &TESTDATA_DIR.lock().join(node_options.initial_database);
     let source_chain_spec = &TESTDATA_DIR.lock().join(node_options.chain_spec);

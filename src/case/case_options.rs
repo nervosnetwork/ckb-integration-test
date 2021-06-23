@@ -1,5 +1,4 @@
 use crate::node::NodeOptions;
-use std::collections::HashMap;
 
 // TODO Too dirty
 #[derive(Debug, Clone)]
@@ -7,7 +6,7 @@ pub struct CaseOptions {
     pub make_all_nodes_connected: bool,
     pub make_all_nodes_synced: bool,
     pub make_all_nodes_connected_and_synced: bool,
-    pub node_options: HashMap<&'static str, NodeOptions>,
+    pub node_options: Vec<NodeOptions>,
 }
 
 impl Default for CaseOptions {
