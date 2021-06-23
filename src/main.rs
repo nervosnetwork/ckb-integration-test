@@ -1,7 +1,6 @@
 use ckb_integration_test::{case, init_ckb_binaries, init_testdata_dir, testdata};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::env;
-use std::net::ToSocketAddrs;
 use std::process::exit;
 
 fn main() {
@@ -39,15 +38,15 @@ fn clap_app() -> App<'static, 'static> {
             SubCommand::with_name("run")
                 .about("Run test cases")
                 .arg(
-                    Arg::with_name("ckb-v1-binary")
-                        .long("ckb-v1-binary")
+                    Arg::with_name("ckb-fork0-binary")
+                        .long("ckb-fork0-binary")
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v1 executable"),
                 )
                 .arg(
-                    Arg::with_name("ckb-v2-binary")
-                        .long("ckb-v2-binary")
+                    Arg::with_name("ckb-fork2021-binary")
+                        .long("ckb-fork2021-binary")
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v2 executable"),
@@ -73,15 +72,15 @@ fn clap_app() -> App<'static, 'static> {
             SubCommand::with_name("generate-testdata")
                 .about("Run testdata generators")
                 .arg(
-                    Arg::with_name("ckb-v1-binary")
-                        .long("ckb-v1-binary")
+                    Arg::with_name("ckb-fork0-binary")
+                        .long("ckb-fork0-binary")
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v1 executable"),
                 )
                 .arg(
-                    Arg::with_name("ckb-v2-binary")
-                        .long("ckb-v2-binary")
+                    Arg::with_name("ckb-fork2021-binary")
+                        .long("ckb-fork2021-binary")
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v2 executable"),

@@ -18,24 +18,24 @@ thread_local! {
 }
 
 lazy_static! {
-    pub static ref CKB_V1_BINARY: Mutex<PathBuf> = Mutex::new(PathBuf::new());
-    pub static ref CKB_V2_BINARY: Mutex<PathBuf> = Mutex::new(PathBuf::new());
+    pub static ref CKB_FORK0_BINARY: Mutex<PathBuf> = Mutex::new(PathBuf::new());
+    pub static ref CKB_FORK2021_BINARY: Mutex<PathBuf> = Mutex::new(PathBuf::new());
     pub static ref TESTDATA_DIR: Mutex<PathBuf> = Mutex::new(PathBuf::new());
 }
 
 pub fn init_ckb_binaries(matches: &ArgMatches) {
-    let ckb_v1_binary = value_t!(matches, "ckb-v1-binary", PathBuf)
-        .unwrap_or_else(|err| panic!("failed to parse --ckb-v1-binary, error: {}", err));
-    let ckb_v2_binary = value_t!(matches, "ckb-v2-binary", PathBuf)
-        .unwrap_or_else(|err| panic!("failed to parse --ckb-v2-binary, error: {}", err));
-    if !ckb_v1_binary.exists() || !ckb_v1_binary.is_file() {
-        panic!("--ckb-v1-binary points to non-executable")
+    let ckb_fork0_binary = value_t!(matches, "ckb-fork0-binary", PathBuf)
+        .unwrap_or_else(|err| panic!("failed to parse --ckb-fork0-binary, error: {}", err));
+    let ckb_fork2021_binary = value_t!(matches, "ckb-fork2021-binary", PathBuf)
+        .unwrap_or_else(|err| panic!("failed to parse --ckb-fork2021-binary, error: {}", err));
+    if !ckb_fork0_binary.exists() || !ckb_fork0_binary.is_file() {
+        panic!("--ckb-fork0-binary points to non-executable")
     }
-    if !ckb_v2_binary.exists() || !ckb_v2_binary.is_file() {
-        panic!("--ckb-v2-binary points to non-executable")
+    if !ckb_fork2021_binary.exists() || !ckb_fork2021_binary.is_file() {
+        panic!("--ckb-fork2021-binary points to non-executable")
     }
-    *CKB_V1_BINARY.lock() = absolutize(ckb_v1_binary);
-    *CKB_V2_BINARY.lock() = absolutize(ckb_v2_binary);
+    *CKB_FORK0_BINARY.lock() = absolutize(ckb_fork0_binary);
+    *CKB_FORK2021_BINARY.lock() = absolutize(ckb_fork2021_binary);
 }
 
 pub fn init_testdata_dir(matches: &ArgMatches) {

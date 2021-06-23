@@ -1,7 +1,7 @@
 use crate::case::{Case, CaseOptions};
 use crate::node::NodeOptions;
 use crate::nodes::Nodes;
-use crate::{CKB_V1_BINARY, CKB_V2_BINARY};
+use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
 
 pub struct Networking;
 
@@ -13,21 +13,21 @@ impl Case for Networking {
             make_all_nodes_connected_and_synced: false,
             node_options: vec![
                 (
-                    "ckb-v1",
+                    "ckb-fork0",
                     NodeOptions {
-                        ckb_binary: CKB_V1_BINARY.lock().clone(),
+                        ckb_binary: CKB_FORK0_BINARY.lock().clone(),
                         initial_database: "db/Height13TestData",
-                        chain_spec: "spec/ckb-v1",
-                        app_config: "config/ckb-v1",
+                        chain_spec: "spec/ckb-fork0",
+                        app_config: "config/ckb-fork0",
                     },
                 ),
                 (
                     "ckb-v2",
                     NodeOptions {
-                        ckb_binary: CKB_V2_BINARY.lock().clone(),
+                        ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
                         initial_database: "db/Height13TestData",
-                        chain_spec: "spec/ckb-v1",
-                        app_config: "config/ckb-v1",
+                        chain_spec: "spec/ckb-fork0",
+                        app_config: "config/ckb-fork0",
                     },
                 ),
             ]
@@ -37,7 +37,7 @@ impl Case for Networking {
     }
 
     fn run(&self, nodes: Nodes) {
-        let node_v1 = nodes.get_node("ckb-v1");
+        let node_v1 = nodes.get_node("ckb-fork0");
         let node_v2 = nodes.get_node("ckb-v2");
         node_v1.p2p_connect(node_v2);
 
