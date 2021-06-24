@@ -11,6 +11,7 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(basic::networking::BasicNetworking),
         Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
         Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
+        Box::new(rfc0221::networking::RFC0221Networking),
     ]
 }
 

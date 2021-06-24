@@ -13,18 +13,18 @@ impl Case for BasicNetworking {
             make_all_nodes_connected_and_synced: false,
             node_options: vec![
                 NodeOptions {
-                    node_name: "ckb-fork0",
+                    node_name: "node-fork0",
                     ckb_binary: CKB_FORK0_BINARY.lock().clone(),
                     initial_database: "db/Height13TestData",
-                    chain_spec: "spec/ckb-fork2021",
-                    app_config: "config/ckb-fork2021",
+                    chain_spec: "spec/fork2021",
+                    app_config: "config/fork2021",
                 },
                 NodeOptions {
-                    node_name: "ckb-fork2021",
+                    node_name: "node-fork2021",
                     ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
                     initial_database: "db/Height13TestData",
-                    chain_spec: "spec/ckb-fork2021",
-                    app_config: "config/ckb-fork2021",
+                    chain_spec: "spec/fork2021",
+                    app_config: "config/fork2021",
                 },
             ]
             .into_iter()
@@ -33,15 +33,15 @@ impl Case for BasicNetworking {
     }
 
     fn run(&self, nodes: Nodes) {
-        let node_v1 = nodes.get_node("ckb-fork0");
-        let node_v2 = nodes.get_node("ckb-fork2021");
-        node_v1.mine(10);
-        node_v2.mine(10);
-        node_v1.p2p_connect(node_v2);
+        let node_fork0 = nodes.get_node("node-fork0");
+        let node_fork2021 = nodes.get_node("node-fork2021");
+        node_fork0.mine(10);
+        node_fork2021.mine(10);
+        node_fork0.p2p_connect(node_fork2021);
 
-        node_v1.mine(10);
+        node_fork0.mine(10);
         nodes.waiting_for_sync().expect("waiting for sync");
-        node_v2.mine(10);
+        node_fork2021.mine(10);
         nodes.waiting_for_sync().expect("waiting for sync");
     }
 }
