@@ -5,18 +5,17 @@ use crate::nodes::Nodes;
 use crate::util::{since_from_relative_timestamp, wait_until};
 use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
 use ckb_types::{
-    core::{EpochNumberWithFraction, TransactionBuilder},
+    core::{EpochNumber, TransactionBuilder},
     packed::{CellInput, CellOutput},
     prelude::*,
 };
 use std::thread::sleep;
 use std::time::Duration;
 
-// TODO enforce RFC0221_EPOCH be the same with `params.fork` in spec.toml
-// TODO enforce RFC0221_EPOCH near by "db/Epoch2TestData"
+// TODO enforce RFC0221_EPOCH_NUMBER be the same with `params.fork` in spec.toml, and greater then `db/EpochTestdata`
 // TODO Nodes in same case should have the same `initial_database`
 // TODO Db version is related to ckb binary version. How to solve it?
-pub const RFC0221_EPOCH: u64 = 1_979_121_768_857_602; // EpochNumberWithFraction::new(2, 50, 1800)
+const RFC0221_EPOCH_NUMBER: EpochNumber = 3;
 
 pub struct RFC0221BeforeSwitch;
 
@@ -31,15 +30,15 @@ impl Case for RFC0221BeforeSwitch {
                     node_name: "ckb-fork0",
                     ckb_binary: CKB_FORK0_BINARY.lock().clone(),
                     initial_database: "db/Epoch2V1TestData",
-                    chain_spec: "spec/ckb-fork0",
-                    app_config: "config/ckb-fork0",
+                    chain_spec: "spec/ckb-fork2021",
+                    app_config: "config/ckb-fork2021",
                 },
                 NodeOptions {
                     node_name: "ckb-fork2021",
                     ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
                     initial_database: "db/empty",
                     chain_spec: "spec/ckb-fork2021",
-                    app_config: "config/ckb-fork0",
+                    app_config: "config/ckb-fork2021",
                 },
             ]
             .into_iter()
@@ -49,7 +48,6 @@ impl Case for RFC0221BeforeSwitch {
 
     // Before rfc0221, node_v1 and node_v2 use old rule: `since`'s start_time = median time of input's committed timestamp
     fn run(&self, nodes: Nodes) {
-        let rfc0221_switch = EpochNumberWithFraction::from_full_value(RFC0221_EPOCH);
         let node_v1 = nodes.get_node("ckb-fork0");
         let node_v2 = nodes.get_node("ckb-fork2021");
 
@@ -112,7 +110,9 @@ impl Case for RFC0221BeforeSwitch {
 
             sleep(Duration::from_secs(1));
             node_v1.mine(1);
-            assert!(node_v1.get_tip_block().epoch() < rfc0221_switch);
+            assert!(!is_rfc0221_switched(
+                node_v1.rpc_client().get_current_epoch().number.value()
+            ));
         }
 
         let sent = node_v1
@@ -140,4 +140,8 @@ impl Case for RFC0221BeforeSwitch {
             );
         }
     }
+}
+
+fn is_rfc0221_switched(epoch_number: EpochNumber) -> bool {
+    epoch_number >= RFC0221_EPOCH_NUMBER
 }
