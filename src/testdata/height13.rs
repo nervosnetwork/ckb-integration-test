@@ -10,8 +10,8 @@ impl Testdata for Height13TestData {
             node_name: "ckb-fork0",
             ckb_binary: CKB_FORK0_BINARY.lock().clone(),
             initial_database: "db/empty",
-            chain_spec: "spec/ckb-fork0",
-            app_config: "config/ckb-fork0",
+            chain_spec: "spec/ckb-fork2021",
+            app_config: "config/ckb-fork2021",
         };
         let mut node = Node::init(self.testdata_name(), node_options);
         node.start();

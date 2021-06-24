@@ -10,8 +10,8 @@ impl Testdata for Epoch2V1TestData {
             node_name: "ckb-fork0",
             ckb_binary: CKB_FORK0_BINARY.lock().clone(),
             initial_database: "db/empty",
-            chain_spec: "spec/ckb-fork0",
-            app_config: "config/ckb-fork0",
+            chain_spec: "spec/ckb-fork2021",
+            app_config: "config/ckb-fork2021",
         };
         let mut node = Node::init(self.testdata_name(), node_options);
         node.start();
@@ -40,8 +40,7 @@ impl Testdata for Epoch2V2TestData {
         node.start();
         loop {
             node.mine(1);
-            let tip = node.get_tip_block();
-            if tip.epoch().number() >= 2 {
+            if node.rpc_client().get_current_epoch().number.value() >= 2 {
                 break;
             }
         }

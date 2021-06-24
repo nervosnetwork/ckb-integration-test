@@ -3,9 +3,9 @@ use crate::node::NodeOptions;
 use crate::nodes::Nodes;
 use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
 
-pub struct Networking;
+pub struct BasicNetworking;
 
-impl Case for Networking {
+impl Case for BasicNetworking {
     fn case_options(&self) -> CaseOptions {
         CaseOptions {
             make_all_nodes_connected: false,
@@ -16,15 +16,15 @@ impl Case for Networking {
                     node_name: "ckb-fork0",
                     ckb_binary: CKB_FORK0_BINARY.lock().clone(),
                     initial_database: "db/Height13TestData",
-                    chain_spec: "spec/ckb-fork0",
-                    app_config: "config/ckb-fork0",
+                    chain_spec: "spec/ckb-fork2021",
+                    app_config: "config/ckb-fork2021",
                 },
                 NodeOptions {
                     node_name: "ckb-fork2021",
                     ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
                     initial_database: "db/Height13TestData",
-                    chain_spec: "spec/ckb-fork0",
-                    app_config: "config/ckb-fork0",
+                    chain_spec: "spec/ckb-fork2021",
+                    app_config: "config/ckb-fork2021",
                 },
             ]
             .into_iter()
