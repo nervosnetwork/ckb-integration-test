@@ -1,4 +1,3 @@
-use crate::debug;
 use crate::nodes::Nodes;
 use crate::util::wait_until;
 use ckb_types::core::BlockNumber;
@@ -7,7 +6,7 @@ use std::collections::HashSet;
 
 impl Nodes {
     pub fn waiting_for_sync(&self) -> Result<(), Vec<(&str, BlockNumber, Byte32)>> {
-        debug!("Nodes::waiting_for_sync start");
+        crate::trace!("Nodes::waiting_for_sync start");
         let mut tip_blocks = HashSet::new();
 
         // 60 seconds is a reasonable timeout to sync, even for poor CI server
@@ -28,7 +27,7 @@ impl Nodes {
         for node in self.nodes() {
             node.wait_for_tx_pool();
         }
-        debug!("Nodes::waiting_for_sync end");
+        crate::trace!("Nodes::waiting_for_sync end");
         Ok(())
     }
 }

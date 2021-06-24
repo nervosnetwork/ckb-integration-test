@@ -1,4 +1,3 @@
-use crate::debug;
 use crate::node::Node;
 use ckb_jsonrpc_types::TxPoolInfo;
 use ckb_types::{
@@ -35,7 +34,7 @@ impl Node {
         let block = rpc_client
             .get_block_by_number(tip_number)
             .expect("tip block exists");
-        debug!(
+        crate::trace!(
             "[Node {}] Node::get_tip_block(), block: {:?}",
             self.node_name(),
             block
@@ -45,7 +44,7 @@ impl Node {
 
     pub fn get_tip_block_number(&self) -> BlockNumber {
         let block_number = self.rpc_client().get_tip_block_number();
-        debug!(
+        crate::trace!(
             "[Node {}] Node::get_tip_block_number(), block_number: {}",
             self.node_name(),
             block_number
