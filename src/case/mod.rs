@@ -1,15 +1,15 @@
+mod basic;
 mod case;
 mod case_options;
-mod fork;
+mod rfc0221;
 
 pub use case::Case;
 pub use case_options::CaseOptions;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
-        // Box::new(fork::networking::Networking),
-        // Box::new(fork::rfc0221::RFC0221BeforeSwitch),
-        Box::new(fork::rfc0221::RFC0221AfterSwitch),
+        Box::new(basic::networking::Networking),
+        Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
     ]
 }
 
@@ -19,8 +19,8 @@ pub fn run_case(case: Box<dyn Case>) {
         *c.borrow_mut() = case.case_name().to_string();
     });
 
-    info!("START");
+    info!("********** START **********");
     let nodes = case.before_run();
     case.run(nodes);
-    info!("END");
+    info!("********** END **********");
 }

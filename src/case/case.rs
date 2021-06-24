@@ -32,7 +32,7 @@ pub trait Case: Send {
             nodes.p2p_connect();
             let any_node = nodes.get_node(first_node_name.as_ref().unwrap());
             any_node.mine(1);
-            nodes.waiting_for_sync();
+            nodes.waiting_for_sync().expect("waiting for sync");
         } else {
             if case_options.make_all_nodes_connected {
                 nodes.p2p_connect();
@@ -46,7 +46,7 @@ pub trait Case: Send {
                         node.submit_block(&tip_block);
                     }
                 }
-                nodes.waiting_for_sync();
+                nodes.waiting_for_sync().expect("waiting for sync");
             }
         }
         nodes

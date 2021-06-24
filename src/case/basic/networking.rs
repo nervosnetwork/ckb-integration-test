@@ -35,11 +35,13 @@ impl Case for Networking {
     fn run(&self, nodes: Nodes) {
         let node_v1 = nodes.get_node("ckb-fork0");
         let node_v2 = nodes.get_node("ckb-fork2021");
+        node_v1.mine(10);
+        node_v2.mine(10);
         node_v1.p2p_connect(node_v2);
 
-        node_v1.mine(1);
-        nodes.waiting_for_sync();
-        node_v2.mine(1);
-        nodes.waiting_for_sync();
+        node_v1.mine(10);
+        nodes.waiting_for_sync().expect("waiting for sync");
+        node_v2.mine(10);
+        nodes.waiting_for_sync().expect("waiting for sync");
     }
 }
