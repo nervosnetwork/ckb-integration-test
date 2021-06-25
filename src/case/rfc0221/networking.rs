@@ -1,6 +1,6 @@
 use crate::case::rfc0221::util::{committed_timestamp, median_timestamp};
 use crate::case::{Case, CaseOptions};
-use crate::node::NodeOptions;
+use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
 use crate::util::since_from_relative_timestamp;
 use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
@@ -52,13 +52,7 @@ impl Case for RFC0221Networking {
         {
             let mut over_move_switch_cnt = 37;
             loop {
-                if !is_rfc0221_switched(
-                    node_fork2021
-                        .rpc_client()
-                        .get_current_epoch()
-                        .number
-                        .value(),
-                ) {
+                if !is_rfc0221_switched(node_fork2021) {
                     node_fork2021.mine(1);
                 } else if over_move_switch_cnt > 0 {
                     over_move_switch_cnt -= 1;
@@ -157,6 +151,6 @@ impl Case for RFC0221Networking {
     }
 }
 
-fn is_rfc0221_switched(epoch_number: EpochNumber) -> bool {
-    epoch_number >= RFC0221_EPOCH_NUMBER
+fn is_rfc0221_switched(node: &Node) -> bool {
+    node.rpc_client().get_current_epoch().number.value() >= RFC0221_EPOCH_NUMBER
 }

@@ -15,7 +15,7 @@
 //   - or relative_epoch.index == relative_epoch.length == 0
 
 use crate::case::{Case, CaseOptions};
-use crate::node::NodeOptions;
+use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
 use crate::util::{
     since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
@@ -122,7 +122,7 @@ impl Case for RFC0223BeforeSwitch {
         // Move forward to make sure our since values become valid
         node_fork2021.mine(1800 + 10);
 
-        assert!(node_fork2021.get_tip_block().epoch().number() < RFC0223_EPOCH_NUMBER);
+        assert!(!is_rfc0223_switched(node_fork2021));
         txs.iter().enumerate().for_each(|(i, tx)| {
             let result = node_fork2021
                 .rpc_client()
@@ -135,7 +135,7 @@ impl Case for RFC0223BeforeSwitch {
             );
         });
         node_fork2021.mine(3);
-        assert!(node_fork2021.get_tip_block().epoch().number() < RFC0223_EPOCH_NUMBER);
+        assert!(!is_rfc0223_switched(node_fork2021));
         nodes
             .waiting_for_sync()
             .expect("nodes should be synced as they all abey to old rule");
@@ -144,4 +144,8 @@ impl Case for RFC0223BeforeSwitch {
             .iter()
             .all(|tx| node_fork2021.is_transaction_committed(tx)));
     }
+}
+
+fn is_rfc0223_switched(node: &Node) -> bool {
+    node.rpc_client().get_current_epoch().number.value() >= RFC0223_EPOCH_NUMBER
 }
