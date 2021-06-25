@@ -1,5 +1,6 @@
 mod always_success;
 mod genesis_block_info;
+mod get_transaction;
 mod indexer;
 mod mining;
 mod node;
