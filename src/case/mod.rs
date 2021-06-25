@@ -1,11 +1,10 @@
 mod basic;
 mod case_options;
 mod rfc0221;
+mod rfc0223;
 
 use crate::node::Node;
 use crate::nodes::Nodes;
-use std::collections::HashMap;
-
 pub use case_options::CaseOptions;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
@@ -18,20 +17,14 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
 }
 
 pub fn run_case(case: Box<dyn Case>) {
-    use crate::{info, CASE_NAME};
-    CASE_NAME.with(|c| {
+    crate::CASE_NAME.with(|c| {
         *c.borrow_mut() = case.case_name().to_string();
     });
 
-    info!("********** START **********");
+    crate::info!("********** START **********");
     let nodes = case.before_run();
     case.run(nodes);
-    info!("********** END **********");
-}
-
-fn case_name<T: ?Sized>(_: &T) -> &str {
-    let type_name = ::std::any::type_name::<T>();
-    type_name.split_terminator("::").last().unwrap()
+    crate::info!("********** END **********");
 }
 
 pub trait Case: Send {
@@ -44,7 +37,7 @@ pub trait Case: Send {
     fn before_run(&self) -> Nodes {
         let case_name = self.case_name();
         let case_options = self.case_options();
-        let mut nodes = HashMap::new();
+        let mut nodes = ::std::collections::HashMap::new();
         let mut first_node_name = None;
         for node_options in case_options.node_options.iter() {
             let mut node = Node::init(case_name, node_options.clone());
@@ -84,4 +77,9 @@ pub trait Case: Send {
     }
 
     fn run(&self, nodes: Nodes);
+}
+
+fn case_name<T: ?Sized>(_: &T) -> &str {
+    let type_name = ::std::any::type_name::<T>();
+    type_name.split_terminator("::").last().unwrap()
 }
