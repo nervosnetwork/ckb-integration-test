@@ -38,18 +38,18 @@ fn clap_app() -> App<'static, 'static> {
             SubCommand::with_name("run")
                 .about("Run test cases")
                 .arg(
-                    Arg::with_name("ckb-fork0-binary")
-                        .long("ckb-fork0-binary")
+                    Arg::with_name("ckb2019")
+                        .long("ckb2019")
                         .takes_value(true)
                         .value_name("PATH")
-                        .help("Path to ckb v1 executable"),
+                        .help("Path to ckb2019 executable"),
                 )
                 .arg(
-                    Arg::with_name("ckb-fork2021-binary")
-                        .long("ckb-fork2021-binary")
+                    Arg::with_name("ckb2021")
+                        .long("ckb2021")
                         .takes_value(true)
                         .value_name("PATH")
-                        .help("Path to ckb v2 executable"),
+                        .help("Path to ckb2021 executable"),
                 )
                 .arg(
                     Arg::with_name("testdata-dir")
@@ -64,15 +64,15 @@ fn clap_app() -> App<'static, 'static> {
             SubCommand::with_name("generate-testdata")
                 .about("Run testdata generators")
                 .arg(
-                    Arg::with_name("ckb-fork0-binary")
-                        .long("ckb-fork0-binary")
+                    Arg::with_name("ckb2019")
+                        .long("ckb2019")
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v1 executable"),
                 )
                 .arg(
-                    Arg::with_name("ckb-fork2021-binary")
-                        .long("ckb-fork2021-binary")
+                    Arg::with_name("ckb2021")
+                        .long("ckb2021")
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v2 executable"),

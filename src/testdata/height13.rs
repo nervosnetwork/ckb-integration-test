@@ -1,17 +1,17 @@
 use crate::node::{Node, NodeOptions};
 use crate::testdata::{dump_testdata, Testdata};
-use crate::CKB_FORK0_BINARY;
+use crate::CKB2019;
 
 pub struct Height13TestData;
 
 impl Testdata for Height13TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
-            node_name: "node-fork0",
-            ckb_binary: CKB_FORK0_BINARY.lock().clone(),
+            node_name: "node2019",
+            ckb_binary: CKB2019.lock().clone(),
             initial_database: "db/empty",
-            chain_spec: "spec/fork2021",
-            app_config: "config/fork2021",
+            chain_spec: "spec/ckb2021",
+            app_config: "config/ckb2021",
         };
         let mut node = Node::init(self.testdata_name(), node_options);
         node.start();

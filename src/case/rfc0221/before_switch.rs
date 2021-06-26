@@ -3,7 +3,7 @@ use crate::case::{Case, CaseOptions};
 use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
 use crate::util::{since_from_relative_timestamp, wait_until};
-use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
+use crate::{CKB2019, CKB2021};
 use ckb_types::{
     core::{EpochNumber, TransactionBuilder},
     packed::{CellInput, CellOutput},
@@ -27,18 +27,18 @@ impl Case for RFC0221BeforeSwitch {
             make_all_nodes_connected_and_synced: true,
             node_options: vec![
                 NodeOptions {
-                    node_name: "node-fork0",
-                    ckb_binary: CKB_FORK0_BINARY.lock().clone(),
+                    node_name: "node2019",
+                    ckb_binary: CKB2019.lock().clone(),
                     initial_database: "db/Epoch2V1TestData",
-                    chain_spec: "spec/fork2021",
-                    app_config: "config/fork2021",
+                    chain_spec: "spec/ckb2021",
+                    app_config: "config/ckb2021",
                 },
                 NodeOptions {
-                    node_name: "node-fork2021",
-                    ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
+                    node_name: "node2021",
+                    ckb_binary: CKB2021.lock().clone(),
                     initial_database: "db/empty",
-                    chain_spec: "spec/fork2021",
-                    app_config: "config/fork2021",
+                    chain_spec: "spec/ckb2021",
+                    app_config: "config/ckb2021",
                 },
             ]
             .into_iter()
@@ -46,10 +46,10 @@ impl Case for RFC0221BeforeSwitch {
         }
     }
 
-    // Before rfc0221, node_fork0 and node_fork2021 use old rule: `since`'s start_time = median time of input's committed timestamp
+    // Before rfc0221, node2019 and node2021 use old rule: `since`'s start_time = median time of input's committed timestamp
     fn run(&self, nodes: Nodes) {
-        let node_fork0 = nodes.get_node("node-fork0");
-        let node_fork2021 = nodes.get_node("node-fork2021");
+        let node2019 = nodes.get_node("node2019");
+        let node2021 = nodes.get_node("node2021");
 
         // Construct a transaction tx:
         //   - since: relative 2 seconds
@@ -59,8 +59,8 @@ impl Case for RFC0221BeforeSwitch {
         let input = &{
             // Use the last live cell as input to make sure the constructed
             // transaction cannot pass the "since verification" at short future
-            node_fork0.mine(1);
-            let mut cells = node_fork0.get_live_always_success_cells();
+            node2019.mine(1);
+            let mut cells = node2019.get_live_always_success_cells();
             cells.pop().expect("pop last cell")
         };
         let input_block_number = input
@@ -68,7 +68,7 @@ impl Case for RFC0221BeforeSwitch {
             .as_ref()
             .expect("live cell should have transaction info")
             .block_number;
-        let start_time_of_old_rule = median_timestamp(node_fork0, input_block_number);
+        let start_time_of_old_rule = median_timestamp(node2019, input_block_number);
         let tx = TransactionBuilder::default()
             .input(CellInput::new(input.out_point.clone(), since))
             .output(
@@ -79,61 +79,61 @@ impl Case for RFC0221BeforeSwitch {
                     .build(),
             )
             .output_data(Default::default())
-            .cell_dep(node_fork0.always_success_cell_dep())
+            .cell_dep(node2019.always_success_cell_dep())
             .build();
 
         loop {
             nodes.waiting_for_sync().expect("waiting for sync");
 
-            let tip_number = node_fork0.get_tip_block_number();
-            let tip_median_time = median_timestamp(node_fork0, tip_number);
+            let tip_number = node2019.get_tip_block_number();
+            let tip_median_time = median_timestamp(node2019, tip_number);
             if start_time_of_old_rule + relative_mills <= tip_median_time {
                 break;
             } else {
-                let result = node_fork0
+                let result = node2019
                     .rpc_client()
                     .send_transaction_result(tx.pack().data().into());
                 assert!(
                     result.is_err(),
-                    "Before RFC0221, node_fork0 should reject tx according to old rule, but got: {:?}",
+                    "Before RFC0221, node2019 should reject tx according to old rule, but got: {:?}",
                     result,
                 );
-                let result = node_fork2021
+                let result = node2021
                     .rpc_client()
                     .send_transaction_result(tx.pack().data().into());
                 assert!(
                     result.is_err(),
-                    "Before RFC0221, node_fork2021 should reject tx according to old rule, but got: {:?}",
+                    "Before RFC0221, node2021 should reject tx according to old rule, but got: {:?}",
                     result,
                 );
             }
 
             sleep(Duration::from_secs(1));
-            node_fork0.mine(1);
-            assert!(!is_rfc0221_switched(node_fork0));
+            node2019.mine(1);
+            assert!(!is_rfc0221_switched(node2019));
         }
 
-        let sent = node_fork0
+        let sent = node2019
             .rpc_client()
             .send_transaction_result(tx.pack().data().into());
         assert!(
             sent.is_ok(),
-            "Before RFC0221, node_fork0 should accept tx according to old rule, but got: {:?}",
+            "Before RFC0221, node2019 should accept tx according to old rule, but got: {:?}",
             sent,
         );
         let synced = wait_until(10, || {
-            node_fork2021
+            node2021
                 .rpc_client()
                 .send_transaction_result(tx.pack().data().into())
                 .is_ok()
         });
         if !synced {
-            let sent2 = node_fork2021
+            let sent2 = node2021
                 .rpc_client()
                 .send_transaction_result(tx.pack().data().into());
             assert!(
                 sent2.is_ok(),
-                "Before RFC0221, node_fork2021 should accept tx according to old rule, but got: {:?}",
+                "Before RFC0221, node2021 should accept tx according to old rule, but got: {:?}",
                 sent2,
             );
         }

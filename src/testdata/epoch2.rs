@@ -1,17 +1,17 @@
 use crate::node::{Node, NodeOptions};
 use crate::testdata::{dump_testdata, Testdata};
-use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
+use crate::{CKB2019, CKB2021};
 
 pub struct Epoch2V1TestData;
 
 impl Testdata for Epoch2V1TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
-            node_name: "node-fork0",
-            ckb_binary: CKB_FORK0_BINARY.lock().clone(),
+            node_name: "node2019",
+            ckb_binary: CKB2019.lock().clone(),
             initial_database: "db/empty",
-            chain_spec: "spec/fork2021",
-            app_config: "config/fork2021",
+            chain_spec: "spec/ckb2021",
+            app_config: "config/ckb2021",
         };
         let mut node = Node::init(self.testdata_name(), node_options);
         node.start();
@@ -30,11 +30,11 @@ pub struct Epoch2V2TestData;
 impl Testdata for Epoch2V2TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
-            node_name: "node-fork2021",
-            ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
+            node_name: "node2021",
+            ckb_binary: CKB2021.lock().clone(),
             initial_database: "db/empty",
-            chain_spec: "spec/fork2021",
-            app_config: "config/fork2021",
+            chain_spec: "spec/ckb2021",
+            app_config: "config/ckb2021",
         };
         let mut node = Node::init(self.testdata_name(), node_options);
         node.start();

@@ -1,7 +1,7 @@
 use crate::case::{Case, CaseOptions};
 use crate::node::NodeOptions;
 use crate::nodes::Nodes;
-use crate::{CKB_FORK0_BINARY, CKB_FORK2021_BINARY};
+use crate::{CKB2019, CKB2021};
 
 pub struct BasicNetworking;
 
@@ -13,18 +13,18 @@ impl Case for BasicNetworking {
             make_all_nodes_connected_and_synced: false,
             node_options: vec![
                 NodeOptions {
-                    node_name: "node-fork0",
-                    ckb_binary: CKB_FORK0_BINARY.lock().clone(),
+                    node_name: "node2019",
+                    ckb_binary: CKB2019.lock().clone(),
                     initial_database: "db/Height13TestData",
-                    chain_spec: "spec/fork2021",
-                    app_config: "config/fork2021",
+                    chain_spec: "spec/ckb2021",
+                    app_config: "config/ckb2021",
                 },
                 NodeOptions {
-                    node_name: "node-fork2021",
-                    ckb_binary: CKB_FORK2021_BINARY.lock().clone(),
+                    node_name: "node2021",
+                    ckb_binary: CKB2021.lock().clone(),
                     initial_database: "db/Height13TestData",
-                    chain_spec: "spec/fork2021",
-                    app_config: "config/fork2021",
+                    chain_spec: "spec/ckb2021",
+                    app_config: "config/ckb2021",
                 },
             ]
             .into_iter()
@@ -33,15 +33,15 @@ impl Case for BasicNetworking {
     }
 
     fn run(&self, nodes: Nodes) {
-        let node_fork0 = nodes.get_node("node-fork0");
-        let node_fork2021 = nodes.get_node("node-fork2021");
-        node_fork0.mine(10);
-        node_fork2021.mine(10);
-        node_fork0.p2p_connect(node_fork2021);
+        let node2019 = nodes.get_node("node2019");
+        let node2021 = nodes.get_node("node2021");
+        node2019.mine(10);
+        node2021.mine(10);
+        node2019.p2p_connect(node2021);
 
-        node_fork0.mine(10);
+        node2019.mine(10);
         nodes.waiting_for_sync().expect("waiting for sync");
-        node_fork2021.mine(10);
+        node2021.mine(10);
         nodes.waiting_for_sync().expect("waiting for sync");
     }
 }
