@@ -38,7 +38,6 @@ impl Case for RFC0221AfterSwitch {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        // Move the chain to height = rfc0221_switch + 37
         {
             let mut over_move_switch_cnt = 37;
             loop {

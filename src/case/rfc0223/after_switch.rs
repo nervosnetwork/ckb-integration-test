@@ -36,7 +36,6 @@ impl Case for RFC0223AfterSwitch {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        // Move the chain to height = rfc0221_switch
         while !is_rfc0223_switched(node2021) {
             node2021.mine(1);
         }
