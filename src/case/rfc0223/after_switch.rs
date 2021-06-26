@@ -44,7 +44,7 @@ impl Case for RFC0223AfterSwitch {
         let cells = node2021.get_live_always_success_cells();
         assert!(cells.len() >= 4);
 
-        let build_transaction = |since: u64, input: &CellMeta| {
+        let build_transaction = |input: &CellMeta, since: u64| {
             TransactionBuilder::default()
                 .input(CellInput::new(input.out_point.clone(), since))
                 .output(
@@ -79,10 +79,10 @@ impl Case for RFC0223AfterSwitch {
                 1,
             ));
         let txs = vec![
-            build_transaction(since_relative_epoch_number_with_fraction1, &cells[0]),
-            build_transaction(since_relative_epoch_number_with_fraction2, &cells[1]),
-            build_transaction(since_absolute_epoch_number_with_fraction1, &cells[2]),
-            build_transaction(since_absolute_epoch_number_with_fraction2, &cells[3]),
+            build_transaction(&cells[0], since_relative_epoch_number_with_fraction1),
+            build_transaction(&cells[1], since_relative_epoch_number_with_fraction2),
+            build_transaction(&cells[2], since_absolute_epoch_number_with_fraction1),
+            build_transaction(&cells[3], since_absolute_epoch_number_with_fraction2),
         ];
 
         // Move forward to make sure our since values become valid

@@ -1,19 +1,3 @@
-// Before RFC0223, since in absolute_epoch format can be
-//   - absolute_epoch.index > absolute_epoch.length
-//   - absolute_epoch.index = absolute_epoch.length > 0
-//
-// After RFC0223, since in absolute_epoch format must be
-//   - absolute_epoch.index < absolute_epoch.length
-//   - or absolute_epoch.index == absolute_epoch.length == 0
-//
-// Before RFC0223, since in relative_epoch format can be
-//   - relative_epoch.index > relative_epoch.length
-//   - relative_epoch.index = relative_epoch.length > 0
-//
-// After RFC0223, since in relative_epoch format must be
-//   - relative_epoch.index < relative_epoch.length
-//   - or relative_epoch.index == relative_epoch.length == 0
-
 use crate::case::{Case, CaseOptions};
 use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
@@ -71,7 +55,7 @@ impl Case for RFC0223BeforeSwitch {
         let cells = node2019.get_live_always_success_cells();
         assert!(cells.len() >= 4);
 
-        let build_transaction = |since: u64, input: &CellMeta| {
+        let build_transaction = |input: &CellMeta, since: u64| {
             TransactionBuilder::default()
                 .input(CellInput::new(input.out_point.clone(), since))
                 .output(
@@ -106,10 +90,10 @@ impl Case for RFC0223BeforeSwitch {
                 1,
             ));
         let txs = vec![
-            build_transaction(since_relative_epoch_number_with_fraction1, &cells[0]),
-            build_transaction(since_relative_epoch_number_with_fraction2, &cells[1]),
-            build_transaction(since_absolute_epoch_number_with_fraction1, &cells[2]),
-            build_transaction(since_absolute_epoch_number_with_fraction2, &cells[3]),
+            build_transaction(&cells[0], since_relative_epoch_number_with_fraction1),
+            build_transaction(&cells[1], since_relative_epoch_number_with_fraction2),
+            build_transaction(&cells[2], since_absolute_epoch_number_with_fraction1),
+            build_transaction(&cells[3], since_absolute_epoch_number_with_fraction2),
         ];
 
         // Move forward to make sure our since values become valid
