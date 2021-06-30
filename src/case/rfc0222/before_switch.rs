@@ -23,14 +23,14 @@ impl Case for RFC0222BeforeSwitch {
             node_options: vec![
                 NodeOptions {
                     node_name: "node2019",
-                    ckb_binary: CKB2019.lock().clone(),
+                    ckb_binary: CKB2019.read().unwrap().clone(),
                     initial_database: "db/empty",
                     chain_spec: "spec/multiple-always-success",
                     app_config: "config/ckb2021",
                 },
                 NodeOptions {
                     node_name: "node2021",
-                    ckb_binary: CKB2021.lock().clone(),
+                    ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "db/Epoch2V2TestData",
                     chain_spec: "spec/multiple-always-success",
                     app_config: "config/ckb2021",

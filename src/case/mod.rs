@@ -4,6 +4,7 @@ mod rfc0221;
 mod rfc0222;
 mod rfc0223;
 mod rfc0224;
+mod rfc0234;
 
 use crate::node::Node;
 use crate::nodes::Nodes;
@@ -11,16 +12,17 @@ pub use case_options::CaseOptions;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
-        Box::new(basic::networking::BasicNetworking),
-        Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
-        Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
-        Box::new(rfc0221::networking::RFC0221Networking),
-        Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
-        Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
-        Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
-        Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
-        Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
-        Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
+        // Box::new(basic::networking::BasicNetworking),
+        // Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
+        // Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
+        // Box::new(rfc0221::networking::RFC0221Networking),
+        // Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
+        // Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
+        // Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
+        // Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
+        // Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
+        // Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
+        Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
     ]
 }
 
@@ -43,11 +45,14 @@ pub trait Case: Send {
     fn case_options(&self) -> CaseOptions;
 
     fn before_run(&self) -> Nodes {
+        crate::debug!("bilibili");
         let case_name = self.case_name();
         let case_options = self.case_options();
         let mut nodes = ::std::collections::HashMap::new();
         let mut first_node_name = None;
+        crate::debug!("bilibili len: {}", case_options.node_options.len());
         for node_options in case_options.node_options.iter() {
+            crate::debug!("bilibili");
             let mut node = Node::init(case_name, node_options.clone());
             let node_name = node.node_name().to_string();
             node.start();

@@ -8,7 +8,7 @@ impl Testdata for Height13TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
             node_name: "node2019",
-            ckb_binary: CKB2019.lock().clone(),
+            ckb_binary: CKB2019.read().unwrap().clone(),
             initial_database: "db/empty",
             chain_spec: "spec/ckb2021",
             app_config: "config/ckb2021",

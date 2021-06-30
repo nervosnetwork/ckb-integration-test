@@ -27,7 +27,7 @@ fn testdata_name<T: ?Sized>(_: &T) -> &str {
 }
 
 fn dump_testdata(mut node: Node, testdata_name: &str) {
-    let testdata_dir = &*TESTDATA_DIR.lock();
+    let testdata_dir = &*TESTDATA_DIR.read().unwrap();
     let working_dir = node.working_dir();
     let source_dir = format!("{}/data/db", working_dir.display());
     let target_dir = format!("{}/db/{}", testdata_dir.display(), testdata_name);

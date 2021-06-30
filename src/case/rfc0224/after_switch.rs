@@ -18,7 +18,7 @@ impl Case for RFC0224AfterSwitch {
             make_all_nodes_connected_and_synced: false,
             node_options: vec![NodeOptions {
                 node_name: "node2021",
-                ckb_binary: CKB2021.lock().clone(),
+                ckb_binary: CKB2021.read().unwrap().clone(),
                 initial_database: "db/Epoch2V2TestData",
                 chain_spec: "spec/ckb2021",
                 app_config: "config/ckb2021",

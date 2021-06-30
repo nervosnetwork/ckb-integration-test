@@ -8,7 +8,7 @@ impl Node {
         let other_p2p_address = other.p2p_address();
 
         self.rpc_client().add_node(other_node_id, other_p2p_address);
-        let connected = wait_until(5, || {
+        let connected = wait_until(20, || {
             self.rpc_client()
                 .get_peers()
                 .iter()

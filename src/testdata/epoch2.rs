@@ -8,7 +8,7 @@ impl Testdata for Epoch2V1TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
             node_name: "node2019",
-            ckb_binary: CKB2019.lock().clone(),
+            ckb_binary: CKB2019.read().unwrap().clone(),
             initial_database: "db/empty",
             chain_spec: "spec/ckb2021",
             app_config: "config/ckb2021",
@@ -31,7 +31,7 @@ impl Testdata for Epoch2V2TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
             node_name: "node2021",
-            ckb_binary: CKB2021.lock().clone(),
+            ckb_binary: CKB2021.read().unwrap().clone(),
             initial_database: "db/empty",
             chain_spec: "spec/ckb2021",
             app_config: "config/ckb2021",
