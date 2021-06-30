@@ -22,7 +22,8 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         // Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
         // Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
         // Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
-        Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
+        // Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
+        Box::new(rfc0234::relay_transaction::RFC0234AfterSwitchRelayTransaction),
     ]
 }
 

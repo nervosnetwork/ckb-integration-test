@@ -208,7 +208,10 @@ fn prepare_working_dir(
 ) -> PathBuf {
     let working_dir: PathBuf = temp_path(&case_name, &node_options.node_name);
     let target_database = &working_dir.join("data/db");
-    let source_database = &TESTDATA_DIR.read().unwrap().join(node_options.initial_database);
+    let source_database = &TESTDATA_DIR
+        .read()
+        .unwrap()
+        .join(node_options.initial_database);
     let source_chain_spec = &TESTDATA_DIR.read().unwrap().join(node_options.chain_spec);
     let source_app_config = &TESTDATA_DIR.read().unwrap().join(node_options.app_config);
 

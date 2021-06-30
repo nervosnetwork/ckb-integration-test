@@ -22,13 +22,13 @@ impl Case for RFC0234BeforeSwitch {
                     chain_spec: "spec/ckb2021",
                     app_config: "config/ckb2021",
                 },
-                // NodeOptions {
-                //     node_name: "node2019_2",
-                //     ckb_binary: CKB2019.read().unwrap().clone(),
-                //     initial_database: "db/Epoch2V1TestData",
-                //     chain_spec: "spec/ckb2021",
-                //     app_config: "config/ckb2021",
-                // },
+                NodeOptions {
+                    node_name: "node2019_2",
+                    ckb_binary: CKB2019.read().unwrap().clone(),
+                    initial_database: "db/Epoch2V1TestData",
+                    chain_spec: "spec/ckb2021",
+                    app_config: "config/ckb2021",
+                },
                 NodeOptions {
                     node_name: "node2021",
                     ckb_binary: CKB2021.read().unwrap().clone(),
@@ -36,16 +36,16 @@ impl Case for RFC0234BeforeSwitch {
                     chain_spec: "spec/ckb2021",
                     app_config: "config/ckb2021",
                 },
-                // NodeOptions {
-                //     node_name: "node2021_2",
-                //     ckb_binary: CKB2021.read().unwrap().clone(),
-                //     initial_database: "db/Epoch2V2TestData",
-                //     chain_spec: "spec/ckb2021",
-                //     app_config: "config/ckb2021",
-                // },
+                NodeOptions {
+                    node_name: "node2021_2",
+                    ckb_binary: CKB2021.read().unwrap().clone(),
+                    initial_database: "db/Epoch2V2TestData",
+                    chain_spec: "spec/ckb2021",
+                    app_config: "config/ckb2021",
+                },
             ]
-                .into_iter()
-                .collect(),
+            .into_iter()
+            .collect(),
         }
     }
 
@@ -70,11 +70,13 @@ impl Case for RFC0234BeforeSwitch {
         // node2019 mines, other nodes grow up via RelayProtocol
         nodes.p2p_connect();
         node2019.mine(1);
+        assert!(!is_rfc0234_switched(node2019));
         nodes.waiting_for_sync().expect("nodes should be synced");
 
         // node2021 mines, other nodes grow up via RelayProtocol
         nodes.p2p_connect();
         node2021.mine(1);
+        assert!(!is_rfc0234_switched(node2021));
         nodes.waiting_for_sync().expect("nodes should be synced");
     }
 }
