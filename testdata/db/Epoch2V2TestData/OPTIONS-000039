@@ -50,7 +50,7 @@
   fail_if_options_file_error=false
   persist_stats_to_disk=false
   WAL_ttl_seconds=0
-  wal_dir=/var/folders/xp/x9lcmyms6fbbpf2931150fgm0000gn/T/ckb-it-Epoch2V2TestData-Epoch2V2TestData-yL5ELp/data/db
+  wal_dir=/var/folders/xp/x9lcmyms6fbbpf2931150fgm0000gn/T/ckb-it-Epoch2V2TestData-node2021-MdCvJt/data/db
   keep_log_file_num=1000
   table_cache_numshardbits=6
   max_file_opening_threads=16

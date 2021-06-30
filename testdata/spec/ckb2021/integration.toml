@@ -74,6 +74,7 @@ rfc_pr_0222 = 3
 rfc_pr_0223 = 3
 rfc_pr_0224 = 3
 rfc_pr_0234 = 3
+rfc_pr_0237 = 3
 
 [pow]
 func = "Dummy"
