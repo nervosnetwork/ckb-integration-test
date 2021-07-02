@@ -44,7 +44,6 @@ pub struct Node {
 
 impl Node {
     pub fn init<S: ToString>(case_name: S, node_options: NodeOptions) -> Self {
-        crate::debug!("[Node {}] Init", node_options.node_name);
         let case_name = case_name.to_string();
         let rpc_port = find_available_port();
         let p2p_port = find_available_port();
