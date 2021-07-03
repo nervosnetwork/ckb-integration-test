@@ -17,12 +17,6 @@ impl Node {
         hash
     }
 
-    pub fn process_block_without_verify(&self, block: &BlockView, broadcast: bool) -> Byte32 {
-        self.rpc_client()
-            .process_block_without_verify(block.data().into(), broadcast)
-            .unwrap()
-    }
-
     pub fn submit_transaction(&self, transaction: &TransactionView) -> Byte32 {
         self.rpc_client()
             .send_transaction(transaction.data().into())

@@ -1,7 +1,7 @@
 use crate::node::NodeOptions;
 use crate::rpc::RpcClient;
 use crate::util::{find_available_port, temp_path};
-use crate::{error, TESTDATA_DIR};
+use crate::{error, CKB2021, TESTDATA_DIR};
 use ckb_indexer::{
     indexer::Indexer,
     store::{RocksdbStore, Store},
@@ -48,6 +48,7 @@ impl Node {
         let rpc_port = find_available_port();
         let p2p_port = find_available_port();
         let working_dir = prepare_working_dir(&case_name, &node_options, rpc_port, p2p_port);
+        let is_ckb2021 = node_options.ckb_binary == *CKB2021.read().unwrap();
         crate::info!(
             "[Node {}] INIT, log_path: {}/data/logs/run.log",
             node_options.node_name,
@@ -57,7 +58,7 @@ impl Node {
             case_name,
             node_options,
             working_dir,
-            rpc_client: RpcClient::new(&format!("http://127.0.0.1:{}/", rpc_port)),
+            rpc_client: RpcClient::new(&format!("http://127.0.0.1:{}/", rpc_port), is_ckb2021),
             p2p_listen: format!("/ip4/0.0.0.0/tcp/{}", p2p_port),
             consensus: None,
             genesis_block: None,

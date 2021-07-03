@@ -23,9 +23,14 @@ macro_rules! jsonrpc {
             }
 
             $(
+                #[allow(dead_code)]
                 $(#[$attr])*
                 pub fn $method(&$selff $(, $arg_name: $arg_ty)*) -> Result<$return_ty, ckb_error::AnyError> {
-                    let method = String::from(stringify!($method));
+                    let method =
+                        String::from(stringify!($method))
+                            .replace("2019", "")
+                            .replace("2021", "");
+
                     let params = serialize_parameters!($($arg_name,)*);
                     let id = $selff.id_generator.next();
 
