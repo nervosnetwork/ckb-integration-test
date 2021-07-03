@@ -60,7 +60,7 @@ impl Case for RFC0222AfterSwitch {
         };
         let cases = vec![
             // case-0
-            (None, vec![always_success_cell_dep_a1.clone()], Ok(())),
+            (None, vec![node2021.always_success_cell_dep()], Ok(())),
             // case-1
             (
                 // node2021.always_success_script() references by `ScriptHashType::Data`

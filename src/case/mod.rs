@@ -12,14 +12,13 @@ pub use case_options::CaseOptions;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
-        Box::new(basic::networking::BasicNetworking),
-        Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
-        Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
-        Box::new(rfc0221::networking::RFC0221Networking),
-        Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
-        Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
-        Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
-        Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
+        // Box::new(basic::networking::BasicNetworking),
+        // Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
+        // Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
+        // Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
+        // Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
+        // Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
+        // Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
         Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
         Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
         Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),

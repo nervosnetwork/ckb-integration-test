@@ -1,9 +1,9 @@
 use crate::case::rfc0224::util::test_extension_via_size;
-use crate::case::rfc0224::{ERROR_INVALID_PARAMS, ERROR_UNKNOWN_FIELDS};
+use crate::case::rfc0224::ERROR_UNKNOWN_FIELDS;
 use crate::case::{Case, CaseOptions};
 use crate::node::{Node, NodeOptions};
 use crate::nodes::Nodes;
-use crate::{CKB2019, CKB2021};
+use crate::CKB2021;
 use ckb_types::core::EpochNumber;
 
 const RFC0224_EPOCH_NUMBER: EpochNumber = 3;
@@ -16,41 +16,23 @@ impl Case for RFC0224BeforeSwitch {
             make_all_nodes_connected: true,
             make_all_nodes_synced: true,
             make_all_nodes_connected_and_synced: true,
-            node_options: vec![
-                NodeOptions {
-                    node_name: "node2019",
-                    ckb_binary: CKB2019.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V1TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
-                },
-                NodeOptions {
-                    node_name: "node2021",
-                    ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
-                },
-            ]
+            node_options: vec![NodeOptions {
+                node_name: "node2021",
+                ckb_binary: CKB2021.read().unwrap().clone(),
+                initial_database: "db/Epoch2V2TestData",
+                chain_spec: "spec/ckb2021",
+                app_config: "config/ckb2021",
+            }]
             .into_iter()
             .collect(),
         }
     }
 
     fn run(&self, nodes: Nodes) {
-        let node2019 = nodes.get_node("node2019");
         let node2021 = nodes.get_node("node2021");
         assert!(!is_rfc0224_switched(node2021));
 
         let cases = vec![
-            (node2019, None, Ok(())),
-            (node2019, Some(0), Err(ERROR_INVALID_PARAMS)),
-            (node2019, Some(1), Err(ERROR_INVALID_PARAMS)),
-            (node2019, Some(16), Err(ERROR_INVALID_PARAMS)),
-            (node2019, Some(32), Err(ERROR_INVALID_PARAMS)),
-            (node2019, Some(64), Err(ERROR_INVALID_PARAMS)),
-            (node2019, Some(96), Err(ERROR_INVALID_PARAMS)),
-            (node2019, Some(97), Err(ERROR_INVALID_PARAMS)),
             (node2021, None, Ok(())),
             (node2021, Some(0), Err(ERROR_UNKNOWN_FIELDS)),
             (node2021, Some(1), Err(ERROR_UNKNOWN_FIELDS)),

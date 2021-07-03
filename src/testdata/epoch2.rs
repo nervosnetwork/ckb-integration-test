@@ -10,8 +10,8 @@ impl Testdata for Epoch2V1TestData {
             node_name: "node2019",
             ckb_binary: CKB2019.read().unwrap().clone(),
             initial_database: "db/empty",
-            chain_spec: "spec/ckb2021",
-            app_config: "config/ckb2021",
+            chain_spec: "spec/ckb2019",
+            app_config: "config/ckb2019",
         };
         let mut node = Node::init(self.testdata_name(), node_options);
         node.start();

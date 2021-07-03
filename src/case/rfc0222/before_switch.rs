@@ -25,8 +25,8 @@ impl Case for RFC0222BeforeSwitch {
                     node_name: "node2019",
                     ckb_binary: CKB2019.read().unwrap().clone(),
                     initial_database: "db/empty",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
+                    chain_spec: "spec/ckb2019",
+                    app_config: "config/ckb2019",
                 },
                 NodeOptions {
                     node_name: "node2021",
@@ -69,7 +69,7 @@ impl Case for RFC0222BeforeSwitch {
 
         let cases = vec![
             // case-0
-            (None, vec![always_success_cell_dep_a1.clone()], Ok(())),
+            (None, vec![node2021.always_success_cell_dep()], Ok(())),
             // case-1
             (
                 // node2021.always_success_script() references by `ScriptHashType::Data`
