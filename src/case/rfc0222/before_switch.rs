@@ -25,14 +25,14 @@ impl Case for RFC0222BeforeSwitch {
                     node_name: "node2019",
                     ckb_binary: CKB2019.read().unwrap().clone(),
                     initial_database: "db/empty",
-                    chain_spec: "spec/multiple-always-success",
+                    chain_spec: "spec/ckb2021",
                     app_config: "config/ckb2021",
                 },
                 NodeOptions {
                     node_name: "node2021",
                     ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/multiple-always-success",
+                    chain_spec: "spec/ckb2021",
                     app_config: "config/ckb2021",
                 },
             ]
@@ -48,25 +48,20 @@ impl Case for RFC0222BeforeSwitch {
 
         // Deploy our data cells onto chain.
         let always_success_cell_dep_a1 = {
-            let output_data = include_bytes!(
-                "../../../testdata/spec/multiple-always-success/cells/always_success"
-            );
+            let output_data = include_bytes!("../../../testdata/spec/ckb2021/cells/always_success");
             let type_ = node2021.always_success_script();
             let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
             CellDep::new_builder().out_point(out_point).build()
         };
         let always_success_cell_dep_a2 = {
-            let output_data = include_bytes!(
-                "../../../testdata/spec/multiple-always-success/cells/always_success"
-            );
+            let output_data = include_bytes!("../../../testdata/spec/ckb2021/cells/always_success");
             let type_ = node2021.always_success_script();
             let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
             CellDep::new_builder().out_point(out_point).build()
         };
         let always_success_cell_dep_b1 = {
-            let output_data = include_bytes!(
-                "../../../testdata/spec/multiple-always-success/cells/another_always_success"
-            );
+            let output_data =
+                include_bytes!("../../../testdata/spec/ckb2021/cells/another_always_success");
             let type_ = node2021.always_success_script();
             let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
             CellDep::new_builder().out_point(out_point).build()
