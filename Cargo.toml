@@ -11,18 +11,11 @@ description = "ckb integration tests"
 clap = { version = "2" }
 ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
 ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-ckb-util = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-ckb-logger = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
 ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
 ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-ckb-error = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-tempfile = "3.0"
-reqwest = { version = "0.10.9", features = ["blocking", "json"] }
-serde_json = "1.0"
 lazy_static = "1.4.0"
-ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", rev = "1c5c05c6212c4d5852d0e68064db458087eb4d2b" }
-fs_extra = "1.2.0"
 log = "0.4"
-jsonrpc-core = "14.0"
-ckb2019-jsonrpc-types = { package = "ckb-jsonrpc-types", version = "0.43.0" }
 ckb-testkit = { path = "./ckb-testkit" }
+
+[workspace]
+members = [ "ckb-testkit" ]

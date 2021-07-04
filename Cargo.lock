@@ -331,24 +331,14 @@ dependencies = [
 name = "ckb-integration-test"
 version = "0.0.1"
 dependencies = [
- "ckb-error 0.44.0-pre",
- "ckb-indexer",
- "ckb-jsonrpc-types 0.43.0",
  "ckb-jsonrpc-types 0.44.0-pre",
- "ckb-logger",
  "ckb-logger-config",
  "ckb-logger-service",
  "ckb-testkit",
  "ckb-types 0.44.0-pre",
- "ckb-util",
  "clap",
- "fs_extra",
- "jsonrpc-core 14.2.0",
  "lazy_static",
  "log",
- "reqwest",
- "serde_json",
- "tempfile",
 ]
 
 [[package]]
@@ -385,14 +375,6 @@ dependencies = [
  "cc",
  "glob",
  "libc",
-]
-
-[[package]]
-name = "ckb-logger"
-version = "0.44.0-pre"
-source = "git+https://github.com/nervosnetwork/ckb?rev=acd2f8132f56bc0e29e72f5b680d54ed68200441#acd2f8132f56bc0e29e72f5b680d54ed68200441"
-dependencies = [
- "log",
 ]
 
 [[package]]

@@ -5,7 +5,7 @@ authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
 homepage = "https://github.com/nervosnetwork/ckb"
 repository = "https://github.com/nervosnetwork/ckb"
-description = "ckb test kit"
+description = "ckb testkit"
 
 [dependencies]
 ckb2019-jsonrpc-types = { package = "ckb-jsonrpc-types", version = "0.43.0" }
