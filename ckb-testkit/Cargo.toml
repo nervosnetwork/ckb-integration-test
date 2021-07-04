@@ -1,0 +1,22 @@
+[package]
+name = "ckb-testkit"
+version = "0.0.1"
+authors = ["keroro <keroroxx520@gmail.com>"]
+edition = "2018"
+homepage = "https://github.com/nervosnetwork/ckb"
+repository = "https://github.com/nervosnetwork/ckb"
+description = "ckb test kit"
+
+[dependencies]
+ckb2019-jsonrpc-types = { package = "ckb-jsonrpc-types", version = "0.43.0" }
+ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
+ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
+ckb-error = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
+ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", rev = "1c5c05c6212c4d5852d0e68064db458087eb4d2b" }
+reqwest = { version = "0.10.9", features = ["blocking", "json"] }
+serde_json = "1.0"
+lazy_static = "1.4.0"
+fs_extra = "1.2.0"
+jsonrpc-core = "14.0"
+log = "0.4"
+tempfile = "3.0"
