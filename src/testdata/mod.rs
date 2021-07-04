@@ -1,7 +1,8 @@
-use crate::node::Node;
-use crate::TESTDATA_DIR;
+use ckb_testkit::node::Node;
 use std::fs;
 use std::path::PathBuf;
+
+pub const TESTDATA_DIR: &str = "./testdata";
 
 mod epoch2;
 mod height13;
@@ -27,7 +28,7 @@ fn testdata_name<T: ?Sized>(_: &T) -> &str {
 }
 
 fn dump_testdata(mut node: Node, testdata_name: &str) {
-    let testdata_dir = &*TESTDATA_DIR.read().unwrap();
+    let testdata_dir = PathBuf::from(TESTDATA_DIR);
     let working_dir = node.working_dir();
     let source_dir = format!("{}/data/db", working_dir.display());
     let target_dir = format!("{}/db/{}", testdata_dir.display(), testdata_name);

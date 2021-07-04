@@ -1,4 +1,4 @@
-use ckb_integration_test::{case, init_ckb_binaries, init_testdata_dir, testdata};
+use ckb_integration_test::{case, init_ckb_binaries, testdata};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use std::env;
 use std::process::exit;
@@ -11,7 +11,6 @@ fn main() {
     match matches.subcommand() {
         ("run", Some(arg_matches)) => {
             crate::init_ckb_binaries(&arg_matches);
-            crate::init_testdata_dir(&arg_matches);
             let cases = crate::case::all_cases();
             for case in cases {
                 crate::case::run_case(case);
@@ -19,7 +18,6 @@ fn main() {
         }
         ("generate-testdata", Some(arg_matches)) => {
             crate::init_ckb_binaries(&arg_matches);
-            crate::init_testdata_dir(&arg_matches);
             let testdatas = crate::testdata::all_testdata_generators();
             for testdata in testdatas {
                 testdata.generate();
@@ -50,14 +48,6 @@ fn clap_app() -> App<'static, 'static> {
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb2021 executable"),
-                )
-                .arg(
-                    Arg::with_name("testdata-dir")
-                        .long("testdata-dir")
-                        .takes_value(true)
-                        .value_name("PATH")
-                        .default_value("./testdata")
-                        .help("Path to testdata base directory"),
                 ),
         )
         .subcommand(
@@ -76,14 +66,6 @@ fn clap_app() -> App<'static, 'static> {
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb v2 executable"),
-                )
-                .arg(
-                    Arg::with_name("testdata-dir")
-                        .long("testdata-dir")
-                        .takes_value(true)
-                        .value_name("PATH")
-                        .default_value("./testdata")
-                        .help("Output directory path of generating testdata"),
                 ),
         )
 }

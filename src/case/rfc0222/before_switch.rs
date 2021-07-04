@@ -1,8 +1,8 @@
 use crate::case::rfc0222::util::{build_transaction, deploy_cell_with_type_};
 use crate::case::{Case, CaseOptions};
-use crate::node::{Node, NodeOptions};
-use crate::nodes::Nodes;
 use crate::{CKB2019, CKB2021};
+use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::nodes::Nodes;
 use ckb_types::{
     core::{EpochNumber, ScriptHashType},
     packed::{CellDep, Script},
@@ -24,16 +24,16 @@ impl Case for RFC0222BeforeSwitch {
                 NodeOptions {
                     node_name: "node2019",
                     ckb_binary: CKB2019.read().unwrap().clone(),
-                    initial_database: "db/empty",
-                    chain_spec: "spec/ckb2019",
-                    app_config: "config/ckb2019",
+                    initial_database: "testdata/db/empty",
+                    chain_spec: "testdata/spec/ckb2019",
+                    app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
                     node_name: "node2021",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/ckb2021",
                 },
             ]
             .into_iter()

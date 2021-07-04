@@ -338,6 +338,7 @@ dependencies = [
  "ckb-logger",
  "ckb-logger-config",
  "ckb-logger-service",
+ "ckb-testkit",
  "ckb-types 0.44.0-pre",
  "ckb-util",
  "clap",
@@ -503,6 +504,24 @@ checksum = "a645f6745c3519bbcbeed80486e59cb3f74d2ac08a1d9621c399b892508aca6e"
 dependencies = [
  "ckb-librocksdb-sys",
  "libc",
+ "tempfile",
+]
+
+[[package]]
+name = "ckb-testkit"
+version = "0.0.1"
+dependencies = [
+ "ckb-error 0.44.0-pre",
+ "ckb-indexer",
+ "ckb-jsonrpc-types 0.43.0",
+ "ckb-jsonrpc-types 0.44.0-pre",
+ "ckb-types 0.44.0-pre",
+ "fs_extra",
+ "jsonrpc-core 14.2.0",
+ "lazy_static",
+ "log",
+ "reqwest",
+ "serde_json",
  "tempfile",
 ]
 

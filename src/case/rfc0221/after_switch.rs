@@ -1,9 +1,9 @@
 use crate::case::rfc0221::util::{committed_timestamp, median_timestamp};
 use crate::case::{Case, CaseOptions};
-use crate::node::{Node, NodeOptions};
-use crate::nodes::Nodes;
-use crate::util::since_from_relative_timestamp;
 use crate::CKB2021;
+use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::nodes::Nodes;
+use ckb_testkit::util::since_from_relative_timestamp;
 use ckb_types::core::EpochNumber;
 use ckb_types::{
     core::TransactionBuilder,
@@ -26,9 +26,9 @@ impl Case for RFC0221AfterSwitch {
             node_options: vec![NodeOptions {
                 node_name: "node2021",
                 ckb_binary: CKB2021.read().unwrap().clone(),
-                initial_database: "db/Epoch2V2TestData",
-                chain_spec: "spec/ckb2021",
-                app_config: "config/ckb2021",
+                initial_database: "testdata/db/Epoch2V2TestData",
+                chain_spec: "testdata/spec/ckb2021",
+                app_config: "testdata/config/ckb2021",
             }]
             .into_iter()
             .collect(),

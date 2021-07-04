@@ -6,19 +6,19 @@ mod rfc0223;
 mod rfc0224;
 mod rfc0234;
 
-use crate::node::Node;
-use crate::nodes::Nodes;
 pub use case_options::CaseOptions;
+use ckb_testkit::node::Node;
+use ckb_testkit::nodes::Nodes;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
-        // Box::new(basic::networking::BasicNetworking),
-        // Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
-        // Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
-        // Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
-        // Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
-        // Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
-        // Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
+        Box::new(basic::networking::BasicNetworking),
+        Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
+        Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
+        Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
+        Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
+        Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
+        Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
         Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
         Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
         Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
@@ -29,14 +29,14 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
 }
 
 pub fn run_case(case: Box<dyn Case>) {
-    crate::CASE_NAME.with(|c| {
+    ckb_testkit::LOG_TARGET.with(|c| {
         *c.borrow_mut() = case.case_name().to_string();
     });
 
-    crate::info!("********** START **********");
+    ckb_testkit::info!("********** START **********");
     let nodes = case.before_run();
     case.run(nodes);
-    crate::info!("********** END **********");
+    ckb_testkit::info!("********** END **********");
 }
 
 pub trait Case: Send {
@@ -52,7 +52,11 @@ pub trait Case: Send {
         let mut nodes = ::std::collections::HashMap::new();
         let mut first_node_name = None;
         for node_options in case_options.node_options.iter() {
-            let mut node = Node::init(case_name, node_options.clone());
+            let mut node = Node::init(
+                case_name,
+                node_options.clone(),
+                node_options.ckb_binary == *crate::CKB2021.read().unwrap(),
+            );
             let node_name = node.node_name().to_string();
             node.start();
             nodes.insert(node_name.clone(), node);

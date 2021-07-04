@@ -1,10 +1,10 @@
 use crate::case::{Case, CaseOptions};
-use crate::node::{Node, NodeOptions};
-use crate::nodes::Nodes;
-use crate::util::{
+use crate::{CKB2019, CKB2021};
+use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::nodes::Nodes;
+use ckb_testkit::util::{
     since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
 };
-use crate::{CKB2019, CKB2021};
 use ckb_types::{
     core::{cell::CellMeta, EpochNumber, EpochNumberWithFraction, TransactionBuilder},
     packed::{CellInput, CellOutput},
@@ -25,16 +25,16 @@ impl Case for RFC0223BeforeSwitch {
                 NodeOptions {
                     node_name: "node2019",
                     ckb_binary: CKB2019.read().unwrap().clone(),
-                    initial_database: "db/empty",
-                    chain_spec: "spec/ckb2019",
-                    app_config: "config/ckb2019",
+                    initial_database: "testdata/db/empty",
+                    chain_spec: "testdata/spec/ckb2019",
+                    app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
                     node_name: "node2021",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/empty",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
+                    initial_database: "testdata/db/empty",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/ckb2021",
                 },
             ]
             .into_iter()

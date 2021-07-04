@@ -1,4 +1,4 @@
-use crate::node::Node;
+use ckb_testkit::node::Node;
 use ckb_types::core::{Capacity, TransactionBuilder, TransactionView};
 use ckb_types::packed::{Bytes, CellDep, CellInput, CellOutput, OutPoint, Script};
 use ckb_types::prelude::*;

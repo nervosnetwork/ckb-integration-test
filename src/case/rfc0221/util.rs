@@ -1,4 +1,4 @@
-use crate::node::Node;
+use ckb_testkit::node::Node;
 use ckb_types::core::BlockNumber;
 
 pub(super) fn median_timestamp(node: &Node, block_number: BlockNumber) -> u64 {

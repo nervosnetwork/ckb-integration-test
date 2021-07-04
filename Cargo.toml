@@ -25,3 +25,4 @@ fs_extra = "1.2.0"
 log = "0.4"
 jsonrpc-core = "14.0"
 ckb2019-jsonrpc-types = { package = "ckb-jsonrpc-types", version = "0.43.0" }
+ckb-testkit = { path = "./ckb-testkit" }

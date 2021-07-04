@@ -3,10 +3,10 @@
 // After fork2021, node2021s will still propagate info
 
 use crate::case::{Case, CaseOptions};
-use crate::node::{Node, NodeOptions};
-use crate::nodes::Nodes;
-use crate::util::wait_until;
 use crate::CKB2021;
+use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::nodes::Nodes;
+use ckb_testkit::util::wait_until;
 use ckb_types::core::EpochNumber;
 
 const RFC0234_EPOCH_NUMBER: EpochNumber = 3;
@@ -23,23 +23,23 @@ impl Case for RFC0234AfterSwitchDiscovery {
                 NodeOptions {
                     node_name: "node2021_1",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/connect_outbound_interval_secs",
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/connect_outbound_interval_secs",
                 },
                 NodeOptions {
                     node_name: "node2021_2",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/connect_outbound_interval_secs",
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/connect_outbound_interval_secs",
                 },
                 NodeOptions {
                     node_name: "node2021_3",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/connect_outbound_interval_secs",
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/connect_outbound_interval_secs",
                 },
             ]
             .into_iter()

@@ -5,10 +5,10 @@
 // Check the connections via RPC `get_peers`
 
 use crate::case::{Case, CaseOptions};
-use crate::node::{Node, NodeOptions};
-use crate::nodes::Nodes;
-use crate::util::wait_until;
 use crate::{CKB2019, CKB2021};
+use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::nodes::Nodes;
+use ckb_testkit::util::wait_until;
 use ckb_types::core::EpochNumber;
 
 const RFC0234_EPOCH_NUMBER: EpochNumber = 3;
@@ -25,30 +25,30 @@ impl Case for RFC0234AfterSwitchConnection {
                 NodeOptions {
                     node_name: "node2019",
                     ckb_binary: CKB2019.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V1TestData",
-                    chain_spec: "spec/ckb2019",
-                    app_config: "config/ckb2019",
+                    initial_database: "testdata/db/Epoch2V1TestData",
+                    chain_spec: "testdata/spec/ckb2019",
+                    app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
                     node_name: "node2019_2",
                     ckb_binary: CKB2019.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V1TestData",
-                    chain_spec: "spec/ckb2019",
-                    app_config: "config/ckb2019",
+                    initial_database: "testdata/db/Epoch2V1TestData",
+                    chain_spec: "testdata/spec/ckb2019",
+                    app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
                     node_name: "node2021",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/ckb2021",
                 },
                 NodeOptions {
                     node_name: "node2021_2",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Epoch2V2TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/ckb2021",
                 },
             ]
             .into_iter()
@@ -97,11 +97,11 @@ impl Case for RFC0234AfterSwitchConnection {
             let node_options = NodeOptions {
                 node_name: "fresh_node2021",
                 ckb_binary: CKB2021.read().unwrap().clone(),
-                initial_database: "db/empty",
-                chain_spec: "spec/ckb2021",
-                app_config: "config/ckb2021",
+                initial_database: "testdata/db/empty",
+                chain_spec: "testdata/spec/ckb2021",
+                app_config: "testdata/config/ckb2021",
             };
-            Node::init(self.case_name(), node_options)
+            Node::init(self.case_name(), node_options, true)
         };
         fresh_node2021.start();
         fresh_node2021.p2p_connect(node2021);

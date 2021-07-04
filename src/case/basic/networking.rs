@@ -1,7 +1,7 @@
 use crate::case::{Case, CaseOptions};
-use crate::node::NodeOptions;
-use crate::nodes::Nodes;
 use crate::{CKB2019, CKB2021};
+use ckb_testkit::node::NodeOptions;
+use ckb_testkit::nodes::Nodes;
 
 pub struct BasicNetworking;
 
@@ -15,16 +15,16 @@ impl Case for BasicNetworking {
                 NodeOptions {
                     node_name: "node2019",
                     ckb_binary: CKB2019.read().unwrap().clone(),
-                    initial_database: "db/Height13TestData",
-                    chain_spec: "spec/ckb2019",
-                    app_config: "config/ckb2019",
+                    initial_database: "testdata/db/Height13TestData",
+                    chain_spec: "testdata/spec/ckb2019",
+                    app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
                     node_name: "node2021",
                     ckb_binary: CKB2021.read().unwrap().clone(),
-                    initial_database: "db/Height13TestData",
-                    chain_spec: "spec/ckb2021",
-                    app_config: "config/ckb2021",
+                    initial_database: "testdata/db/Height13TestData",
+                    chain_spec: "testdata/spec/ckb2021",
+                    app_config: "testdata/config/ckb2021",
                 },
             ]
             .into_iter()

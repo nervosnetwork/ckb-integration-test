@@ -1,9 +1,9 @@
 use crate::case::rfc0224::util::test_extension_via_size;
 use crate::case::rfc0224::{ERROR_EMPTY_EXT, ERROR_MAX_LIMIT};
 use crate::case::{Case, CaseOptions};
-use crate::node::{Node, NodeOptions};
-use crate::nodes::Nodes;
 use crate::CKB2021;
+use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::nodes::Nodes;
 use ckb_types::core::EpochNumber;
 
 const RFC0224_EPOCH_NUMBER: EpochNumber = 3;
@@ -19,9 +19,9 @@ impl Case for RFC0224AfterSwitch {
             node_options: vec![NodeOptions {
                 node_name: "node2021",
                 ckb_binary: CKB2021.read().unwrap().clone(),
-                initial_database: "db/Epoch2V2TestData",
-                chain_spec: "spec/ckb2021",
-                app_config: "config/ckb2021",
+                initial_database: "testdata/db/Epoch2V2TestData",
+                chain_spec: "testdata/spec/ckb2021",
+                app_config: "testdata/config/ckb2021",
             }]
             .into_iter()
             .collect(),

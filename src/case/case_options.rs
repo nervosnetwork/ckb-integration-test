@@ -1,4 +1,4 @@
-use crate::node::NodeOptions;
+use ckb_testkit::node::NodeOptions;
 
 // TODO Too dirty
 #[derive(Debug, Clone)]
