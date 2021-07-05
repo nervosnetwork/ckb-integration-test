@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct NodeOptions {
     pub node_name: &'static str,
     pub ckb_binary: PathBuf,

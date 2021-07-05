@@ -28,7 +28,6 @@ impl Drop for ProcessGuard {
 }
 
 pub struct Node {
-    pub(super) case_name: String,
     pub(super) node_options: NodeOptions,
 
     pub(super) working_dir: PathBuf,
@@ -54,7 +53,6 @@ impl Node {
             working_dir.display()
         );
         Self {
-            case_name,
             node_options,
             working_dir,
             rpc_client: RpcClient::new(&format!("http://127.0.0.1:{}/", rpc_port), is_ckb2021),
@@ -63,6 +61,31 @@ impl Node {
             genesis_block: None,
             node_id: None,
             indexer: None,
+            _guard: None,
+        }
+    }
+
+    pub fn init_from_url<S: ToString>(rpc_url: S, is_ckb2021: bool) -> Self {
+        let rpc_client = RpcClient::new(&rpc_url.to_string(), is_ckb2021);
+        let consensus = rpc_client.get_consensus();
+        let genesis_block = rpc_client
+            .get_block_by_number(0)
+            .expect("get genesis block");
+        let node_id = rpc_client.local_node_info().node_id;
+        let indexer = {
+            let data_path = "./indexer"; // TODO
+            let store = RocksdbStore::new(&data_path);
+            Indexer::new(store, 1000000, 60 * 60)
+        };
+        Self {
+            node_options: NodeOptions::default(),
+            working_dir: PathBuf::default(),
+            p2p_listen: String::default(),
+            rpc_client,
+            consensus: Some(consensus),
+            genesis_block: Some(genesis_block.into()),
+            node_id: Some(node_id),
+            indexer: Some(indexer),
             _guard: None,
         }
     }
@@ -103,10 +126,6 @@ impl Node {
         self._guard = Some(ProcessGuard(child_process));
         self.node_id = Some(local_node_info.node_id);
         self.indexer = Some(indexer);
-    }
-
-    pub fn case_name(&self) -> &str {
-        &self.case_name
     }
 
     pub fn node_name(&self) -> &str {
@@ -163,7 +182,9 @@ impl Node {
             self.node_name(),
             self.working_dir().display()
         );
-        drop(self._guard.take())
+        if self._guard.is_some() {
+            drop(self._guard.take())
+        }
     }
 
     fn wait_for_node_up(&self, child_process: &mut Child) -> LocalNode {
