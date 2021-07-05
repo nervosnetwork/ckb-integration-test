@@ -50,6 +50,13 @@ impl Case for RFC0234AfterSwitchConnection {
                     chain_spec: "testdata/spec/ckb2021",
                     app_config: "testdata/config/ckb2021",
                 },
+                NodeOptions {
+                    node_name: "node2021_non_hardfork",
+                    ckb_binary: CKB2021.read().unwrap().clone(),
+                    initial_database: "testdata/db/Epoch2V2TestData",
+                    chain_spec: "testdata/spec/non_hardfork_2021",
+                    app_config: "testdata/config/ckb2021",
+                },
             ]
             .into_iter()
             .collect(),
@@ -69,28 +76,28 @@ impl Case for RFC0234AfterSwitchConnection {
             }
         }
 
-        let disconnect_different_version_nodes = wait_until(20, || {
-            nodes.nodes().all(|node| {
-                let local_node_info = node.rpc_client().local_node_info();
-                node.rpc_client()
-                    .get_peers()
-                    .iter()
-                    .all(|peer| local_node_info.version == peer.version)
-            })
-        });
-        if !disconnect_different_version_nodes {
-            for node in nodes.nodes() {
-                let local_node_info = node.rpc_client().local_node_info();
-                for peer in node.rpc_client().get_peers() {
-                    if local_node_info.version != peer.version {
-                        panic!(
-                            "nodes with different fork versions should be disconnected, but {}({}) still connect with {}({})",
-                            node.node_name(), local_node_info.version, peer.node_id, peer.version,
-                        );
-                    }
-                }
-            }
-        }
+        // let disconnect_different_version_nodes = wait_until(20, || {
+        //     nodes.nodes().all(|node| {
+        //         let local_node_info = node.rpc_client().local_node_info();
+        //         node.rpc_client()
+        //             .get_peers()
+        //             .iter()
+        //             .all(|peer| local_node_info.version == peer.version)
+        //     })
+        // });
+        // if !disconnect_different_version_nodes {
+        //     for node in nodes.nodes() {
+        //         let local_node_info = node.rpc_client().local_node_info();
+        //         for peer in node.rpc_client().get_peers() {
+        //             if local_node_info.version != peer.version {
+        //                 panic!(
+        //                     "nodes with different fork versions should be disconnected, but {}({}) still connect with {}({})",
+        //                     node.node_name(), local_node_info.version, peer.node_id, peer.version,
+        //                 );
+        //             }
+        //         }
+        //     }
+        // }
 
         // TODO Actually, the below check is for SyncProtocol
         let mut fresh_node2021 = {
@@ -114,6 +121,17 @@ impl Case for RFC0234AfterSwitchConnection {
             fresh_node2021.get_tip_block_number(),
             node2021.get_tip_block_number(),
         );
+
+        let node2021_non_hardfork = nodes.get_node("node2021_non_hardfork");
+        let tx = {
+            let input = node2021.get_live_always_success_cells()[0].to_owned();
+            node2021.always_success_transaction(&input)
+        };
+        node2021.submit_transaction(&tx);
+        let tx_relayed = wait_until(30, || {
+            node2021_non_hardfork.is_transaction_pending(&tx)
+        });
+        assert!(tx_relayed, "tx should be relayed between node2021s");
     }
 }
 

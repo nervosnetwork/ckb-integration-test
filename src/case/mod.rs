@@ -24,10 +24,10 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         // Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
         // Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
         // Box::new(rfc0234::relay_transaction::RFC0234AfterSwitchRelayTransaction),
-        // Box::new(rfc0234::connection::RFC0234AfterSwitchConnection),
+        Box::new(rfc0234::connection::RFC0234AfterSwitchConnection),
         // Box::new(rfc0234::discovery::RFC0234AfterSwitchDiscovery),
-        Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
-        Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
+        // Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
+        // Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
     ]
 }
 
