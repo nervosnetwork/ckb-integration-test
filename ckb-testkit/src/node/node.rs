@@ -65,13 +65,36 @@ impl Node {
         }
     }
 
-    pub fn init_from_url<S: ToString>(rpc_url: S, is_ckb2021: bool) -> Self {
-        let rpc_client = RpcClient::new(&rpc_url.to_string(), is_ckb2021);
+    pub fn init_from_url<S: ToString>(rpc_url: S) -> Self {
+        let rpc_url = rpc_url.to_string();
+        let mut rpc_client = RpcClient::new(&rpc_url, true);
+        let local_node_info = rpc_client.local_node_info();
+        let is_ckb2021 = {
+            let node_version = &local_node_info.version;
+            let minimal_2021_version = "0.44.0";
+            let is_ckb2021 = version_compare::VersionCompare::compare_to(
+                node_version,
+                minimal_2021_version,
+                &version_compare::CompOp::Ge,
+            )
+            .unwrap_or(true);
+            crate::info!(
+                "target node \"{}\" is \"{}\", is_ckb2021: {}",
+                rpc_url,
+                node_version,
+                is_ckb2021
+            );
+            is_ckb2021
+        };
+        if !is_ckb2021 {
+            rpc_client = RpcClient::new(&rpc_url, is_ckb2021)
+        }
+
         let consensus = rpc_client.get_consensus();
         let genesis_block = rpc_client
             .get_block_by_number(0)
             .expect("get genesis block");
-        let node_id = rpc_client.local_node_info().node_id;
+        let node_id = local_node_info.node_id.to_owned();
         let indexer = {
             let data_path = "./indexer"; // TODO
             let store = RocksdbStore::new(&data_path);
@@ -79,14 +102,15 @@ impl Node {
         };
         Self {
             node_options: NodeOptions::default(),
-            working_dir: PathBuf::default(),
-            p2p_listen: String::default(),
             rpc_client,
             consensus: Some(consensus),
             genesis_block: Some(genesis_block.into()),
             node_id: Some(node_id),
             indexer: Some(indexer),
             _guard: None,
+            working_dir: PathBuf::default(),
+            // TODO get p2p listen address via RPC
+            p2p_listen: String::default(),
         }
     }
 
