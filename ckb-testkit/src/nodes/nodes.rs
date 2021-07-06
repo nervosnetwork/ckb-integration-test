@@ -11,6 +11,17 @@ impl From<HashMap<String, Node>> for Nodes {
         Nodes { _inner: nodes }
     }
 }
+
+impl From<Vec<Node>> for Nodes {
+    fn from(nodes: Vec<Node>) -> Self {
+        nodes
+            .into_iter()
+            .map(|node| (node.node_name().to_string(), node))
+            .collect::<HashMap<_, _>>()
+            .into()
+    }
+}
+
 impl From<Nodes> for HashMap<String, Node> {
     fn from(nodes: Nodes) -> Self {
         nodes._inner
