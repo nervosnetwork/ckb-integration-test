@@ -65,7 +65,7 @@ impl Node {
         }
     }
 
-    pub fn init_from_url<S: ToString>(rpc_url: S) -> Self {
+    pub fn init_from_url<S: ToString>(rpc_url: S, working_dir: PathBuf) -> Self {
         let rpc_url = rpc_url.to_string();
         let mut rpc_client = RpcClient::new(&rpc_url, true);
         let local_node_info = rpc_client.local_node_info();
@@ -95,22 +95,24 @@ impl Node {
             .get_block_by_number(0)
             .expect("get genesis block");
         let node_id = local_node_info.node_id.to_owned();
-        let indexer = {
-            let data_path = "./indexer"; // TODO
-            let store = RocksdbStore::new(&data_path);
-            Indexer::new(store, 1000000, 60 * 60)
+        let indexer = if working_dir.to_string_lossy().is_empty() {
+            None
+        } else {
+            let data_path = working_dir.join("indexer");
+            let store = RocksdbStore::new(&data_path.to_string_lossy());
+            Some(Indexer::new(store, 1000000, 60 * 60))
         };
         Self {
-            node_options: NodeOptions::default(),
+            // TODO get p2p listen address via RPC
+            node_options: Default::default(),
+            working_dir,
             rpc_client,
+            p2p_listen: Default::default(),
             consensus: Some(consensus),
             genesis_block: Some(genesis_block.into()),
             node_id: Some(node_id),
-            indexer: Some(indexer),
+            indexer,
             _guard: None,
-            working_dir: PathBuf::default(),
-            // TODO get p2p listen address via RPC
-            p2p_listen: String::default(),
         }
     }
 
