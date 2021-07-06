@@ -1,5 +1,5 @@
 mod config;
-mod miner;
+mod user;
 
 use ckb_testkit::{node::Node, nodes::Nodes};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
@@ -7,7 +7,11 @@ use config::Url;
 use std::env;
 use std::path::PathBuf;
 use std::process::exit;
+use std::thread::{sleep, spawn};
+use std::time::Duration;
+use user::User;
 
+#[macro_export]
 macro_rules! prompt_and_exit {
     ($($arg:tt)*) => ({
         eprintln!($($arg)*);
@@ -22,23 +26,44 @@ fn main() {
         ("mine", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "blocks", u64);
-            let node = Node::init_from_url(&rpc_urls[0]);
+            let node = Node::init_from_url(&rpc_urls[0], Default::default());
             node.mine(n_blocks);
         }
         ("bench", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let spec_path = value_t_or_exit!(arguments, "spec", PathBuf);
-            let spec = Spec::load(spec_path).unwrap_or_else(|err| {
-                prompt_and_exit!("fail to Spec::load(\"{}\"), error: {}", spec_path, err)
-            });
+            let spec = config::Spec::load(&spec_path);
             let skip_best_tps_calculation = arguments.is_present("skip-best-tps-calculation");
+
+            if let Some(ref miner_config) = spec.miner {
+                let block_time = miner_config.block_time;
+                let nodes_ = rpc_urls
+                    .iter()
+                    .map(|url| Node::init_from_url(url, Default::default()))
+                    .collect::<Vec<_>>();
+                let miners = Nodes::from(nodes_);
+                spawn(move || loop {
+                    for miner in miners.nodes() {
+                        miner.mine(1);
+                        sleep(Duration::from_millis(block_time));
+                    }
+                });
+            }
             let nodes = {
                 let nodes_ = rpc_urls
                     .iter()
-                    .map(|url| Node::init_from_url(url))
+                    .map(|url| {
+                        let node_working_dir = spec.working_dir.join(&url.to_string());
+                        Node::init_from_url(url, node_working_dir)
+                    })
                     .collect::<Vec<_>>();
                 Nodes::from(nodes_)
             };
+            let users = spec
+                .users
+                .iter()
+                .map(|privkey| User::new(privkey))
+                .collect::<Vec<_>>();
         }
         _ => {
             eprintln!("wrong usage");
@@ -49,7 +74,7 @@ fn main() {
 
 fn clap_app() -> ArgMatches<'static> {
     include_str!("../Cargo.toml");
-    App::new("tps-bench")
+    App::new("ckb-bench")
         .subcommand(
             SubCommand::with_name("mine")
                 .about("Mine specified blocks")

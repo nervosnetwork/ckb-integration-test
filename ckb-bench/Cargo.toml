@@ -11,9 +11,12 @@ ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f
 ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
 ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
 ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
+ckb-crypto = { git = "https://github.com/nervosnetwork/ckb.git", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
+ckb-hash = { git = "https://github.com/nervosnetwork/ckb.git", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
 clap = { version = "2" }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 url_serde = "0.2.0"
 url = "1.7.2"
+toml = "0.5"
