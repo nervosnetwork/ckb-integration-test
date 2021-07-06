@@ -128,9 +128,7 @@ impl Case for RFC0234AfterSwitchConnection {
             node2021.always_success_transaction(&input)
         };
         node2021.submit_transaction(&tx);
-        let tx_relayed = wait_until(30, || {
-            node2021_non_hardfork.is_transaction_pending(&tx)
-        });
+        let tx_relayed = wait_until(30, || node2021_non_hardfork.is_transaction_pending(&tx));
         assert!(tx_relayed, "tx should be relayed between node2021s");
     }
 }

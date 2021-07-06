@@ -1,7 +1,17 @@
-use ckb_integration_test::{case, init_ckb_binaries, testdata};
-use clap::{App, Arg, ArgMatches, SubCommand};
+pub mod case;
+pub mod testdata;
+
+use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use lazy_static::lazy_static;
 use std::env;
+use std::path::PathBuf;
 use std::process::exit;
+use std::sync::RwLock;
+
+lazy_static! {
+    pub static ref CKB2019: RwLock<PathBuf> = RwLock::new(PathBuf::new());
+    pub static ref CKB2021: RwLock<PathBuf> = RwLock::new(PathBuf::new());
+}
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
@@ -84,4 +94,27 @@ fn init_logger(_clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuar
     };
     ckb_logger_service::init(None, config)
         .unwrap_or_else(|err| panic!("failed to init the logger service, error: {}", err))
+}
+
+fn init_ckb_binaries(matches: &ArgMatches) {
+    let ckb2019 = value_t_or_exit!(matches, "ckb2019", PathBuf);
+    let ckb2021 = value_t_or_exit!(matches, "ckb2021", PathBuf);
+    if !ckb2019.exists() || !ckb2019.is_file() {
+        panic!("--ckb2019 points to non-executable")
+    }
+    if !ckb2021.exists() || !ckb2021.is_file() {
+        panic!("--ckb2021 points to non-executable")
+    }
+    *CKB2019.write().unwrap() = absolutize(ckb2019);
+    *CKB2021.write().unwrap() = absolutize(ckb2021);
+}
+
+fn absolutize(path: PathBuf) -> PathBuf {
+    if path.is_relative() {
+        env::current_dir()
+            .expect("getting current dir should be ok")
+            .join(path)
+    } else {
+        path
+    }
 }
