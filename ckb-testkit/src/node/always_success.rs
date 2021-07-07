@@ -1,6 +1,5 @@
 use crate::node::Node;
 use ckb_types::{
-    bytes,
     core::{cell::CellMeta, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{CellDep, CellInput, CellOutput, OutPoint, Script},
     prelude::*,
@@ -9,14 +8,6 @@ use ckb_types::{
 pub const SYSTEM_CELL_ALWAYS_SUCCESS_INDEX: u32 = 5;
 
 impl Node {
-    pub fn always_success_raw_data(&self) -> bytes::Bytes {
-        self.genesis_block().transactions()[0]
-            .outputs_data()
-            .get(SYSTEM_CELL_ALWAYS_SUCCESS_INDEX as usize)
-            .unwrap()
-            .raw_data()
-    }
-
     pub fn always_success_script(&self) -> Script {
         let genesis_cellbase_hash = self.genesis_cellbase_hash();
         let always_success_out_point =
