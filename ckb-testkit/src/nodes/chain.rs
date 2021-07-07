@@ -1,7 +1,9 @@
 use crate::nodes::Nodes;
 use crate::util::wait_until;
-use ckb_types::core::BlockNumber;
-use ckb_types::packed::Byte32;
+use ckb_types::{
+    core::{BlockNumber, HeaderView},
+    packed::Byte32,
+};
 use std::collections::HashSet;
 
 impl Nodes {
@@ -29,5 +31,23 @@ impl Nodes {
         }
         crate::trace!("Nodes::waiting_for_sync end");
         Ok(())
+    }
+
+    pub fn get_fixed_header(&self) -> HeaderView {
+        let maximal_number = self
+            .nodes()
+            .map(|node| node.get_tip_block_number())
+            .min()
+            .expect("at least 1 node");
+        for number in (0..=maximal_number).rev() {
+            let headers = self
+                .nodes()
+                .map(|node| node.get_header_by_number(number))
+                .collect::<HashSet<_>>();
+            if headers.len() == 1 {
+                return headers.into_iter().collect::<Vec<_>>()[0].to_owned();
+            }
+        }
+        unreachable!()
     }
 }
