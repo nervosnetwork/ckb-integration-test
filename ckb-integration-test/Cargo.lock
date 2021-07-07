@@ -200,6 +200,19 @@ version = "0.44.0-pre"
 source = "git+https://github.com/nervosnetwork/ckb?rev=acd2f8132f56bc0e29e72f5b680d54ed68200441#acd2f8132f56bc0e29e72f5b680d54ed68200441"
 
 [[package]]
+name = "ckb-crypto"
+version = "0.44.0-pre"
+source = "git+https://github.com/nervosnetwork/ckb?rev=acd2f8132f56bc0e29e72f5b680d54ed68200441#acd2f8132f56bc0e29e72f5b680d54ed68200441"
+dependencies = [
+ "ckb-fixed-hash 0.44.0-pre",
+ "faster-hex",
+ "lazy_static",
+ "rand 0.7.3",
+ "secp256k1",
+ "thiserror",
+]
+
+[[package]]
 name = "ckb-error"
 version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -493,7 +506,9 @@ dependencies = [
 name = "ckb-testkit"
 version = "0.0.1"
 dependencies = [
+ "ckb-crypto",
  "ckb-error 0.44.0-pre",
+ "ckb-hash 0.44.0-pre",
  "ckb-indexer",
  "ckb-jsonrpc-types 0.43.0",
  "ckb-jsonrpc-types 0.44.0-pre",
@@ -1659,6 +1674,7 @@ dependencies = [
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+ "rand_pcg",
 ]
 
 [[package]]
@@ -1727,6 +1743,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
 dependencies = [
  "rand_core 0.6.3",
+]
+
+[[package]]
+name = "rand_pcg"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16abd0c1b639e9eb4d7c50c0b8100b0d0f849be2349829c740fe8e6eb4816429"
+dependencies = [
+ "rand_core 0.5.1",
 ]
 
 [[package]]
@@ -1827,6 +1852,24 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "secp256k1"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6179428c22c73ac0fbb7b5579a56353ce78ba29759b3b8575183336ea74cdfb"
+dependencies = [
+ "secp256k1-sys",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11553d210db090930f4432bea123b31f70bbf693ace14504ea2a35e796c28dd2"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "security-framework"

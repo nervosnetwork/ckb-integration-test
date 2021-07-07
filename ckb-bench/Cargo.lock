@@ -512,7 +512,9 @@ dependencies = [
 name = "ckb-testkit"
 version = "0.0.1"
 dependencies = [
+ "ckb-crypto",
  "ckb-error 0.44.0-pre",
+ "ckb-hash 0.44.0-pre",
  "ckb-indexer",
  "ckb-jsonrpc-types 0.43.0",
  "ckb-jsonrpc-types 0.44.0-pre",
