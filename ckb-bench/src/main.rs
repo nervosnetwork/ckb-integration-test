@@ -1,15 +1,17 @@
 mod config;
-mod user;
 
-use ckb_testkit::{node::Node, nodes::Nodes};
+use ckb_testkit::{node::Node, nodes::Nodes, user::User};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use config::Url;
 use std::env;
+use std::str::FromStr;
 use std::path::PathBuf;
 use std::process::exit;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
 use user::User;
+use ckb_testkit::user::User;
+use ckb_crypto::secp::Privkey;
 
 #[macro_export]
 macro_rules! prompt_and_exit {
@@ -37,33 +39,35 @@ fn main() {
 
             if let Some(ref miner_config) = spec.miner {
                 let block_time = miner_config.block_time;
-                let nodes_ = rpc_urls
+                let miners = rpc_urls
                     .iter()
                     .map(|url| Node::init_from_url(url, Default::default()))
                     .collect::<Vec<_>>();
-                let miners = Nodes::from(nodes_);
                 spawn(move || loop {
-                    for miner in miners.nodes() {
+                    for miner in miners.iter() {
                         miner.mine(1);
                         sleep(Duration::from_millis(block_time));
                     }
                 });
             }
-            let nodes = {
-                let nodes_ = rpc_urls
+            let nodes = rpc_urls
+                .iter()
+                .map(|url| {
+                    let node_working_dir = spec.working_dir.join(&url.to_string());
+                    Node::init_from_url(url, node_working_dir)
+                })
+                .collect::<Vec<_>>();
+            let users = {
+                let genesis_block = nodes[0].get_block_by_number(0);
+                spec
+                    .users
                     .iter()
-                    .map(|url| {
-                        let node_working_dir = spec.working_dir.join(&url.to_string());
-                        Node::init_from_url(url, node_working_dir)
+                    .map(|pk| {
+                        let privkey = Privkey::from_str(&pk).unwrap_or_else(|err| prompt_and_exit!("failed to parse privkey, error: {}", err));
+                        User::new(genesis_block, Some(privkey))
                     })
                     .collect::<Vec<_>>();
-                Nodes::from(nodes_)
             };
-            let users = spec
-                .users
-                .iter()
-                .map(|privkey| User::new(privkey))
-                .collect::<Vec<_>>();
         }
         _ => {
             eprintln!("wrong usage");
