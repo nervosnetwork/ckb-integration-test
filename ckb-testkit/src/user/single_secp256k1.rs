@@ -1,6 +1,7 @@
-use crate::User;
+use crate::{Node, User};
 use ckb_crypto::secp::Pubkey;
 use ckb_hash::blake2b_256;
+use ckb_types::core::cell::CellMeta;
 use ckb_types::{
     bytes::Bytes,
     core::{DepType, ScriptHashType, TransactionView},
@@ -83,5 +84,22 @@ impl User {
         } else {
             unreachable!("single_secp256k1 unset")
         }
+    }
+
+    pub fn get_live_single_secp256k1_cells(&self, node: &Node) -> Vec<CellMeta> {
+        let live_out_points = node
+            .indexer()
+            .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script())
+            .expect("indexer get_live_cells_by_lock_script");
+        let live_cells = live_out_points
+            .into_iter()
+            .map(|out_point| node.get_cell_meta(out_point))
+            .collect::<Vec<_>>();
+
+        // Filter out cells with non-empty output-data
+        live_cells
+            .into_iter()
+            .filter(|cell| cell.data_bytes == 0)
+            .collect()
     }
 }

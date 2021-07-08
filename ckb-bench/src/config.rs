@@ -40,15 +40,13 @@ pub struct Spec {
     pub working_dir: PathBuf,
     pub miner: Option<MinerConfig>,
     pub users: Vec<String>,
+    pub cases: Vec<CaseConfig>,
+    pub chain: ChainConfig,
+}
 
-    pub benchmarks: Vec<BenchmarkConfig>,
-
-    // TODO consensus_cellbase_maturity
-    pub consensus_cellbase_maturity: u64,
-    pub confirmation_blocks: u64,
-    pub ensure_matured_capacity_greater_than: u64,
-
-    pub method_to_eval_network_stable: MethodToEvalNetStable,
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ChainConfig {
+    n_confirmation_blocks: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -58,9 +56,8 @@ pub struct MinerConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct BenchmarkConfig {
-    pub transaction_type: TransactionType,
-    pub send_delay: u64, // micros
+pub struct CaseConfig {
+    pub transaction_config: TransactionConfig,
     pub method_to_eval_net_stable: Option<MethodToEvalNetStable>,
 }
 
@@ -97,8 +94,7 @@ impl Spec {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub enum TransactionType {
-    In1Out1,
-    In2Out2,
-    In3Out3,
+pub struct TransactionConfig {
+    in_: usize,
+    out_: usize,
 }

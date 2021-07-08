@@ -50,4 +50,15 @@ impl Node {
             .cell_dep(self.always_success_cell_dep())
             .build()
     }
+
+    pub fn get_live_always_success_cells(&self) -> Vec<CellMeta> {
+        let live_out_points = self
+            .indexer()
+            .get_live_cells_by_lock_script(&self.always_success_script())
+            .expect("indexer get_live_cells_by_lock_script");
+        live_out_points
+            .into_iter()
+            .map(|out_point| self.get_cell_meta(out_point))
+            .collect()
+    }
 }

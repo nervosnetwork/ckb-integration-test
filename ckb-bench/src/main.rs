@@ -1,17 +1,15 @@
 mod config;
 
-use ckb_testkit::{node::Node, nodes::Nodes, user::User};
+use ckb_crypto::secp::Privkey;
+use ckb_testkit::{Node, User};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use config::Url;
 use std::env;
-use std::str::FromStr;
 use std::path::PathBuf;
 use std::process::exit;
+use std::str::FromStr;
 use std::thread::{sleep, spawn};
 use std::time::Duration;
-use user::User;
-use ckb_testkit::user::User;
-use ckb_crypto::secp::Privkey;
 
 #[macro_export]
 macro_rules! prompt_and_exit {
@@ -59,14 +57,15 @@ fn main() {
                 .collect::<Vec<_>>();
             let users = {
                 let genesis_block = nodes[0].get_block_by_number(0);
-                spec
-                    .users
+                spec.users
                     .iter()
                     .map(|pk| {
-                        let privkey = Privkey::from_str(&pk).unwrap_or_else(|err| prompt_and_exit!("failed to parse privkey, error: {}", err));
-                        User::new(genesis_block, Some(privkey))
+                        let privkey = Privkey::from_str(&pk).unwrap_or_else(|err| {
+                            prompt_and_exit!("failed to parse privkey, error: {}", err)
+                        });
+                        User::new(genesis_block.clone(), Some(privkey))
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<Vec<_>>()
             };
         }
         _ => {

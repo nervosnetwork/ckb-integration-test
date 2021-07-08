@@ -16,4 +16,8 @@ impl User {
             single_secp256k1_privkey,
         }
     }
+
+    pub fn single_secp256k1_privkey(&self) -> Option<&Privkey> {
+        self.single_secp256k1_privkey.as_ref()
+    }
 }
