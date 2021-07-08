@@ -11,7 +11,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
-use std::thread::{sleep, spawn};
+use std::thread::sleep;
 use std::time::Duration;
 
 #[macro_export]
@@ -29,8 +29,26 @@ fn main() {
         ("mine", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "blocks", u64);
-            let node = Node::init_from_url(&rpc_urls[0], Default::default());
-            node.mine(n_blocks);
+            let block_time_millis = value_t_or_exit!(arguments, "block_time_millis", u64);
+            let miners = rpc_urls
+                .iter()
+                .map(|url| Node::init_from_url(url, Default::default()))
+                .collect::<Vec<_>>();
+            let mut mined_n_blocks = 0;
+            loop {
+                for miner in miners.iter() {
+                    miner.mine(1);
+                    if n_blocks != 0 {
+                        mined_n_blocks += 1;
+                    }
+                    if block_time_millis != 0 {
+                        sleep(Duration::from_millis(block_time_millis));
+                    }
+                }
+                if mined_n_blocks > n_blocks {
+                    break;
+                }
+            }
         }
         ("dispatch", Some(arguments)) => {
             let spec_path = value_t_or_exit!(arguments, "spec", PathBuf);
@@ -117,19 +135,6 @@ fn main() {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let spec_path = value_t_or_exit!(arguments, "spec", PathBuf);
             let spec = config::Spec::load(&spec_path);
-            if let Some(ref miner_config) = spec.miner {
-                let block_time = miner_config.block_time_millis;
-                let miners = rpc_urls
-                    .iter()
-                    .map(|url| Node::init_from_url(url, Default::default()))
-                    .collect::<Vec<_>>();
-                spawn(move || loop {
-                    for miner in miners.iter() {
-                        miner.mine(1);
-                        sleep(Duration::from_millis(block_time));
-                    }
-                });
-            }
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
@@ -141,15 +146,6 @@ fn main() {
             let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
             });
-            let lender = {
-                let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
-                    prompt_and_exit!(
-                        "failed to parse CKB_BENCH_LENDER_PRIVKEY to Privkey, error: {}",
-                        err
-                    )
-                });
-                User::new(nodes[0].get_block_by_number(0), Some(lender_privkey))
-            };
             let borrowers = {
                 let lender_byte32_privkey = Byte32::from_slice(lender_raw_privkey.as_bytes())
                     .unwrap_or_else(|err| {
@@ -192,7 +188,18 @@ fn clap_app() -> ArgMatches<'static> {
                         .long("blocks")
                         .value_name("NUMBER")
                         .takes_value(true)
-                        .help("number of blocks to mine")
+                        .help("number of blocks to mine, default is infinite(0)")
+                        .default_value("0")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("block_time_millis")
+                        .long("block_time_millis")
+                        .value_name("TIME")
+                        .takes_value(true)
+                        .help("block time, default is 0")
+                        .default_value("0")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),

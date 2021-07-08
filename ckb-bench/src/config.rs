@@ -38,7 +38,6 @@ impl Url {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Spec {
     pub working_dir: PathBuf,
-    pub miner: Option<MinerConfig>,
     pub cases: Vec<CaseConfig>,
     pub chain: ChainConfig,
 }
