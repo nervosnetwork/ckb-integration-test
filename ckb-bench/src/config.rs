@@ -39,7 +39,6 @@ impl Url {
 pub struct Spec {
     pub working_dir: PathBuf,
     pub miner: Option<MinerConfig>,
-    pub users: Vec<String>,
     pub cases: Vec<CaseConfig>,
     pub chain: ChainConfig,
 }
@@ -51,8 +50,7 @@ pub struct ChainConfig {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct MinerConfig {
-    pub privkey: String,
-    pub block_time: u64,
+    pub block_time_millis: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -1,7 +1,10 @@
 mod config;
+mod prepare;
 
+use crate::prepare::{collect, dispatch, generate_privkeys};
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
+use ckb_types::{packed::Byte32, prelude::*};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use config::Url;
 use std::env;
@@ -29,14 +32,93 @@ fn main() {
             let node = Node::init_from_url(&rpc_urls[0], Default::default());
             node.mine(n_blocks);
         }
+        ("dispatch", Some(arguments)) => {
+            let spec_path = value_t_or_exit!(arguments, "spec", PathBuf);
+            let spec = config::Spec::load(&spec_path);
+            let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
+            let nodes = rpc_urls
+                .iter()
+                .map(|url| {
+                    let node_working_dir = spec.working_dir.join(&url.to_string());
+                    Node::init_from_url(url, node_working_dir)
+                })
+                .collect::<Vec<_>>();
+            let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
+            let borrow_capacity = value_t_or_exit!(arguments, "borrow_capacity", u64);
+            let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
+            });
+            let lender = {
+                let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
+                    prompt_and_exit!(
+                        "failed to parse CKB_BENCH_LENDER_PRIVKEY to Privkey, error: {}",
+                        err
+                    )
+                });
+                User::new(nodes[0].get_block_by_number(0), Some(lender_privkey))
+            };
+            let borrowers = {
+                let lender_byte32_privkey = Byte32::from_slice(lender_raw_privkey.as_bytes())
+                    .unwrap_or_else(|err| {
+                        prompt_and_exit!(
+                            "failed to parse CKB_BENCH_LENDER_PRIVKEY to Byte32, error: {}",
+                            err
+                        )
+                    });
+                let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
+                privkeys
+                    .into_iter()
+                    .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
+                    .collect::<Vec<_>>()
+            };
+            dispatch(&nodes, &lender, &borrowers, borrow_capacity);
+        }
+        ("collect", Some(arguments)) => {
+            let spec_path = value_t_or_exit!(arguments, "spec", PathBuf);
+            let spec = config::Spec::load(&spec_path);
+            let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
+            let nodes = rpc_urls
+                .iter()
+                .map(|url| {
+                    let node_working_dir = spec.working_dir.join(&url.to_string());
+                    Node::init_from_url(url, node_working_dir)
+                })
+                .collect::<Vec<_>>();
+            let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
+            let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
+            });
+            let lender = {
+                let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
+                    prompt_and_exit!(
+                        "failed to parse CKB_BENCH_LENDER_PRIVKEY to Privkey, error: {}",
+                        err
+                    )
+                });
+                User::new(nodes[0].get_block_by_number(0), Some(lender_privkey))
+            };
+            let borrowers = {
+                let lender_byte32_privkey = Byte32::from_slice(lender_raw_privkey.as_bytes())
+                    .unwrap_or_else(|err| {
+                        prompt_and_exit!(
+                            "failed to parse CKB_BENCH_LENDER_PRIVKEY to Byte32, error: {}",
+                            err
+                        )
+                    });
+                let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
+                privkeys
+                    .into_iter()
+                    .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
+                    .collect::<Vec<_>>()
+            };
+            collect(&nodes, &lender, &borrowers);
+        }
         ("bench", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let spec_path = value_t_or_exit!(arguments, "spec", PathBuf);
             let spec = config::Spec::load(&spec_path);
-            let skip_best_tps_calculation = arguments.is_present("skip-best-tps-calculation");
-
             if let Some(ref miner_config) = spec.miner {
-                let block_time = miner_config.block_time;
+                let block_time = miner_config.block_time_millis;
                 let miners = rpc_urls
                     .iter()
                     .map(|url| Node::init_from_url(url, Default::default()))
@@ -55,16 +137,31 @@ fn main() {
                     Node::init_from_url(url, node_working_dir)
                 })
                 .collect::<Vec<_>>();
-            let users = {
-                let genesis_block = nodes[0].get_block_by_number(0);
-                spec.users
-                    .iter()
-                    .map(|pk| {
-                        let privkey = Privkey::from_str(&pk).unwrap_or_else(|err| {
-                            prompt_and_exit!("failed to parse privkey, error: {}", err)
-                        });
-                        User::new(genesis_block.clone(), Some(privkey))
-                    })
+            let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
+            let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
+            });
+            let lender = {
+                let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
+                    prompt_and_exit!(
+                        "failed to parse CKB_BENCH_LENDER_PRIVKEY to Privkey, error: {}",
+                        err
+                    )
+                });
+                User::new(nodes[0].get_block_by_number(0), Some(lender_privkey))
+            };
+            let borrowers = {
+                let lender_byte32_privkey = Byte32::from_slice(lender_raw_privkey.as_bytes())
+                    .unwrap_or_else(|err| {
+                        prompt_and_exit!(
+                            "failed to parse CKB_BENCH_LENDER_PRIVKEY to Byte32, error: {}",
+                            err
+                        )
+                    });
+                let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
+                privkeys
+                    .into_iter()
+                    .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
                     .collect::<Vec<_>>()
             };
         }
@@ -119,10 +216,48 @@ fn clap_app() -> ArgMatches<'static> {
                         .takes_value(true)
                         .multiple(true)
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("dispatch")
+                .about("dispatch lender's capacity to borrowers")
+                .arg(
+                    Arg::with_name("rpc-urls")
+                        .long("rpc-urls")
+                        .required(true)
+                        .takes_value(true)
+                        .multiple(true)
+                        .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("skip-best-tps-calculation")
-                        .help("whether skip best tps calculation"),
+                    Arg::with_name("n_borrowers")
+                        .long("n_borrowers")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .help("number of borrowers")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("collect")
+                .about("collect borrowers' capacity back to lender")
+                .arg(
+                    Arg::with_name("rpc-urls")
+                        .long("rpc-urls")
+                        .required(true)
+                        .takes_value(true)
+                        .multiple(true)
+                        .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("n_borrowers")
+                        .long("n_borrowers")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .help("number of borrowers")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
         )
         .get_matches()
