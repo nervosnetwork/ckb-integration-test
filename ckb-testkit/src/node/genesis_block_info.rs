@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::Node;
 use ckb_types::packed::Byte32;
 
 impl Node {

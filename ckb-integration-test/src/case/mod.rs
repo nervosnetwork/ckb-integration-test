@@ -8,8 +8,8 @@ mod rfc0234;
 mod rfc0240;
 
 use case_options::CaseOptions;
-use ckb_testkit::node::Node;
-use ckb_testkit::nodes::Nodes;
+use ckb_testkit::Node;
+use ckb_testkit::Nodes;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![

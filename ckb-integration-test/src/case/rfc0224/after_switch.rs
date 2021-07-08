@@ -2,8 +2,8 @@ use crate::case::rfc0224::util::test_extension_via_size;
 use crate::case::rfc0224::{ERROR_EMPTY_EXT, ERROR_MAX_LIMIT};
 use crate::case::{Case, CaseOptions};
 use crate::CKB2021;
-use ckb_testkit::node::{Node, NodeOptions};
-use ckb_testkit::nodes::Nodes;
+use ckb_testkit::Nodes;
+use ckb_testkit::{Node, NodeOptions};
 use ckb_types::core::EpochNumber;
 
 const RFC0224_EPOCH_NUMBER: EpochNumber = 3;

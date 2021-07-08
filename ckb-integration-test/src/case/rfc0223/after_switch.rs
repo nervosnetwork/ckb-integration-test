@@ -1,10 +1,10 @@
 use crate::case::{Case, CaseOptions};
 use crate::CKB2021;
-use ckb_testkit::node::{Node, NodeOptions};
-use ckb_testkit::nodes::Nodes;
 use ckb_testkit::util::{
     since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
 };
+use ckb_testkit::Nodes;
+use ckb_testkit::{Node, NodeOptions};
 use ckb_types::{
     core::{cell::CellMeta, EpochNumber, EpochNumberWithFraction, TransactionBuilder},
     packed::{CellInput, CellOutput},

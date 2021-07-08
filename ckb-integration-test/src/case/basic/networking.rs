@@ -1,7 +1,7 @@
 use crate::case::{Case, CaseOptions};
 use crate::{CKB2019, CKB2021};
-use ckb_testkit::node::NodeOptions;
-use ckb_testkit::nodes::Nodes;
+use ckb_testkit::NodeOptions;
+use ckb_testkit::Nodes;
 
 pub struct BasicNetworking;
 

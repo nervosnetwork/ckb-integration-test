@@ -1,5 +1,5 @@
-use crate::node::Node;
 use crate::util::wait_until;
+use crate::Node;
 
 impl Node {
     pub fn p2p_connect(&self, other: &Node) {

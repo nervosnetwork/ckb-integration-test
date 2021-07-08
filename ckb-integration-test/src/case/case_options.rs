@@ -1,4 +1,4 @@
-use ckb_testkit::node::NodeOptions;
+use ckb_testkit::NodeOptions;
 
 // TODO Too dirty
 #[derive(Debug, Clone)]

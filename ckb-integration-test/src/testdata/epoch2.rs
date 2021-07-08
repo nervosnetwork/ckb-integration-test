@@ -1,6 +1,6 @@
 use crate::testdata::{dump_testdata, Testdata};
 use crate::{CKB2019, CKB2021};
-use ckb_testkit::node::{Node, NodeOptions};
+use ckb_testkit::{Node, NodeOptions};
 
 pub struct Epoch2V1TestData;
 

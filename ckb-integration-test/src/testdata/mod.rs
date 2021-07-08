@@ -1,4 +1,4 @@
-use ckb_testkit::node::Node;
+use ckb_testkit::Node;
 use std::fs;
 use std::path::PathBuf;
 

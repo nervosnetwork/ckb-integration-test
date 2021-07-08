@@ -1,7 +1,7 @@
 use crate::error;
-use crate::node::NodeOptions;
 use crate::rpc::RpcClient;
 use crate::util::{find_available_port, temp_path};
+use crate::NodeOptions;
 use ckb_indexer::{
     indexer::Indexer,
     store::{RocksdbStore, Store},

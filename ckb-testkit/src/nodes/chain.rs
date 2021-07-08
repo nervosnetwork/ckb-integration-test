@@ -1,5 +1,5 @@
-use crate::nodes::Nodes;
 use crate::util::wait_until;
+use crate::Nodes;
 use ckb_types::{
     core::{BlockNumber, HeaderView},
     packed::Byte32,

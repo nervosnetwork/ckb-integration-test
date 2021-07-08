@@ -1,4 +1,4 @@
-use ckb_testkit::node::Node;
+use ckb_testkit::Node;
 use ckb_types::core::cell::CellMeta;
 use ckb_types::{
     core::{TransactionBuilder, TransactionView},

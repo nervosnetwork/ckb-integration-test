@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::Node;
 use ckb_jsonrpc_types::TxPoolInfo;
 use ckb_types::{
     core::{BlockNumber, BlockView, HeaderView, TransactionView},

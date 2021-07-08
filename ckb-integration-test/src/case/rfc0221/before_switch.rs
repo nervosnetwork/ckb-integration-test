@@ -1,9 +1,9 @@
 use crate::case::rfc0221::util::median_timestamp;
 use crate::case::{Case, CaseOptions};
 use crate::{CKB2019, CKB2021};
-use ckb_testkit::node::{Node, NodeOptions};
-use ckb_testkit::nodes::Nodes;
 use ckb_testkit::util::{since_from_relative_timestamp, wait_until};
+use ckb_testkit::Nodes;
+use ckb_testkit::{Node, NodeOptions};
 use ckb_types::{
     core::{EpochNumber, TransactionBuilder},
     packed::{CellInput, CellOutput},

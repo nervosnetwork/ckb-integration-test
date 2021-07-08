@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::Node;
 use ckb_jsonrpc_types::Status;
 use ckb_types::core::TransactionView;
 

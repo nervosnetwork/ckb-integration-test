@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::Node;
 use ckb_types::{
     core::{cell::CellMeta, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{CellDep, CellInput, CellOutput, OutPoint, Script},

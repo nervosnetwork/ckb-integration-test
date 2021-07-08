@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::User;
 use ckb_crypto::secp::Pubkey;
 use ckb_hash::blake2b_256;
 use ckb_types::{
@@ -41,7 +41,7 @@ impl User {
                     .expect("index genesis dep-group transaction")
                     .hash(),
             )
-            .index(GENESIS_DEP_GROUP_TRANSACTION_INDEX.pack())
+            .index(GENESIS_SIGHASH_ALL_DEP_GROUP_CELL_INDEX.pack())
             .build()
     }
 

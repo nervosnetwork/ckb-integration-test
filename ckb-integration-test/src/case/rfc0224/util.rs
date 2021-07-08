@@ -1,4 +1,4 @@
-use ckb_testkit::node::Node;
+use ckb_testkit::Node;
 use ckb_types::{packed, prelude::*};
 
 pub(super) fn test_extension_via_size(

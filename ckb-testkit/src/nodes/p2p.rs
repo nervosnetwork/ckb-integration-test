@@ -1,4 +1,4 @@
-use crate::nodes::Nodes;
+use crate::Nodes;
 
 impl Nodes {
     pub fn p2p_connect(&self) {

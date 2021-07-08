@@ -5,8 +5,8 @@
 use crate::case::{Case, CaseOptions};
 use crate::{CKB2019, CKB2021};
 use ckb_jsonrpc_types::EpochNumberWithFraction;
-use ckb_testkit::node::{Node, NodeOptions};
-use ckb_testkit::nodes::Nodes;
+use ckb_testkit::Nodes;
+use ckb_testkit::{Node, NodeOptions};
 use ckb_types::core::EpochNumber;
 use ckb_types::prelude::Pack;
 
