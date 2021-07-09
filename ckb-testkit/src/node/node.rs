@@ -41,6 +41,22 @@ pub struct Node {
     _guard: Option<ProcessGuard>,            // initialize when node start
 }
 
+impl Clone for Node {
+    fn clone(&self) -> Node {
+        Self {
+            node_options: self.node_options.clone(),
+            working_dir: self.working_dir().clone(),
+            rpc_client: self.rpc_client.clone(),
+            p2p_listen: self.p2p_listen.clone(),
+            consensus: self.consensus.clone(),
+            genesis_block: self.genesis_block.clone(),
+            node_id: self.node_id.clone(),
+            indexer: self.indexer.clone(),
+            _guard: None,
+        }
+    }
+}
+
 impl Node {
     pub fn init<S: ToString>(case_name: S, node_options: NodeOptions, is_ckb2021: bool) -> Self {
         let case_name = case_name.to_string();

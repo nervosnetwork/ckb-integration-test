@@ -67,6 +67,12 @@ pub struct RpcClient {
     inner2021: Inner2021,
 }
 
+impl Clone for RpcClient {
+    fn clone(&self) -> RpcClient {
+        RpcClient::new(self.inner2021.url.as_str(), self.ckb2021)
+    }
+}
+
 impl RpcClient {
     pub fn new(uri: &str, ckb2021: bool) -> Self {
         Self {

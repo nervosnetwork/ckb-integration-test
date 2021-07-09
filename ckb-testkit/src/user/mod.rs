@@ -3,6 +3,7 @@ pub mod single_secp256k1;
 use ckb_crypto::secp::Privkey;
 use ckb_types::core::BlockView;
 
+#[derive(Clone)]
 pub struct User {
     // a workaround to get out-point of system script cells
     genesis_block: BlockView,
