@@ -1,17 +1,20 @@
+mod bench;
 mod config;
 mod prepare;
 
+use crate::bench::{LiveCellProducer, TransactionEmitter};
 use crate::prepare::{collect, dispatch, generate_privkeys};
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
 use ckb_types::{packed::Byte32, prelude::*};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use config::Url;
+use crossbeam_channel::unbounded;
 use std::env;
 use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
-use std::thread::sleep;
+use std::thread::{sleep, spawn};
 use std::time::Duration;
 
 #[macro_export]
@@ -160,6 +163,22 @@ fn main() {
                     .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
                     .collect::<Vec<_>>()
             };
+            let (sender, receiver) = unbounded();
+            let live_cell_producer =
+                LiveCellProducer::new(borrowers.clone(), nodes.clone(), sender);
+            spawn(move || {
+                live_cell_producer.run();
+            });
+            for case in spec.cases {
+                let transaction_emitter = TransactionEmitter::new(
+                    borrowers.clone(),
+                    nodes.clone(),
+                    receiver.clone(),
+                    case.transaction_config.clone(),
+                    vec![borrowers[0].single_secp256k1_cell_dep()],
+                );
+                transaction_emitter.run();
+            }
         }
         _ => {
             eprintln!("wrong usage");

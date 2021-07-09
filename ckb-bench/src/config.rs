@@ -92,6 +92,5 @@ impl Spec {
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 pub struct TransactionConfig {
-    in_: usize,
-    out_: usize,
+    pub n_outputs: usize,
 }
