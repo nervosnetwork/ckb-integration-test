@@ -1,8 +1,7 @@
 use crate::case::rfc0222::util::{build_transaction, deploy_cell_with_type_};
 use crate::case::{Case, CaseOptions};
 use crate::CKB2021;
-use ckb_testkit::Nodes;
-use ckb_testkit::{Node, NodeOptions};
+use ckb_testkit::{Nodes, Node, NodeOptions};
 use ckb_types::{
     core::{EpochNumber, ScriptHashType},
     packed::{CellDep, Script},
