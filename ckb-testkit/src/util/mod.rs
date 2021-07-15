@@ -1,3 +1,7 @@
+mod build_unverified_chain;
+
+pub use build_unverified_chain::{build_unverified_chain, BuildUnverifiedChainParam};
+
 use ckb_types::core::{BlockNumber, EpochNumberWithFraction};
 use lazy_static::lazy_static;
 use std::env;
