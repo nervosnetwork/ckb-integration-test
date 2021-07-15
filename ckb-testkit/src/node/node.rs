@@ -63,11 +63,6 @@ impl Node {
         let rpc_port = find_available_port();
         let p2p_port = find_available_port();
         let working_dir = prepare_working_dir(&case_name, &node_options, rpc_port, p2p_port);
-        crate::info!(
-            "[Node {}] INIT, log_path: {}/data/logs/run.log",
-            node_options.node_name,
-            working_dir.display()
-        );
         Self {
             node_options,
             working_dir,
@@ -168,6 +163,13 @@ impl Node {
         self._guard = Some(ProcessGuard(child_process));
         self.node_id = Some(local_node_info.node_id);
         self.indexer = Some(indexer);
+        crate::info!(
+            "[Node {}] START node_id: \"{}\", p2p_listen: \"{}\", log_path: \"{}\"",
+            self.node_name(),
+            self.node_id(),
+            self.p2p_listen,
+            self.log_path().display()
+        );
     }
 
     pub fn node_name(&self) -> &str {
@@ -220,9 +222,9 @@ impl Node {
 
     pub fn stop(&mut self) {
         crate::info!(
-            "[Node {}] STOP, log_path: {}/data/logs/run.log",
+            "[Node {}] STOP log_path: {}",
             self.node_name(),
-            self.working_dir().display()
+            self.log_path().display(),
         );
         if self._guard.is_some() {
             drop(self._guard.take())
