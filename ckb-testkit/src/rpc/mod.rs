@@ -368,4 +368,21 @@ impl RpcClient {
             .expect("rpc call calculate_dao_maximum_withdraw")
             .into()
     }
+
+    pub fn process_block_without_verify(
+        &self,
+        block: Block,
+        should_broadcast: bool,
+    ) -> Option<H256> {
+        if self.ckb2021 {
+            self.inner2021
+                .process_block_without_verify(block, should_broadcast)
+                .expect("rpc call process_block_without_verify")
+        } else {
+            let block = item2021_to_item2019!(block);
+            self.inner2019
+                .process_block_without_verify(block, should_broadcast)
+                .expect("rpc call process_block_without_verify")
+        }
+    }
 }
