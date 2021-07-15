@@ -6,6 +6,7 @@ mod v2019;
 mod v2021;
 
 use ckb_error::AnyError;
+// TODO replace json types with core types
 use ckb_jsonrpc_types::{
     Alert, BannedAddr, Block, BlockTemplate, BlockView, CellWithStatus, ChainInfo, Consensus,
     DryRunResult, EpochView, HeaderView, LocalNode, OutPoint, RemoteNode, Timestamp, Transaction,
@@ -15,7 +16,7 @@ use ckb_types::core::{
     BlockNumber as CoreBlockNumber, Capacity as CoreCapacity, EpochNumber as CoreEpochNumber,
     Version as CoreVersion,
 };
-use ckb_types::{packed::Byte32, prelude::*, H256};
+use ckb_types::{packed::Byte32, prelude::*};
 use lazy_static::lazy_static;
 use v2019::Inner2019;
 use v2021::Inner2021;
@@ -304,17 +305,18 @@ impl RpcClient {
     pub fn send_transaction(&self, tx: Transaction) -> Byte32 {
         self.send_transaction_result(tx)
             .expect("rpc call send_transaction")
-            .pack()
     }
 
-    pub fn send_transaction_result(&self, tx: Transaction) -> Result<H256, AnyError> {
+    pub fn send_transaction_result(&self, tx: Transaction) -> Result<Byte32, AnyError> {
         if self.ckb2021 {
             self.inner2021
                 .send_transaction(tx, Some("passthrough".to_string()))
+                .map(|h256| h256.pack())
         } else {
             let tx = item2021_to_item2019!(tx);
             self.inner2019
                 .send_transaction(tx, Some("passthrough".to_string()))
+                .map(|h256| h256.pack())
         }
     }
 
@@ -373,16 +375,18 @@ impl RpcClient {
         &self,
         block: Block,
         should_broadcast: bool,
-    ) -> Option<H256> {
+    ) -> Option<Byte32> {
         if self.ckb2021 {
             self.inner2021
                 .process_block_without_verify(block, should_broadcast)
                 .expect("rpc call process_block_without_verify")
+                .map(|h256| h256.pack())
         } else {
             let block = item2021_to_item2019!(block);
             self.inner2019
                 .process_block_without_verify(block, should_broadcast)
                 .expect("rpc call process_block_without_verify")
+                .map(|h256| h256.pack())
         }
     }
 }
