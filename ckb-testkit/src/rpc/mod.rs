@@ -63,7 +63,7 @@ macro_rules! item2021_to_item2019 {
 }
 
 pub struct RpcClient {
-    ckb2021: bool,
+    pub ckb2021: bool,
     inner2019: Inner2019,
     inner2021: Inner2021,
 }

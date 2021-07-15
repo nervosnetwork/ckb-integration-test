@@ -7,6 +7,8 @@ mod node;
 mod node_options;
 mod p2p;
 mod rpc;
+mod unverified_mining;
 
 pub use node::Node;
 pub use node_options::NodeOptions;
+pub use unverified_mining::UnverifiedMiningOption;
