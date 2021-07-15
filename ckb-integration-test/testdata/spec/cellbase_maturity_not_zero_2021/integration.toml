@@ -69,6 +69,7 @@ cellbase_maturity = 1979121097768960 # EpochNumberWithFraction::new(0, 10, 1800)
 primary_epoch_reward_halving_interval = 8760
 epoch_duration_target = 14400
 genesis_epoch_length = 1000
+permanent_difficulty_in_dummy = true
 
 [params.hardfork]
 rfc_pr_0221 = 3
