@@ -2,8 +2,19 @@ use crate::util::wait_until;
 use crate::Node;
 
 impl Node {
+    pub fn is_p2p_connected(&self, other: &Node) -> bool {
+        self.rpc_client()
+            .get_peers()
+            .iter()
+            .any(|peer| &peer.node_id == other.node_id())
+    }
+
     pub fn p2p_connect(&self, other: &Node) {
-        crate::trace!("Node::p2p_connect start");
+        crate::trace!(
+            "Node::p2p_connect(\"{}\", \"{}\") start",
+            self.node_name(),
+            other.node_name()
+        );
         let other_node_id = other.node_id().to_string();
         let other_p2p_address = other.p2p_address();
 
