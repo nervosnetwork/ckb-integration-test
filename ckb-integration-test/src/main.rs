@@ -13,6 +13,23 @@ lazy_static! {
     pub static ref CKB2021: RwLock<PathBuf> = RwLock::new(PathBuf::new());
 }
 
+fn filter_cases(arg_matches: &ArgMatches) -> Vec<Box<dyn case::Case>> {
+    if let Some(filtering_cases) = arg_matches.values_of("cases") {
+        filtering_cases
+            .filter_map(|case_name| {
+                for case in crate::case::all_cases() {
+                    if case.case_name() == case_name {
+                        return Some(case);
+                    }
+                }
+                panic!("unknown case \"{}\"", case_name);
+            })
+            .collect()
+    } else {
+        crate::case::all_cases()
+    }
+}
+
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     let matches = clap_app().get_matches();
@@ -21,8 +38,7 @@ fn main() {
     match matches.subcommand() {
         ("run", Some(arg_matches)) => {
             crate::init_ckb_binaries(&arg_matches);
-            let cases = crate::case::all_cases();
-            for case in cases {
+            for case in filter_cases(&arg_matches) {
                 crate::case::run_case(case);
             }
         }
@@ -58,6 +74,14 @@ fn clap_app() -> App<'static, 'static> {
                         .takes_value(true)
                         .value_name("PATH")
                         .help("Path to ckb2021 executable"),
+                )
+                .arg(
+                    Arg::with_name("cases")
+                        .long("cases")
+                        .takes_value(true)
+                        .multiple(true)
+                        .value_name("CASE_NAME")
+                        .help("only run specified cases"),
                 ),
         )
         .subcommand(
@@ -75,6 +99,7 @@ fn clap_app() -> App<'static, 'static> {
                         .long("ckb2021")
                         .takes_value(true)
                         .value_name("PATH")
+                        .required(false)
                         .help("Path to ckb v2 executable"),
                 ),
         )

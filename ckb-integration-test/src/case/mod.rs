@@ -13,21 +13,22 @@ use ckb_testkit::Nodes;
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
-        // Box::new(basic::networking::BasicNetworking),
-        // Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
-        // Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
-        // Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
-        // Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
-        // Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
-        // Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
-        // Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
-        // Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
-        // Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
-        // Box::new(rfc0234::relay_transaction::RFC0234AfterSwitchRelayTransaction),
+        Box::new(basic::networking::BasicNetworking),
+        Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
+        Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
+        Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
+        Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
+        Box::new(rfc0222::reorg::attached_blocks::RFC0222ReorgAttachedBlocks),
+        Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
+        Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
+        Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
+        Box::new(rfc0224::after_switch::RFC0224AfterSwitch),
+        Box::new(rfc0234::before_switch::RFC0234BeforeSwitch),
+        Box::new(rfc0234::relay_transaction::RFC0234AfterSwitchRelayTransaction),
         Box::new(rfc0234::connection::RFC0234AfterSwitchConnection),
-        // Box::new(rfc0234::discovery::RFC0234AfterSwitchDiscovery),
-        // Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
-        // Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
+        Box::new(rfc0234::discovery::RFC0234AfterSwitchDiscovery),
+        Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
+        Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
     ]
 }
 
