@@ -389,4 +389,12 @@ impl RpcClient {
                 .map(|h256| h256.pack())
         }
     }
+
+    pub fn calculate_dao_field(&self, block_template: BlockTemplate) -> Byte32 {
+        assert!(self.ckb2021);
+        self.inner2021
+            .calculate_dao_field(block_template)
+            .expect("rpc call calculate_dao_field")
+            .into()
+    }
 }
