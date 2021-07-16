@@ -1,9 +1,10 @@
 use crate::util::wait_until;
 use crate::{Node, NodeOptions};
-use ckb_types::core::BlockView;
+use ckb_jsonrpc_types::TransactionTemplate;
 use ckb_types::{
-    core::{BlockNumber, TransactionView},
+    core::{BlockNumber, BlockView, TransactionView},
     packed::{self, ProposalShortId},
+    prelude::*,
 };
 use std::collections::HashMap;
 
@@ -76,16 +77,14 @@ pub fn build_unverified_chain(
 
     // build chain according to params
     loop {
-        let template = helper_node
+        let mut template = helper_node
             .rpc_client()
             .get_block_template(None, None, None);
-        let block = packed::Block::from(template).into_view();
-        if block.number() > target_height {
+        if template.number.value() > target_height {
             break;
         }
 
-        if let Some(params) = params_map.remove(&block.number()) {
-            let mut block_builder = block.as_advanced_builder();
+        if let Some(params) = params_map.remove(&template.number.value()) {
             for param in params {
                 match param {
                     BuildUnverifiedChainParam::Pending { transaction, .. } => {
@@ -94,18 +93,28 @@ pub fn build_unverified_chain(
                     BuildUnverifiedChainParam::Proposal {
                         proposal_short_id, ..
                     } => {
-                        block_builder = block_builder.proposal(proposal_short_id);
+                        template.proposals.push(proposal_short_id.into());
                     }
                     BuildUnverifiedChainParam::Committed { transaction, .. } => {
-                        block_builder = block_builder.transaction(transaction);
+                        let transaction_template = TransactionTemplate {
+                            hash: transaction.hash().unpack(),
+                            data: transaction.data().into(),
+                            ..Default::default()
+                        };
+                        template.transactions.push(transaction_template);
                     }
                 }
             }
-            let block = block_builder.build();
+            let dao_field = helper_node
+                .rpc_client()
+                .calculate_dao_field(template.clone());
+            template.dao = dao_field.into();
+            let block: packed::Block = template.into();
             helper_node
                 .rpc_client()
-                .process_block_without_verify(block.data().into(), false);
+                .process_block_without_verify(block.into(), false);
         } else {
+            let block = packed::Block::from(template).into_view();
             helper_node
                 .rpc_client()
                 .process_block_without_verify(block.data().into(), false);
