@@ -6,10 +6,10 @@ use crate::case::{Case, CaseOptions};
 use crate::CKB2021;
 use ckb_jsonrpc_types::EpochNumberWithFraction;
 use ckb_testkit::util::wait_until;
-use ckb_testkit::Nodes;
-use ckb_testkit::{Node, NodeOptions};
+use ckb_testkit::{Nodes, NodeOptions};
 use ckb_types::core::EpochNumber;
 use ckb_types::prelude::Pack;
+use crate::util::calc_epoch_start_number;
 
 const RFC0240_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -44,10 +44,7 @@ impl Case for RFC0240AfterSwitch {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        while !is_rfc0240_switched(node2021) {
-            node2021.mine(100);
-        }
-        assert!(is_rfc0240_switched(node2021));
+        node2021.mine_to(calc_epoch_start_number(node2021,RFC0240_EPOCH_NUMBER));
         assert!(node2021.consensus().cellbase_maturity > EpochNumberWithFraction::from(0));
 
         let tip_hash = node2021.get_tip_block().hash();
@@ -74,8 +71,4 @@ impl Case for RFC0240AfterSwitch {
         node2021.mine(node2021.consensus().tx_proposal_window.closest.value() + 1);
         assert!(node2021.is_transaction_committed(&tx));
     }
-}
-
-fn is_rfc0240_switched(node: &Node) -> bool {
-    node.rpc_client().get_current_epoch().number.value() >= RFC0240_EPOCH_NUMBER
 }

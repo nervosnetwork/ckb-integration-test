@@ -2,7 +2,7 @@ use crate::case::rfc0221::util::{committed_timestamp, median_timestamp};
 use crate::case::{Case, CaseOptions};
 use crate::CKB2021;
 use ckb_testkit::util::since_from_relative_timestamp;
-use ckb_testkit::{Node, NodeOptions, Nodes};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::{
     core::{EpochNumber, TransactionBuilder},
     packed::{CellInput, CellOutput},
@@ -10,6 +10,7 @@ use ckb_types::{
 };
 use std::thread::sleep;
 use std::time::Duration;
+use crate::util::calc_epoch_start_number;
 
 const RFC0221_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -36,18 +37,13 @@ impl Case for RFC0221AfterSwitch {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
+        node2021.mine_to(calc_epoch_start_number(node2021,RFC0221_EPOCH_NUMBER));
         {
             let mut over_move_switch_cnt = 37;
-            loop {
-                if !is_rfc0221_switched(node2021) {
-                    node2021.mine(1);
-                } else if over_move_switch_cnt > 0 {
-                    over_move_switch_cnt -= 1;
-                    node2021.mine(1);
-                    sleep(Duration::from_secs(1));
-                } else {
-                    break;
-                }
+            while over_move_switch_cnt > 0 {
+                over_move_switch_cnt -= 1;
+                node2021.mine(1);
+                sleep(Duration::from_secs(1));
             }
         }
 
@@ -112,8 +108,4 @@ impl Case for RFC0221AfterSwitch {
             sent,
         );
     }
-}
-
-fn is_rfc0221_switched(node: &Node) -> bool {
-    node.rpc_client().get_current_epoch().number.value() >= RFC0221_EPOCH_NUMBER
 }

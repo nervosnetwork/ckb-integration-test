@@ -1,5 +1,6 @@
 pub mod case;
 pub mod testdata;
+pub mod util;
 
 use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use lazy_static::lazy_static;

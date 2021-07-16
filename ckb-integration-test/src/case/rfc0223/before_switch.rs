@@ -97,7 +97,7 @@ impl Case for RFC0223BeforeSwitch {
         ];
 
         // Move forward to make sure our since values become valid
-        node2021.mine(1800 + 10);
+        node2021.mine(1000 + 10);
 
         assert!(!is_rfc0223_switched(node2021));
         txs.iter().enumerate().for_each(|(i, tx)| {

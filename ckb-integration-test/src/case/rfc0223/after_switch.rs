@@ -3,13 +3,13 @@ use crate::CKB2021;
 use ckb_testkit::util::{
     since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
 };
-use ckb_testkit::Nodes;
-use ckb_testkit::{Node, NodeOptions};
+use ckb_testkit::{Nodes, NodeOptions};
 use ckb_types::{
     core::{cell::CellMeta, EpochNumber, EpochNumberWithFraction, TransactionBuilder},
     packed::{CellInput, CellOutput},
     prelude::*,
 };
+use crate::util::calc_epoch_start_number;
 
 const RFC0223_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -36,10 +36,7 @@ impl Case for RFC0223AfterSwitch {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        while !is_rfc0223_switched(node2021) {
-            node2021.mine(1);
-        }
-
+        node2021.mine_to(calc_epoch_start_number(node2021,RFC0223_EPOCH_NUMBER));
         let current_block_epoch = node2021.get_tip_block().epoch();
         let cells = node2021.get_live_always_success_cells();
         assert!(cells.len() >= 4);
@@ -104,8 +101,4 @@ impl Case for RFC0223AfterSwitch {
             );
         });
     }
-}
-
-fn is_rfc0223_switched(node: &Node) -> bool {
-    node.rpc_client().get_current_epoch().number.value() >= RFC0223_EPOCH_NUMBER
 }

@@ -10,6 +10,7 @@ use ckb_testkit::util::wait_until;
 use ckb_testkit::Nodes;
 use ckb_testkit::{Node, NodeOptions};
 use ckb_types::core::EpochNumber;
+use crate::util::calc_epoch_start_number;
 
 const RFC0234_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -65,17 +66,12 @@ impl Case for RFC0234AfterSwitchConnection {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        loop {
-            node2021.mine(1);
-            if !is_rfc0234_switched(node2021) {
-                nodes
-                    .waiting_for_sync()
-                    .expect("nodes should be synced before rfc0234.switch")
-            } else {
-                break;
-            }
-        }
+        node2021.mine_to(calc_epoch_start_number(node2021,RFC0234_EPOCH_NUMBER)-1);
+        nodes
+            .waiting_for_sync()
+            .expect("nodes should be synced before rfc0234.switch");
 
+        node2021.mine_to(calc_epoch_start_number(node2021,RFC0234_EPOCH_NUMBER));
         let disconnect_different_version_nodes = wait_until(20, || {
             nodes.nodes().all(|node| {
                 let local_node_info = node.rpc_client().local_node_info();
@@ -132,8 +128,4 @@ impl Case for RFC0234AfterSwitchConnection {
         // let tx_relayed = wait_until(30, || node2021_non_hardfork.is_transaction_pending(&tx));
         // assert!(!tx_relayed, "tx should be unable to relay between node2021s");
     }
-}
-
-fn is_rfc0234_switched(node: &Node) -> bool {
-    node.rpc_client().get_current_epoch().number.value() >= RFC0234_EPOCH_NUMBER
 }
