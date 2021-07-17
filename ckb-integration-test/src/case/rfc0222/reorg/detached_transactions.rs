@@ -106,7 +106,7 @@ impl Case for RFC0222ReorgDetachedTransactions {
 
         // Build txs
         let inputs = node2021.get_live_always_success_cells();
-        let txs_valid_2021_only = (0..3)
+        let txs_valid_2021_only = (0..2)
             .map(|index| {
                 build_transaction_with_input(
                     &inputs[index],

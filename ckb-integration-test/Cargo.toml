@@ -9,10 +9,10 @@ description = "ckb integration tests"
 
 [dependencies]
 clap = { version = "2" }
-ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
-ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "acd2f8132f56bc0e29e72f5b680d54ed68200441" }
+ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
+ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
+ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
+ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
 lazy_static = "1.4.0"
 log = "0.4"
 ckb-testkit = { path = "../ckb-testkit" }

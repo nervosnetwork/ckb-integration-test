@@ -51,14 +51,21 @@ impl Node {
             .build()
     }
 
-    pub fn get_live_always_success_cells(&self) -> Vec<CellMeta> {
+    pub fn get_spendable_always_success_cells(&self) -> Vec<CellMeta> {
         let live_out_points = self
             .indexer()
             .get_live_cells_by_lock_script(&self.always_success_script())
             .expect("indexer get_live_cells_by_lock_script");
         live_out_points
             .into_iter()
-            .map(|out_point| self.get_cell_meta(out_point))
+            .filter_map(|out_point| {
+                let cell_meta = self.get_cell_meta(out_point);
+                if cell_meta.data_bytes == 0 {
+                    Some(cell_meta)
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 }
