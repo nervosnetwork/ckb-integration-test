@@ -1,10 +1,11 @@
-use crate::case::rfc0222::util::{build_transaction, deploy_cell_with_type_};
+use crate::case::rfc0222::util::{build_transaction, RFC0222CellDeployer};
 use crate::case::{Case, CaseOptions};
+use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
-use ckb_testkit::{Node, NodeOptions, Nodes};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::{
     core::{EpochNumber, ScriptHashType},
-    packed::{CellDep, Script},
+    packed::Script,
     prelude::*,
 };
 
@@ -33,30 +34,12 @@ impl Case for RFC0222AfterSwitch {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        while !is_rfc0222_switched(node2021) {
-            node2021.mine(1);
-        }
 
         // Deploy our data cells onto chain.
-        let always_success_cell_dep_a1 = {
-            let output_data = include_bytes!("../../../testdata/spec/ckb2021/cells/always_success");
-            let type_ = node2021.always_success_script();
-            let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
-            CellDep::new_builder().out_point(out_point).build()
-        };
-        let always_success_cell_dep_a2 = {
-            let output_data = include_bytes!("../../../testdata/spec/ckb2021/cells/always_success");
-            let type_ = node2021.always_success_script();
-            let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
-            CellDep::new_builder().out_point(out_point).build()
-        };
-        let always_success_cell_dep_b1 = {
-            let output_data =
-                include_bytes!("../../../testdata/spec/ckb2021/cells/another_always_success");
-            let type_ = node2021.always_success_script();
-            let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
-            CellDep::new_builder().out_point(out_point).build()
-        };
+        let mut deployer = RFC0222CellDeployer::default();
+        deployer.deploy(node2021);
+
+        node2021.mine_to(calc_epoch_start_number(node2021, RFC0222_EPOCH_NUMBER));
         let cases = vec![
             // case-0
             (None, vec![node2021.always_success_cell_dep()], Ok(())),
@@ -66,9 +49,9 @@ impl Case for RFC0222AfterSwitch {
                 None,
                 vec![
                     node2021.always_success_cell_dep(),
-                    always_success_cell_dep_a1.clone(),
-                    always_success_cell_dep_a2.clone(),
-                    always_success_cell_dep_b1.clone(),
+                    deployer.always_success_cell_dep_a1(),
+                    deployer.always_success_cell_dep_a2(),
+                    deployer.always_success_cell_dep_b1(),
                 ],
                 Ok(()),
             ),
@@ -83,8 +66,7 @@ impl Case for RFC0222AfterSwitch {
                 ),
                 vec![
                     node2021.always_success_cell_dep(),
-                    always_success_cell_dep_a1.clone(),
-                    // always_success_cell_dep_a1.clone(), DuplicateCellDeps
+                    deployer.always_success_cell_dep_a1(), // always_success_cell_dep_a1.clone(), DuplicateCellDeps
                 ],
                 Ok(()),
             ),
@@ -100,8 +82,8 @@ impl Case for RFC0222AfterSwitch {
                 ),
                 vec![
                     node2021.always_success_cell_dep(),
-                    always_success_cell_dep_a1.clone(),
-                    always_success_cell_dep_a2.clone(),
+                    deployer.always_success_cell_dep_a1(),
+                    deployer.always_success_cell_dep_a2(),
                 ],
                 Ok(()),
             ),
@@ -117,8 +99,8 @@ impl Case for RFC0222AfterSwitch {
                 ),
                 vec![
                     node2021.always_success_cell_dep(),
-                    always_success_cell_dep_a1.clone(),
-                    always_success_cell_dep_b1.clone(),
+                    deployer.always_success_cell_dep_a1(),
+                    deployer.always_success_cell_dep_b1(),
                 ],
                 Err(ERROR_MULTIPLE_MATCHES),
             ),
@@ -151,8 +133,4 @@ impl Case for RFC0222AfterSwitch {
             }
         }
     }
-}
-
-fn is_rfc0222_switched(node: &Node) -> bool {
-    node.rpc_client().get_current_epoch().number.value() >= RFC0222_EPOCH_NUMBER
 }

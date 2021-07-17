@@ -1,4 +1,5 @@
 use ckb_testkit::Node;
+use ckb_types::core::cell::CellMeta;
 use ckb_types::core::{Capacity, TransactionBuilder, TransactionView};
 use ckb_types::packed::{Bytes, CellDep, CellInput, CellOutput, OutPoint, Script};
 use ckb_types::prelude::*;
@@ -68,4 +69,70 @@ pub(super) fn build_transaction(
         .output_data(Default::default())
         .set_cell_deps(cell_deps)
         .build()
+}
+
+pub(super) fn build_transaction_with_input(
+    input: &CellMeta,
+    type_: Option<Script>,
+    cell_deps: Vec<CellDep>,
+) -> TransactionView {
+    TransactionBuilder::default()
+        .input(CellInput::new(input.out_point.clone(), 0))
+        .output(
+            CellOutput::new_builder()
+                .lock(input.cell_output.lock())
+                .type_(type_.pack())
+                .capacity(input.capacity().pack())
+                .build(),
+        )
+        .output_data(Default::default())
+        .set_cell_deps(cell_deps)
+        .build()
+}
+
+#[derive(Default)]
+pub(super) struct RFC0222CellDeployer {
+    always_success_cell_dep_a1: Option<CellDep>,
+    always_success_cell_dep_a2: Option<CellDep>,
+    always_success_cell_dep_b1: Option<CellDep>,
+}
+
+impl RFC0222CellDeployer {
+    pub(super) fn deploy(&mut self, node2021: &Node) {
+        // Deploy our data cells onto chain.
+        let always_success_cell_dep_a1 = {
+            let output_data = include_bytes!("../../../testdata/spec/ckb2021/cells/always_success");
+            let type_ = node2021.always_success_script();
+            let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
+            CellDep::new_builder().out_point(out_point).build()
+        };
+        let always_success_cell_dep_a2 = {
+            let output_data = include_bytes!("../../../testdata/spec/ckb2021/cells/always_success");
+            let type_ = node2021.always_success_script();
+            let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
+            CellDep::new_builder().out_point(out_point).build()
+        };
+        let always_success_cell_dep_b1 = {
+            let output_data =
+                include_bytes!("../../../testdata/spec/ckb2021/cells/another_always_success");
+            let type_ = node2021.always_success_script();
+            let out_point = deploy_cell_with_type_(node2021, output_data.pack(), type_);
+            CellDep::new_builder().out_point(out_point).build()
+        };
+        self.always_success_cell_dep_a1 = Some(always_success_cell_dep_a1);
+        self.always_success_cell_dep_a2 = Some(always_success_cell_dep_a2);
+        self.always_success_cell_dep_b1 = Some(always_success_cell_dep_b1);
+    }
+
+    pub(super) fn always_success_cell_dep_a1(&self) -> CellDep {
+        self.always_success_cell_dep_a1.clone().unwrap()
+    }
+
+    pub(super) fn always_success_cell_dep_a2(&self) -> CellDep {
+        self.always_success_cell_dep_a2.clone().unwrap()
+    }
+
+    pub(super) fn always_success_cell_dep_b1(&self) -> CellDep {
+        self.always_success_cell_dep_b1.clone().unwrap()
+    }
 }
