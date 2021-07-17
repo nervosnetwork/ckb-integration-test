@@ -1,7 +1,5 @@
 name = "ckb_integration_test"
 
-edition = "2021"
-
 [genesis]
 version = 0
 parent_hash = "0x0000000000000000000000000000000000000000000000000000000000000000"
@@ -17,7 +15,7 @@ message = ""
 [genesis.genesis_cell.lock]
 code_hash = "0x6283a479a3cf5d4276cd93594de9f1827ab9b55c7b05b3d28e4c2e0a696cfefd"
 args = "0x"
-hash_type.kind = "type"
+hash_type = "type"
 
 # An array list paths to system cell files, which is absolute or relative to
 # the directory containing this config file.
@@ -40,7 +38,7 @@ create_type_id = true
 [genesis.system_cells_lock]
 code_hash = "0x6283a479a3cf5d4276cd93594de9f1827ab9b55c7b05b3d28e4c2e0a696cfefd"
 args = "0x"
-hash_type.kind = "type"
+hash_type = "type"
 
 # Dep group cells
 [[genesis.dep_groups]]
@@ -59,7 +57,7 @@ files = [
 [genesis.bootstrap_lock]
 code_hash = "0x6283a479a3cf5d4276cd93594de9f1827ab9b55c7b05b3d28e4c2e0a696cfefd"
 args = "0x"
-hash_type.kind = "type"
+hash_type = "type"
 
 [params]
 initial_primary_epoch_reward = 1_917_808_21917808
@@ -73,13 +71,12 @@ permanent_difficulty_in_dummy = true
 
 [params.hardfork]
 # infinite epoch number, never reach the epochs
-rfc_pr_0221 = 1000000
-rfc_pr_0222 = 1000000
-rfc_pr_0223 = 1000000
-rfc_pr_0224 = 1000000
-rfc_pr_0234 = 1000000
-rfc_pr_0237 = 1000000
-rfc_pr_0240 = 1000000
+rfc_0221 = 3
+rfc_0222 = 3
+rfc_0223 = 3
+rfc_0224 = 3
+rfc_0232 = 3
+rfc_0240 = 3
 
 [pow]
 func = "Dummy"
