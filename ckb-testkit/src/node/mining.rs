@@ -1,6 +1,6 @@
 use crate::Node;
-use ckb_types::packed;
 use ckb_types::core::BlockNumber;
+use ckb_types::packed;
 
 impl Node {
     pub fn mine(&self, n_blocks: u64) {

@@ -1,6 +1,7 @@
 use ckb_testkit::Node;
 use ckb_types::core::BlockNumber;
 
+// TODO move to ckb-testkit
 pub(super) fn median_timestamp(node: &Node, block_number: BlockNumber) -> u64 {
     let mut timestamps = (block_number - 37 + 1..=block_number)
         // let mut timestamps = (block_number - 37 ..block_number)

@@ -3,11 +3,11 @@
 // After fork2021, node2021s will still propagate info
 
 use crate::case::{Case, CaseOptions};
+use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
 use ckb_testkit::util::wait_until;
-use ckb_testkit::{Nodes, NodeOptions};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::core::EpochNumber;
-use crate::util::calc_epoch_start_number;
 
 const RFC0234_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -50,7 +50,7 @@ impl Case for RFC0234AfterSwitchDiscovery {
     fn run(&self, nodes: Nodes) {
         // Move node2021s beyond fork2021
         for node in nodes.nodes() {
-            node.mine_to(calc_epoch_start_number(node,RFC0234_EPOCH_NUMBER));
+            node.mine_to(calc_epoch_start_number(node, RFC0234_EPOCH_NUMBER));
         }
         for node in nodes.nodes() {
             assert!(node.rpc_client().get_peers().is_empty());

@@ -7,11 +7,11 @@
 
 use crate::case::rfc0234::util::generate_transaction;
 use crate::case::{Case, CaseOptions};
+use crate::util::calc_epoch_start_number;
 use crate::{CKB2019, CKB2021};
 use ckb_testkit::util::wait_until;
-use ckb_testkit::{Nodes, NodeOptions};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::core::EpochNumber;
-use crate::util::calc_epoch_start_number;
 
 const RFC0234_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -73,12 +73,12 @@ impl Case for RFC0234AfterSwitchRelayTransaction {
         let tx1 = generate_transaction(node2019, &cells[0]);
         let tx2 = generate_transaction(node2019, &cells[1]);
 
-        node2021.mine_to(calc_epoch_start_number(node2021,RFC0234_EPOCH_NUMBER)-1);
+        node2021.mine_to(calc_epoch_start_number(node2021, RFC0234_EPOCH_NUMBER) - 1);
         nodes
             .waiting_for_sync()
             .expect("nodes should be synced before rfc0234.switch");
 
-        node2021.mine_to(calc_epoch_start_number(node2021,RFC0234_EPOCH_NUMBER));
+        node2021.mine_to(calc_epoch_start_number(node2021, RFC0234_EPOCH_NUMBER));
         {
             node2019s[0].submit_transaction(&tx1);
             let propagated_among_node2019s = wait_until(20, || {

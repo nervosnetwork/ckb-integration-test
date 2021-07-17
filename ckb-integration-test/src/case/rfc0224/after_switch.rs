@@ -1,10 +1,10 @@
 use crate::case::rfc0224::util::test_extension_via_size;
 use crate::case::rfc0224::{ERROR_EMPTY_EXT, ERROR_MAX_LIMIT};
 use crate::case::{Case, CaseOptions};
-use crate::CKB2021;
-use ckb_testkit::{Nodes, NodeOptions};
-use ckb_types::core::EpochNumber;
 use crate::util::calc_epoch_start_number;
+use crate::CKB2021;
+use ckb_testkit::{NodeOptions, Nodes};
+use ckb_types::core::EpochNumber;
 
 const RFC0224_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -30,7 +30,7 @@ impl Case for RFC0224AfterSwitch {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        node2021.mine_to(calc_epoch_start_number(node2021,RFC0224_EPOCH_NUMBER));
+        node2021.mine_to(calc_epoch_start_number(node2021, RFC0224_EPOCH_NUMBER));
         let cases = vec![
             (node2021, None, Ok(())),
             (node2021, Some(0), Err(ERROR_EMPTY_EXT)),

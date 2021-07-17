@@ -3,13 +3,13 @@
 // After rfc0240, transactions are allowed to reference any on-chain `HeaderDep`
 
 use crate::case::{Case, CaseOptions};
+use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
 use ckb_jsonrpc_types::EpochNumberWithFraction;
 use ckb_testkit::util::wait_until;
-use ckb_testkit::{Nodes, NodeOptions};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::core::EpochNumber;
 use ckb_types::prelude::Pack;
-use crate::util::calc_epoch_start_number;
 
 const RFC0240_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -44,7 +44,7 @@ impl Case for RFC0240AfterSwitch {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        node2021.mine_to(calc_epoch_start_number(node2021,RFC0240_EPOCH_NUMBER));
+        node2021.mine_to(calc_epoch_start_number(node2021, RFC0240_EPOCH_NUMBER));
         assert!(node2021.consensus().cellbase_maturity > EpochNumberWithFraction::from(0));
 
         let tip_hash = node2021.get_tip_block().hash();

@@ -1,5 +1,6 @@
 use crate::case::rfc0221::util::{committed_timestamp, median_timestamp};
 use crate::case::{Case, CaseOptions};
+use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
 use ckb_testkit::util::since_from_relative_timestamp;
 use ckb_testkit::{NodeOptions, Nodes};
@@ -10,7 +11,6 @@ use ckb_types::{
 };
 use std::thread::sleep;
 use std::time::Duration;
-use crate::util::calc_epoch_start_number;
 
 const RFC0221_EPOCH_NUMBER: EpochNumber = 3;
 
@@ -37,7 +37,7 @@ impl Case for RFC0221AfterSwitch {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        node2021.mine_to(calc_epoch_start_number(node2021,RFC0221_EPOCH_NUMBER));
+        node2021.mine_to(calc_epoch_start_number(node2021, RFC0221_EPOCH_NUMBER));
         {
             let mut over_move_switch_cnt = 37;
             while over_move_switch_cnt > 0 {
