@@ -1,6 +1,6 @@
 use crate::Node;
 use ckb_types::core::cell::{CellMeta, CellMetaBuilder};
-use ckb_types::core::{BlockView, TransactionInfo};
+use ckb_types::core::{BlockView, EpochNumberWithFraction, TransactionInfo};
 use ckb_types::packed::OutPoint;
 
 impl Node {
@@ -10,7 +10,9 @@ impl Node {
             .get_detailed_live_cell(&out_point)
             .expect("indexer get_detailed_live_cell")
             .expect("indexer should have detail for live cells");
-        let block_epoch = self.get_block(detail.block_hash.clone()).epoch();
+        // FIXME now the transaction_info.block_epoch is fake
+        // let block_epoch = self.get_block(detail.block_hash.clone()).epoch();
+        let block_epoch = EpochNumberWithFraction::new_unchecked(0, 0, 0);
         let txinfo = TransactionInfo::new(
             detail.block_number,
             block_epoch,
