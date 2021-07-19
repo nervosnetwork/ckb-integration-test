@@ -31,16 +31,7 @@ lazy_static! {
 macro_rules! item2019_to_item2021 {
     ($item2019:expr) => {{
         let raw2019 = serde_json::to_string(&$item2019).unwrap();
-        let raw2021 = raw2019
-            .replace("uncles_hash", "extra_hash")
-            .replace(
-                "\"hash_type\":\"type\"",
-                "\"hash_type\":{\"kind\":\"type\"}",
-            )
-            .replace(
-                "\"hash_type\":\"data\"",
-                "\"hash_type\":{\"kind\":\"data\",\"vm_version\":0}",
-            );
+        let raw2021 = raw2019.replace("uncles_hash", "extra_hash");
         serde_json::from_str(&raw2021).unwrap()
     }};
 }
@@ -48,16 +39,7 @@ macro_rules! item2019_to_item2021 {
 macro_rules! item2021_to_item2019 {
     ($item2021:expr) => {{
         let raw2021 = serde_json::to_string(&$item2021).unwrap();
-        let raw2019 = raw2021
-            .replace("extra_hash", "uncles_hash")
-            .replace(
-                "\"hash_type\":{\"kind\":\"type\"}",
-                "\"hash_type\":\"type\"",
-            )
-            .replace(
-                "\"hash_type\":{\"kind\":\"data\",\"vm_version\":0}",
-                "\"hash_type\":\"data\"",
-            );
+        let raw2019 = raw2021.replace("extra_hash", "uncles_hash");
         serde_json::from_str(&raw2019).unwrap()
     }};
 }
