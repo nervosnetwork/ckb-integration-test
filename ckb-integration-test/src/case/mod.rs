@@ -30,6 +30,8 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0234::discovery::RFC0234AfterSwitchDiscovery),
         Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
         Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
+
+        Box::new(rfc0222::tmp_multitxs::RFC0222MultipleTransactions),
     ]
 }
 
