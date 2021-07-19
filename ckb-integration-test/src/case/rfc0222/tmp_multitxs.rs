@@ -62,16 +62,14 @@ use crate::case::rfc0222::util::{
 use crate::case::{Case, CaseOptions};
 use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
-use ckb_testkit::util::{build_unverified_chain, BuildUnverifiedChainParam};
-use ckb_testkit::{Node, NodeOptions, Nodes};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::{
-    core::{BlockView, EpochNumber, ScriptHashType},
+    core::{EpochNumber, ScriptHashType},
     packed::Script,
     prelude::*,
 };
 
 const RFC0222_EPOCH_NUMBER: EpochNumber = 3;
-const ERROR_MULTIPLE_MATCHES: &str = "MultipleMatches";
 
 pub struct RFC0222MultipleTransactions;
 
@@ -144,13 +142,22 @@ impl Case for RFC0222MultipleTransactions {
                 .send_transaction_result(tx.data().into());
             assert!(
                 result.is_ok(),
-                "tx-{}, {:#x} is valid after 2 blocks when it been committed so it can be submitted into tx-pool, but got {:?}",
+                "tx-{} {:#x} is valid after 2 blocks when it been committed so it can be submitted into tx-pool, but got {:?}",
                 index,
                 tx.hash(),
                 result
             );
         }
-        node2021.mine(node2021.consensus().tx_proposal_window.closest.value()+1);
+        let block_template = node2021.rpc_client().get_block_template(None,None,None);
+        for (index, tx) in txs_valid_2021_only.iter().enumerate() {
+            assert!(
+                block_template.proposals.contains(&tx.proposal_short_id().into()),
+                "tx-{} {:#x} should be proposing into gap, but not",
+                index, tx.hash(),
+            );
+            ckb_testkit::info!("tx-{}.proposal_short_id: {:#x}", index, tx.proposal_short_id());
+        }
+        node2021.mine(node2021.consensus().tx_proposal_window.closest.value() + 1);
         for (index, tx) in txs_valid_2021_only.iter().enumerate() {
             assert!(
                 node2021.is_transaction_committed(tx),
