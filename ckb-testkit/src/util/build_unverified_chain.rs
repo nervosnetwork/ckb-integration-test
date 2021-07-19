@@ -34,6 +34,8 @@ impl BuildUnverifiedChainParam {
     }
 }
 
+// TODO 建议直接在参数的 node 上操作，不要额外再新建个 node。或者多个 function。
+// TODO 加 debug 日志
 pub fn build_unverified_chain(
     base_node: &Node,
     target_height: BlockNumber,
