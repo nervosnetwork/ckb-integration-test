@@ -35,16 +35,16 @@
 // 2. Construct a chain_b, height is 3002, chain_b[2998..3002] are empty block transactions.
 //   - chain_b[2997..3002].transactions is empty
 //   - chain_b[2997..3000].proposals is empty
-//   - chain_b[4501] proposed `tx_valid_2021_only_proposed`
+//   - chain_b[3001] proposed `tx_valid_2021_only_proposed`
 //   - chain_b[3002] proposed `tx_valid_2021_only_gap`
 // 3. Send chain_b to `node`, `node` will trigger reorg, 3 transactions will be detached and re-put
 //    into tx-pool.
 // 4. Check transactions statuses:
 //   - `tx_valid_2021_only_pending` is pending
-//   - `tx_valid_2021_only_gap` is gap
+//   - `tx_valid_2021_only_gap` is gap(pending)
 //   - `tx_valid_2021_only_proposed` is proposed
 // 5. Mine 1 block, check transactions statuses:
-//   - `tx_valid_2021_only_pending` is gap
+//   - `tx_valid_2021_only_pending` is gap(pending)
 //   - `tx_valid_2021_only_gap` is proposed
 //   - `tx_valid_2021_only_proposed` is committed
 // 6. Mine 1 block, check transactions statuses:
@@ -56,19 +56,21 @@
 //   - `tx_valid_2021_only_gap` is committed
 //   - `tx_valid_2021_only_proposed` is committed
 
-use crate::case::rfc0222::util::{
-    build_transaction_with_input, RFC0222CellDeployer,
-};
+use crate::case::rfc0222::util::{build_transaction_with_input, RFC0222CellDeployer};
 use crate::case::{Case, CaseOptions};
 use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
+use ckb_jsonrpc_types::TransactionTemplate;
 use ckb_testkit::util::{build_unverified_chain, BuildUnverifiedChainParam};
 use ckb_testkit::{Node, NodeOptions, Nodes};
+use ckb_types::packed::Block;
 use ckb_types::{
     core::{BlockView, EpochNumber, ScriptHashType},
     packed::Script,
     prelude::*,
 };
+use std::thread::sleep;
+use std::time::Duration;
 
 const RFC0222_EPOCH_NUMBER: EpochNumber = 3;
 const ERROR_MULTIPLE_MATCHES: &str = "MultipleMatches";
@@ -101,12 +103,11 @@ impl Case for RFC0222ReorgDetachedTransactions {
         deployer.deploy(node2021);
 
         let rfc0222_height = calc_epoch_start_number(node2021, RFC0222_EPOCH_NUMBER);
-        node2021.mine_to(rfc0222_height - 4);
-        assert_eq!(node2021.get_tip_block_number(), 2996);
+        node2021.mine_to(rfc0222_height - 3);
 
         // Build txs
-        let inputs = node2021.get_live_always_success_cells();
-        let txs_valid_2021_only = (0..2)
+        let inputs = node2021.get_spendable_always_success_cells();
+        let txs_valid_2021_only = (0..3)
             .map(|index| {
                 build_transaction_with_input(
                     &inputs[index],
@@ -127,138 +128,224 @@ impl Case for RFC0222ReorgDetachedTransactions {
             })
             .collect::<Vec<_>>();
 
+        let tx_valid_2021_only_pending = &txs_valid_2021_only[0];
+        let tx_valid_2021_only_gap = &txs_valid_2021_only[1];
+        let tx_valid_2021_only_proposed = &txs_valid_2021_only[2];
+        let chain_b = {
+            // 2. Construct a chain_b, height is 3002, chain_b[2998..3002] are empty block transactions.
+            //   - chain_b[2997..3002].transactions is empty
+            //   - chain_b[2997..3000].proposals is empty
+            //   - chain_b[3001] proposed `tx_valid_2021_only_proposed`
+            //   - chain_b[3002] proposed `tx_valid_2021_only_gap`
+            build_unverified_chain(
+                node2021,
+                rfc0222_height + 2,
+                vec![
+                    BuildUnverifiedChainParam::Proposal {
+                        block_number: rfc0222_height + 1,
+                        proposal_short_id: tx_valid_2021_only_proposed.proposal_short_id(),
+                    },
+                    BuildUnverifiedChainParam::Proposal {
+                        block_number: rfc0222_height + 2,
+                        proposal_short_id: tx_valid_2021_only_gap.proposal_short_id(),
+                    },
+                ],
+            )
+        };
+
         {
+            // 1. `node` runs chain_a, height is 3001
+            //   - after chain_a[2997], before chain_a[2998], send `tx_valid_2021_only_pending`,
+            //     `tx_valid_2021_only_gap`, `tx_valid_2021_only_proposed` into tx-pool, it should be ok
+            //     because these transactions is invalid after 2 blocks when them been committed.
+            assert_eq!(node2021.get_tip_block_number(), 2997);
+            assert_eq!(
+                calc_epoch_start_number(node2021, RFC0222_EPOCH_NUMBER)
+                    - node2021.consensus().tx_proposal_window.closest.value()
+                    - 1,
+                2997
+            );
             for tx in txs_valid_2021_only.iter() {
                 let result = node2021
                     .rpc_client()
                     .send_transaction_result(tx.data().into());
                 assert!(
-                    result.is_err(),
-                    "node {}, tx is invalid after 2 blocks when it been committed, but got {:?}",
+                    result.is_ok(),
+                    "node {}, tx {:#x} is valid after 2 blocks when it been committed so it can be submitted into tx-pool, but got {:?}",
                     node2021.node_name(),
+                    tx.hash(),
                     result
                 );
             }
         }
+        {
+            // God knows why not all txs been proposed into gap
+            let mut block_template = node2021.rpc_client().get_block_template(None, None, None);
+            block_template.proposals = txs_valid_2021_only
+                .iter()
+                .map(|tx| tx.proposal_short_id().into())
+                .collect();
+            let block = Block::from(block_template).into_view();
+            node2021.submit_block(&block);
+        }
 
-        //   - after chain_a[2997], before chain_a[2998], send `tx_valid_2021_only_pending`,
-        //     `tx_valid_2021_only_gap`, `tx_valid_2021_only_proposed` into tx-pool, it should be ok
-        //     because these transactions is invalid after 2 blocks when them been committed.
-        node2021.mine(1);
-        assert_eq!(node2021.get_tip_block_number(), 2997);
-        assert_eq!(
-            calc_epoch_start_number(node2021, RFC0222_EPOCH_NUMBER)
-                - node2021.consensus().tx_proposal_window.closest.value()
-                - 1,
-            2997
-        );
-        for tx in txs_valid_2021_only.iter() {
-            let result = node2021
+        // TODO should remove out this part
+        {
+            let mut block_template = node2021.rpc_client().get_block_template(None, None, None);
+            block_template.transactions = txs_valid_2021_only
+                .iter()
+                .map(|tx| TransactionTemplate {
+                    hash: tx.hash().unpack(),
+                    data: tx.data().into(),
+                    ..Default::default()
+                })
+                .collect();
+            block_template.dao = node2021
                 .rpc_client()
-                .send_transaction_result(tx.data().into());
-            assert!(
-                result.is_ok(),
-                "node {}, tx {:#x} is valid after 2 blocks when it been committed so it can be submitted into tx-pool, but got {:?}",
-                node2021.node_name(),
-                tx.hash(),
-                result
-            );
-            ckb_testkit::info!("bilibili result: {:#x}", result.unwrap());
-        }
-        // TODO should be +1
-        node2021.mine(node2021.consensus().tx_proposal_window.closest.value()+2);
-        for tx in txs_valid_2021_only.iter() {
-            assert!(
-                node2021.is_transaction_committed(tx),
-                "node {} should commit tx {:#x}, but got {:?}",
-                node2021.node_name(), tx.hash(), node2021.rpc_client().get_transaction(tx.hash()),
-            );
-        }
-    }
-}
-
-impl RFC0222ReorgDetachedTransactions {
-    pub fn check_reorg(
-        case_id: &str,
-        node2021: &Node,
-        chain_a: Vec<BlockView>,
-        chain_b: Vec<BlockView>,
-        expected: Result<(), String>,
-    ) {
-        let chain_a_tip_number = chain_a
-            .last()
-            .map(|block| block.number())
-            .expect("should be ok");
-        let chain_a_tip_hash = chain_a
-            .last()
-            .map(|block| block.hash())
-            .expect("should be ok");
-        let chain_b_tip_number = chain_b
-            .last()
-            .map(|block| block.number())
-            .expect("should be ok");
-        let chain_b_tip_hash = chain_b
-            .last()
-            .map(|block| block.hash())
-            .expect("should be ok");
-
-        // chain_b must be longer than chain_a, it is condition to trigger reorg
-        assert!(chain_b_tip_number > chain_a_tip_number);
-
-        for block in chain_a {
+                .calculate_dao_field(block_template.clone())
+                .into();
+            let block = Block::from(block_template).into_view();
             let result = node2021
                 .rpc_client()
                 .submit_block("".to_string(), block.data().into());
             assert!(
-                result.is_ok(),
-                "at case \"{}\", sending chain_a's block to {} should be ok, but got {:?}",
-                case_id,
-                node2021.node_name(),
-                result
+                result.is_err(),
+                "block.number = {}, txs is invalid at present, but got ok",
+                block.number()
             );
         }
-        assert_eq!(chain_a_tip_number, node2021.get_tip_block().number());
-        assert_eq!(chain_a_tip_hash, node2021.get_tip_block().hash());
 
-        let mut expected_reorg_failed_error = None;
-        for block in chain_b {
-            if expected.is_ok() {
-                node2021.submit_block(&block);
-            } else {
-                let _ = node2021
-                    .rpc_client()
-                    .submit_block("".to_string(), block.data().into())
-                    .map_err(|err| {
-                        if expected_reorg_failed_error.is_none() {
-                            expected_reorg_failed_error = Some(err);
-                        }
-                    });
+        // Make txs be committed
+        {
+            // TODO add mining util
+            // God knows why not all txs been committed
+            node2021.mine(1);
+            let mut block_template = node2021.rpc_client().get_block_template(None, None, None);
+            block_template.transactions = txs_valid_2021_only
+                .iter()
+                .map(|tx| TransactionTemplate {
+                    hash: tx.hash().unpack(),
+                    data: tx.data().into(),
+                    ..Default::default()
+                })
+                .collect();
+            block_template.dao = node2021
+                .rpc_client()
+                .calculate_dao_field(block_template.clone())
+                .into();
+            let block = Block::from(block_template).into_view();
+
+            node2021.submit_block(&block);
+            for tx in txs_valid_2021_only.iter() {
+                assert!(
+                    node2021.is_transaction_committed(tx),
+                    "node {} should commit tx {:#x}, but got {:?}",
+                    node2021.node_name(),
+                    tx.hash(),
+                    node2021.rpc_client().get_transaction(tx.hash()),
+                );
             }
         }
 
-        if expected.is_ok() {
-            assert_eq!(chain_b_tip_number, node2021.get_tip_block().number());
-            assert_eq!(chain_b_tip_hash, node2021.get_tip_block().hash());
-        } else if let Err(errmsg) = expected {
+        {
+            // 3. Send chain_b to `node`, `node` will trigger reorg, 3 transactions will be detached and re-put
+            //    into tx-pool.
+            let chain_b_last_hash = chain_b.last().map(|block| block.hash()).unwrap();
+            chain_b.iter().for_each(|block| {
+                node2021.submit_block(block);
+            });
+            assert_eq!(node2021.get_tip_block().hash(), chain_b_last_hash);
+        }
+
+        {
+            // 4. Check transactions statuses:
+            //   - `tx_valid_2021_only_pending` is pending
+            //   - `tx_valid_2021_only_gap` is gap
+            //   - `tx_valid_2021_only_proposed` is proposed
             assert!(
-                expected_reorg_failed_error.is_some(),
-                "at case \"{}\", expected error contains errmsg \"{}\", but got ok",
-                case_id,
-                errmsg,
+                node2021.is_transaction_pending(&tx_valid_2021_only_pending),
+                "actual tx_valid_2021_only_pending is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_pending.hash())
             );
             assert!(
-                expected_reorg_failed_error
-                    .as_ref()
-                    .unwrap()
-                    .to_string()
-                    .contains(&errmsg),
-                "at case \"{}\", expected error contains errmsg\"{}\", but got {:?}",
-                case_id,
-                errmsg,
-                expected_reorg_failed_error.unwrap(),
+                node2021.is_transaction_pending(&tx_valid_2021_only_gap),
+                "actual tx_valid_2021_only_gap is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_gap.hash())
             );
-            assert_ne!(chain_b_tip_number, node2021.get_tip_block().number());
-            assert_ne!(chain_b_tip_hash, node2021.get_tip_block().hash());
+            assert!(
+                node2021.is_transaction_proposed(&tx_valid_2021_only_proposed),
+                "actual tx_valid_2021_only_proposed is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_proposed.hash())
+            );
+        }
+        {
+            // 5. Mine 1 block, check transactions statuses:
+            //   - `tx_valid_2021_only_pending` is gap
+            //   - `tx_valid_2021_only_gap` is proposed
+            //   - `tx_valid_2021_only_proposed` is committed
+            node2021.mine(1);
+            assert!(
+                node2021.is_transaction_pending(&tx_valid_2021_only_pending),
+                "actual tx_valid_2021_only_pending is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_pending.hash())
+            );
+            assert!(
+                node2021.is_transaction_proposed(&tx_valid_2021_only_gap),
+                "actual tx_valid_2021_only_gap is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_gap.hash())
+            );
+            assert!(
+                node2021.is_transaction_committed(&tx_valid_2021_only_proposed),
+                "actual tx_valid_2021_only_proposed is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_proposed.hash())
+            );
+        }
+        {
+            // 6. Mine 1 block, check transactions statuses:
+            //   - `tx_valid_2021_only_pending` is proposed
+            //   - `tx_valid_2021_only_gap` is committed
+            //   - `tx_valid_2021_only_proposed` is committed
+            node2021.mine(1);
+            assert!(
+                node2021.is_transaction_proposed(&tx_valid_2021_only_pending),
+                "actual tx_valid_2021_only_pending is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_pending.hash())
+            );
+            assert!(
+                node2021.is_transaction_committed(&tx_valid_2021_only_gap),
+                "actual tx_valid_2021_only_gap is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_gap.hash())
+            );
+        }
+        {
+            // 7. Mine 1 block, check transactions statuses:
+            //   - `tx_valid_2021_only_pending` is committed
+            //   - `tx_valid_2021_only_gap` is committed
+            //   - `tx_valid_2021_only_proposed` is committed
+            node2021.mine(1);
+            assert!(
+                node2021.is_transaction_committed(&tx_valid_2021_only_pending),
+                "actual tx_valid_2021_only_pending is {:?}",
+                node2021
+                    .rpc_client()
+                    .get_transaction(tx_valid_2021_only_pending.hash())
+            );
         }
     }
 }
