@@ -38,7 +38,7 @@ impl Case for RFC0223AfterSwitch {
 
         node2021.mine_to(calc_epoch_start_number(node2021, RFC0223_EPOCH_NUMBER));
         let current_block_epoch = node2021.get_tip_block().epoch();
-        let cells = node2021.get_live_always_success_cells();
+        let cells = node2021.get_spendable_always_success_cells();
         assert!(cells.len() >= 4);
 
         let build_transaction = |input: &CellMeta, since: u64| {

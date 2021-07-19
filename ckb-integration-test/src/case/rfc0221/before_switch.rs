@@ -60,7 +60,7 @@ impl Case for RFC0221BeforeSwitch {
             // Use the last live cell as input to make sure the constructed
             // transaction cannot pass the "since verification" at short future
             node2019.mine(1);
-            let mut cells = node2019.get_live_always_success_cells();
+            let mut cells = node2019.get_spendable_always_success_cells();
             cells.pop().expect("pop last cell")
         };
         let input_block_number = input

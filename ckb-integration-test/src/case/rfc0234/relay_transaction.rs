@@ -69,7 +69,7 @@ impl Case for RFC0234AfterSwitchRelayTransaction {
             .nodes()
             .filter(|node| node.node_options().ckb_binary == *CKB2021.read().unwrap())
             .collect::<Vec<_>>();
-        let cells = node2019.get_live_always_success_cells();
+        let cells = node2019.get_spendable_always_success_cells();
         let tx1 = generate_transaction(node2019, &cells[0]);
         let tx2 = generate_transaction(node2019, &cells[1]);
 

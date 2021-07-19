@@ -49,7 +49,7 @@ impl Case for RFC0240AfterSwitch {
 
         let tip_hash = node2021.get_tip_block().hash();
         let tx = {
-            let input = node2021.get_live_always_success_cells()[0].to_owned();
+            let input = node2021.get_spendable_always_success_cells()[0].to_owned();
             let tx = node2021.always_success_transaction(&input);
             tx.as_advanced_builder().header_dep(tip_hash).build()
         };

@@ -56,7 +56,7 @@ impl Case for RFC0221AfterSwitch {
             // Use the last live cell as input to make sure the constructed
             // transaction cannot pass the "since verification" at short future
             node2021
-                .get_live_always_success_cells()
+                .get_spendable_always_success_cells()
                 .pop()
                 .expect("last live cell")
         };

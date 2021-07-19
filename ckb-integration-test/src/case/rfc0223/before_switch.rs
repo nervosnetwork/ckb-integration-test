@@ -52,7 +52,7 @@ impl Case for RFC0223BeforeSwitch {
         nodes.waiting_for_sync().expect("nodes should be synced");
 
         let current_block_epoch = node2021.get_tip_block().epoch();
-        let cells = node2019.get_live_always_success_cells();
+        let cells = node2019.get_spendable_always_success_cells();
         assert!(cells.len() >= 4);
 
         let build_transaction = |input: &CellMeta, since: u64| {

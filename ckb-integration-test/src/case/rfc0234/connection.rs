@@ -121,7 +121,7 @@ impl Case for RFC0234AfterSwitchConnection {
         // TODO Actually, the below check is for RelayProtocol
         // let node2021_non_hardfork = nodes.get_node("node2021_non_hardfork");
         // let tx = {
-        //     let input = node2021.get_live_always_success_cells()[0].to_owned();
+        //     let input = node2021.get_spendable_always_success_cells()[0].to_owned();
         //     node2021.always_success_transaction(&input)
         // };
         // node2021.submit_transaction(&tx);
