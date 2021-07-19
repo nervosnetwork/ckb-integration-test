@@ -100,7 +100,6 @@ impl Case for RFC0222MultipleTransactions {
 
         let rfc0222_height = calc_epoch_start_number(node2021, RFC0222_EPOCH_NUMBER);
         node2021.mine_to(rfc0222_height - 3);
-        assert_eq!(node2021.get_tip_block_number(), 2997);
 
         // Build txs
         let inputs = node2021.get_spendable_always_success_cells();
@@ -126,16 +125,6 @@ impl Case for RFC0222MultipleTransactions {
             })
             .collect::<Vec<_>>();
 
-        //   - after chain_a[2997], before chain_a[2998], send `tx_valid_2021_only_pending`,
-        //     `tx_valid_2021_only_gap`, `tx_valid_2021_only_proposed` into tx-pool, it should be ok
-        //     because these transactions is invalid after 2 blocks when them been committed.
-        assert_eq!(node2021.get_tip_block_number(), 2997);
-        assert_eq!(
-            calc_epoch_start_number(node2021, RFC0222_EPOCH_NUMBER)
-                - node2021.consensus().tx_proposal_window.closest.value()
-                - 1,
-            2997
-        );
         for (index, tx) in txs_valid_2021_only.iter().enumerate() {
             let result = node2021
                 .rpc_client()
