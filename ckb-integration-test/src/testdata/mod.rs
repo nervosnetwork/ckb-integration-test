@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub const TESTDATA_DIR: &str = "./testdata";
 
 mod epoch2;
+mod height100000;
 mod height13;
 
 pub trait Testdata {
@@ -18,6 +19,7 @@ pub fn all_testdata_generators() -> Vec<Box<dyn Testdata>> {
     vec![
         Box::new(height13::Height13TestData),
         Box::new(epoch2::Epoch2TestData),
+        // Box::new(height100000::Height100000TestData),
     ]
 }
 
