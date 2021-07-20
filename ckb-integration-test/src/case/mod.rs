@@ -14,6 +14,7 @@ use ckb_testkit::Nodes;
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
         Box::new(basic::networking::BasicNetworking),
+        Box::new(basic::large_dep_group::LargeDepGroup),
         Box::new(rfc0221::before_switch::RFC0221BeforeSwitch),
         Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
         Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
