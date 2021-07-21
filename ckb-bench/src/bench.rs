@@ -1,6 +1,6 @@
 use crate::config::TransactionConfig;
 use ckb_testkit::{Node, User};
-use ckb_types::core::TransactionBuilder;
+use ckb_types::core::{TransactionBuilder, TransactionView};
 use ckb_types::packed::{CellDep, CellOutput};
 use ckb_types::{
     core::cell::CellMeta,
@@ -15,21 +15,19 @@ use std::time::Instant;
 pub struct LiveCellProducer {
     users: Vec<User>,
     nodes: Vec<Node>,
-    producer: Sender<CellMeta>,
     seen_out_points: LruCache<OutPoint, Instant>,
 }
 
 impl LiveCellProducer {
-    pub fn new(users: Vec<User>, nodes: Vec<Node>, producer: Sender<CellMeta>) -> Self {
+    pub fn new(users: Vec<User>, nodes: Vec<Node>) -> Self {
         Self {
             users,
             nodes,
-            producer,
             seen_out_points: LruCache::new(1000_000),
         }
     }
 
-    pub fn run(mut self) {
+    pub fn run(mut self, live_cell_sender: Sender<CellMeta>) {
         loop {
             // TODO Reduce useless travels
             // sleep(Duration::from_secs(1));
@@ -44,17 +42,14 @@ impl LiveCellProducer {
                 for cell in live_cells {
                     self.seen_out_points
                         .put(cell.out_point.clone(), Instant::now());
-                    let _ = self.producer.send(cell);
+                    let _ignore = live_cell_sender.send(cell);
                 }
             }
         }
     }
 }
 
-// TODO (CellMeta, Witness)
-pub struct TransactionEmitter {
-    nodes: Vec<Node>,
-    live_cell_receiver: Receiver<CellMeta>,
+pub struct TransactionProducer {
     tx_config: TransactionConfig,
     cell_deps: Vec<CellDep>,
     // #{ lock_hash => user }
@@ -65,22 +60,14 @@ pub struct TransactionEmitter {
     backlogs: HashMap<OutPoint, CellMeta>,
 }
 
-impl TransactionEmitter {
-    pub fn new(
-        users: Vec<User>,
-        nodes: Vec<Node>,
-        live_cell_receiver: Receiver<CellMeta>,
-        tx_config: TransactionConfig,
-        cell_deps: Vec<CellDep>,
-    ) -> Self {
+impl TransactionProducer {
+    pub fn new(users: Vec<User>, tx_config: TransactionConfig, cell_deps: Vec<CellDep>) -> Self {
         let users = users
             .into_iter()
             .map(|user| (user.single_secp256k1_lock_hash(), user))
             .collect();
         Self {
             users,
-            nodes,
-            live_cell_receiver,
             tx_config,
             cell_deps,
             live_cells: HashMap::new(),
@@ -88,8 +75,12 @@ impl TransactionEmitter {
         }
     }
 
-    pub fn run(mut self) {
-        while let Ok(live_cell) = self.live_cell_receiver.recv() {
+    pub fn run(
+        mut self,
+        live_cell_receiver: Receiver<CellMeta>,
+        transaction_sender: Sender<TransactionView>,
+    ) {
+        while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = live_cell.cell_output.calc_lock_hash();
             match self.live_cells.entry(lock_hash) {
                 std::collections::hash_map::Entry::Occupied(entry) => {
@@ -132,7 +123,7 @@ impl TransactionEmitter {
                         .pack()
                 });
                 let signed_tx = raw_tx.as_advanced_builder().witnesses(witnesses).build();
-                self.nodes[0].submit_transaction(&signed_tx);
+                let _ignore = transaction_sender.send(signed_tx);
 
                 let mut backlogs = HashMap::new();
                 std::mem::swap(&mut self.backlogs, &mut backlogs);

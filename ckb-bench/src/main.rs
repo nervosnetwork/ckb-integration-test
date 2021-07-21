@@ -1,8 +1,9 @@
 mod bench;
 mod config;
 mod prepare;
+mod watcher;
 
-use crate::bench::{LiveCellProducer, TransactionEmitter};
+use crate::bench::{LiveCellProducer, TransactionProducer};
 use crate::prepare::{collect, dispatch, generate_privkeys};
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
@@ -163,21 +164,23 @@ fn main() {
                     .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
                     .collect::<Vec<_>>()
             };
-            let (sender, receiver) = unbounded();
-            let live_cell_producer =
-                LiveCellProducer::new(borrowers.clone(), nodes.clone(), sender);
+            let (live_cell_sender, live_cell_receiver) = unbounded();
+            let (transaction_sender, transaction_receiver) = unbounded();
+            let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
             spawn(move || {
-                live_cell_producer.run();
+                live_cell_producer.run(live_cell_sender);
             });
             for case in spec.cases {
-                let transaction_emitter = TransactionEmitter::new(
+                let transaction_producer = TransactionProducer::new(
                     borrowers.clone(),
-                    nodes.clone(),
-                    receiver.clone(),
                     case.transaction_config.clone(),
                     vec![borrowers[0].single_secp256k1_cell_dep()],
                 );
-                transaction_emitter.run();
+                let live_cell_receiver_ = live_cell_receiver.clone();
+                let transaction_sender_ = transaction_sender.clone();
+                let join_handle = spawn(move || {
+                    transaction_producer.run(live_cell_receiver_, transaction_sender_);
+                });
             }
         }
         _ => {
