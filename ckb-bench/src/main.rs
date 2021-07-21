@@ -165,7 +165,6 @@ fn main() {
                     .collect::<Vec<_>>()
             };
             let (live_cell_sender, live_cell_receiver) = unbounded();
-            let (transaction_sender, transaction_receiver) = unbounded();
             let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
             spawn(move || {
                 live_cell_producer.run(live_cell_sender);
@@ -176,10 +175,10 @@ fn main() {
                     case.transaction_config.clone(),
                     vec![borrowers[0].single_secp256k1_cell_dep()],
                 );
+                let (transaction_sender, transaction_receiver) = unbounded();
                 let live_cell_receiver_ = live_cell_receiver.clone();
-                let transaction_sender_ = transaction_sender.clone();
                 let join_handle = spawn(move || {
-                    transaction_producer.run(live_cell_receiver_, transaction_sender_);
+                    transaction_producer.run(live_cell_receiver_, transaction_sender);
                 });
             }
         }

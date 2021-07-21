@@ -123,7 +123,11 @@ impl TransactionProducer {
                         .pack()
                 });
                 let signed_tx = raw_tx.as_advanced_builder().witnesses(witnesses).build();
-                let _ignore = transaction_sender.send(signed_tx);
+
+                if transaction_sender.send(signed_tx).is_err() {
+                    // SendError occurs, the corresponding transaction receiver is dead
+                    return;
+                }
 
                 let mut backlogs = HashMap::new();
                 std::mem::swap(&mut self.backlogs, &mut backlogs);
