@@ -16,3 +16,4 @@ ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56
 lazy_static = "1.4.0"
 log = "0.4"
 ckb-testkit = { path = "../ckb-testkit" }
+rand = "0.8.4"
