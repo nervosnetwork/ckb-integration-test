@@ -38,7 +38,6 @@ impl Url {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Spec {
     pub working_dir: PathBuf,
-    pub cases: Vec<CaseConfig>,
     pub chain: ChainConfig,
 }
 
@@ -50,24 +49,6 @@ pub struct ChainConfig {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct MinerConfig {
     pub block_time_millis: u64,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct CaseConfig {
-    pub transaction_config: TransactionConfig,
-    pub method_to_eval_net_stable: Option<MethodToEvalNetStable>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub enum MethodToEvalNetStable {
-    #[allow(dead_code)]
-    RecentBlocktxnsNearly { window: u64, margin: u64 },
-    #[allow(dead_code)]
-    CustomBlocksElapsed { warmup: u64, window: u64 },
-    #[allow(dead_code)]
-    Never,
-    #[allow(dead_code)]
-    TimedTask { duration_time: u64 },
 }
 
 impl Spec {
@@ -88,9 +69,4 @@ impl Spec {
         });
         spec
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-pub struct TransactionConfig {
-    pub n_outputs: usize,
 }

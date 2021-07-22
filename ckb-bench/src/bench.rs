@@ -1,4 +1,3 @@
-use crate::config::TransactionConfig;
 use ckb_testkit::{Node, User};
 use ckb_types::core::{TransactionBuilder, TransactionView};
 use ckb_types::packed::{CellDep, CellOutput};
@@ -50,7 +49,6 @@ impl LiveCellProducer {
 }
 
 pub struct TransactionProducer {
-    tx_config: TransactionConfig,
     cell_deps: Vec<CellDep>,
     // #{ lock_hash => user }
     users: HashMap<Byte32, User>,
@@ -61,14 +59,13 @@ pub struct TransactionProducer {
 }
 
 impl TransactionProducer {
-    pub fn new(users: Vec<User>, tx_config: TransactionConfig, cell_deps: Vec<CellDep>) -> Self {
+    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>) -> Self {
         let users = users
             .into_iter()
             .map(|user| (user.single_secp256k1_lock_hash(), user))
             .collect();
         Self {
             users,
-            tx_config,
             cell_deps,
             live_cells: HashMap::new(),
             backlogs: HashMap::new(),
@@ -93,7 +90,7 @@ impl TransactionProducer {
                 }
             }
 
-            if self.live_cells.len() >= self.tx_config.n_outputs {
+            if self.live_cells.len() >= self.users.len() {
                 let mut live_cells = HashMap::new();
                 std::mem::swap(&mut self.live_cells, &mut live_cells);
 

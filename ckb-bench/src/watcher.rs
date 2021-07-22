@@ -1,4 +1,4 @@
-use ckb_testkit::{Node, Nodes};
+use ckb_testkit::Nodes;
 use ckb_types::core::{BlockNumber, HeaderView};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;

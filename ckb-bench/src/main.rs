@@ -5,6 +5,7 @@ mod watcher;
 
 use crate::bench::{LiveCellProducer, TransactionProducer};
 use crate::prepare::{collect, dispatch, generate_privkeys};
+use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
 use ckb_types::{packed::Byte32, prelude::*};
@@ -16,7 +17,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
 use std::thread::{sleep, spawn};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[macro_export]
 macro_rules! prompt_and_exit {
@@ -165,21 +166,61 @@ fn main() {
                     .collect::<Vec<_>>()
             };
             let (live_cell_sender, live_cell_receiver) = unbounded();
+            let (transaction_sender, transaction_receiver) = unbounded();
+
             let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
             spawn(move || {
                 live_cell_producer.run(live_cell_sender);
             });
-            for case in spec.cases {
-                let transaction_producer = TransactionProducer::new(
-                    borrowers.clone(),
-                    case.transaction_config.clone(),
-                    vec![borrowers[0].single_secp256k1_cell_dep()],
-                );
-                let (transaction_sender, transaction_receiver) = unbounded();
-                let live_cell_receiver_ = live_cell_receiver.clone();
-                let join_handle = spawn(move || {
-                    transaction_producer.run(live_cell_receiver_, transaction_sender);
-                });
+
+            let transaction_producer = TransactionProducer::new(
+                borrowers.clone(),
+                vec![borrowers[0].single_secp256k1_cell_dep()],
+            );
+            spawn(move || {
+                transaction_producer.run(live_cell_receiver, transaction_sender);
+            });
+
+            let watcher = Watcher::new(nodes.clone().into());
+            let mut max_delay_ms = 1000u64;
+            let mut min_delay_ms = 0u64;
+            let mut best_tps = 0;
+            while max_delay_ms > min_delay_ms {
+                let delay_ms = (max_delay_ms + min_delay_ms) / 2;
+
+                while !watcher.is_zero_load() {
+                    sleep(Duration::from_secs(10));
+                    ckb_testkit::info!(
+                        "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
+                        watcher.get_fixed_header().number()
+                    );
+                }
+
+                let zero_load_number = watcher.get_fixed_header().number();
+                let mut start_time = Instant::now();
+                while let Ok(tx) = transaction_receiver.recv() {
+                    // TODO send transactions to multiple node
+                    let result = nodes[0]
+                        .rpc_client()
+                        .send_transaction_result(tx.data().into());
+                    if let Err(err) = result {
+                        ckb_testkit::error!("failed to send {:#x}, error: {:?}", tx.hash(), err);
+                    }
+
+                    if start_time.elapsed() > Duration::from_secs(60) {
+                        start_time = Instant::now();
+                        if watcher.is_steady_load(zero_load_number) {
+                            break;
+                        }
+                    }
+                }
+
+                let tps = watcher.calc_recent_metrics(zero_load_number).tps;
+                if tps > best_tps {
+                    best_tps = tps;
+                    max_delay_ms = delay_ms;
+                } else {
+                }
             }
         }
         _ => {
@@ -244,6 +285,15 @@ fn clap_app() -> ArgMatches<'static> {
                         .takes_value(true)
                         .multiple(true)
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("n_borrowers")
+                        .long("n_borrowers")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .help("number of borrowers")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
         )
         .subcommand(
