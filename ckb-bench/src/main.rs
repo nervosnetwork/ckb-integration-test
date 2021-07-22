@@ -148,6 +148,7 @@ fn main() {
                 })
                 .collect::<Vec<_>>();
             let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
+            let delay_ms = value_t_or_exit!(arguments, "delay_ms", u64);
             let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
             });
@@ -182,46 +183,41 @@ fn main() {
             });
 
             let watcher = Watcher::new(nodes.clone().into());
-            let mut max_delay_ms = 1000u64;
-            let mut min_delay_ms = 0u64;
-            let mut best_tps = 0;
-            while max_delay_ms > min_delay_ms {
-                let delay_ms = (max_delay_ms + min_delay_ms) / 2;
+            while !watcher.is_zero_load() {
+                sleep(Duration::from_secs(10));
+                ckb_testkit::info!(
+                    "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
+                    watcher.get_fixed_header().number()
+                );
+            }
 
-                while !watcher.is_zero_load() {
-                    sleep(Duration::from_secs(10));
-                    ckb_testkit::info!(
-                        "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
-                        watcher.get_fixed_header().number()
-                    );
+            let zero_load_number = watcher.get_fixed_header().number();
+            let mut i = 0;
+            let mut start_time = Instant::now();
+            let t_delay = Duration::from_millis(delay_ms);
+            while let Ok(tx) = transaction_receiver.recv() {
+                if t_delay.as_millis() != 0 {
+                    sleep(t_delay);
                 }
 
-                let zero_load_number = watcher.get_fixed_header().number();
-                let mut start_time = Instant::now();
-                while let Ok(tx) = transaction_receiver.recv() {
-                    // TODO send transactions to multiple node
-                    let result = nodes[0]
-                        .rpc_client()
-                        .send_transaction_result(tx.data().into());
-                    if let Err(err) = result {
-                        ckb_testkit::error!("failed to send {:#x}, error: {:?}", tx.hash(), err);
-                    }
-
-                    if start_time.elapsed() > Duration::from_secs(60) {
-                        start_time = Instant::now();
-                        if watcher.is_steady_load(zero_load_number) {
-                            break;
-                        }
-                    }
+                i = (i + 1) % nodes.len();
+                let result = nodes[i]
+                    .rpc_client()
+                    .send_transaction_result(tx.data().into());
+                if let Err(err) = result {
+                    ckb_testkit::error!("failed to send {:#x}, error: {:?}", tx.hash(), err);
                 }
 
-                let tps = watcher.calc_recent_metrics(zero_load_number).tps;
-                if tps > best_tps {
-                    best_tps = tps;
-                    max_delay_ms = delay_ms;
-                } else {
+                if start_time.elapsed() > Duration::from_secs(60) {
+                    start_time = Instant::now();
+                    if watcher.is_steady_load(zero_load_number) {
+                        break;
+                    }
                 }
             }
+
+            let metrics = watcher.calc_recent_metrics(zero_load_number);
+            ckb_testkit::info!("result: {:?}", metrics);
         }
         _ => {
             eprintln!("wrong usage");
@@ -292,6 +288,15 @@ fn clap_app() -> ArgMatches<'static> {
                         .value_name("NUMBER")
                         .takes_value(true)
                         .help("number of borrowers")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("delay_ms")
+                        .long("delay_ms")
+                        .value_name("TIME")
+                        .takes_value(true)
+                        .help("delay of sending transactions in milliseconds")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
