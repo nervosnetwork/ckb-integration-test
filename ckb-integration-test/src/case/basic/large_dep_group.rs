@@ -1,17 +1,18 @@
 use crate::case::{Case, CaseOptions};
 use crate::CKB2021;
+use ckb_jsonrpc_types::TransactionTemplate;
 use ckb_testkit::NodeOptions;
 use ckb_testkit::Nodes;
 use ckb_types::core::cell::CellMeta;
 use ckb_types::core::{Capacity, DepType, TransactionBuilder, TransactionView};
-use ckb_types::packed::{CellDep, CellDepBuilder, CellInput, CellOutput, OutPoint, OutPointVec};
+use ckb_types::packed::{Block, CellDepBuilder, CellInput, CellOutput, OutPoint, OutPointVec};
 use ckb_types::prelude::*;
 use rand::{thread_rng, Rng};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-const N_DEP_GROUPS: usize = 1;
-const N_TRANSACTIONS_PER_DEP_GROUP: usize = 100;
+const N_DEP_GROUPS: usize = 1400;
+const N_TRANSACTIONS_PER_DEP_GROUP: usize = 1;
 
 pub struct LargeDepGroup;
 
@@ -130,20 +131,71 @@ impl Case for LargeDepGroup {
                 N_TRANSACTIONS_PER_DEP_GROUP
             );
             for n_deps in vec_n_out_points.clone() {
-                let txs = n_deps_txs.get(&n_deps).unwrap();
-                let start_time = Instant::now();
-                for tx in txs.iter() {
-                    node2021.submit_transaction(tx);
+                // {
+                //     // test send_transaction
+                //     let txs = n_deps_txs.get(&n_deps).unwrap();
+                //     let start_time = Instant::now();
+                //     for tx in txs.iter() {
+                //         node2021.submit_transaction(tx);
+                //     }
+                //     let elapsed = start_time.elapsed();
+                //     ckb_testkit::info!(
+                //         "send {}({} * {}) txs with {:5}-dep-groups, elapsed: {}ms",
+                //         txs.len(),
+                //         N_DEP_GROUPS,
+                //         N_TRANSACTIONS_PER_DEP_GROUP,
+                //         n_deps,
+                //         elapsed.as_millis()
+                //     );
+                // }
+                {
+                    // test submit block
+                    let txs = n_deps_txs.get(&n_deps).unwrap();
+
+                    {
+                        let mut template =
+                            node2021.rpc_client().get_block_template(None, None, None);
+                        template.proposals =
+                            txs.iter().map(|tx| tx.proposal_short_id().into()).collect();
+                        template.dao = node2021
+                            .rpc_client()
+                            .calculate_dao_field(template.clone())
+                            .into();
+                        let block = Block::from(template).into_view();
+                        node2021.submit_block(&block);
+
+                        node2021.mine(2);
+                    }
+
+                    {
+                        let mut template =
+                            node2021.rpc_client().get_block_template(None, None, None);
+                        template.transactions = txs
+                            .iter()
+                            .map(|tx| TransactionTemplate {
+                                hash: tx.hash().unpack(),
+                                data: tx.data().into(),
+                                ..Default::default()
+                            })
+                            .collect();
+                        template.dao = node2021
+                            .rpc_client()
+                            .calculate_dao_field(template.clone())
+                            .into();
+                        let block = Block::from(template).into_view();
+                        let start_time = Instant::now();
+                        node2021.submit_block(&block);
+                        let elapsed = start_time.elapsed();
+                        ckb_testkit::info!(
+                            "submit a block containing {}({} * {}) txs with {:5}-dep-groups, elapsed: {}ms",
+                            txs.len(),
+                            N_DEP_GROUPS,
+                            N_TRANSACTIONS_PER_DEP_GROUP,
+                            n_deps,
+                            elapsed.as_millis()
+                        );
+                    }
                 }
-                let elapsed = start_time.elapsed();
-                ckb_testkit::info!(
-                    "send {}({} * {}) txs with {:5}-dep-groups, elapsed: {}ms",
-                    txs.len(),
-                    N_DEP_GROUPS,
-                    N_TRANSACTIONS_PER_DEP_GROUP,
-                    n_deps,
-                    elapsed.as_millis()
-                );
             }
         }
     }
