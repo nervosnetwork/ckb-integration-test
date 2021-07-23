@@ -10,8 +10,8 @@ use rand::{thread_rng, Rng};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-const N_DEP_GROUPS: usize = 100;
-const N_TRANSACTIONS_PER_DEP_GROUP: usize = 1;
+const N_DEP_GROUPS: usize = 1;
+const N_TRANSACTIONS_PER_DEP_GROUP: usize = 100;
 
 pub struct LargeDepGroup;
 
@@ -46,7 +46,7 @@ impl Case for LargeDepGroup {
 
         let mut rng = thread_rng();
         let mut dep_groups = HashSet::new();
-        let vec_n_out_points = vec![8, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+        let vec_n_out_points = vec![8, 32, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 256];
 
         for n_out_points in vec_n_out_points.clone() {
             for _ in 0..N_DEP_GROUPS {
@@ -137,7 +137,7 @@ impl Case for LargeDepGroup {
                 }
                 let elapsed = start_time.elapsed();
                 ckb_testkit::info!(
-                    "send {}({} * {}) txs with {}-dep-groups, elapsed: {}ms",
+                    "send {}({} * {}) txs with {:5}-dep-groups, elapsed: {}ms",
                     txs.len(),
                     N_DEP_GROUPS,
                     N_TRANSACTIONS_PER_DEP_GROUP,
