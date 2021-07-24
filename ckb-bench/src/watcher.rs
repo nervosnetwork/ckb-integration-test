@@ -63,7 +63,12 @@ impl Watcher {
     }
 
     pub fn is_steady_load(&self, zero_load_number: BlockNumber) -> bool {
-        zero_load_number + N_BLOCKS as u64 * 2 <= self.nodes.get_fixed_header().number()
+        if zero_load_number + N_BLOCKS as u64 * 2 <= self.nodes.get_fixed_header().number() {
+            // TODO update the is-steady-load logic
+            !self.is_zero_load()
+        } else {
+            false
+        }
     }
 
     pub fn calc_recent_metrics(&self, zero_load_number: BlockNumber) -> Metrics {
@@ -71,11 +76,20 @@ impl Watcher {
         let node = self.nodes.nodes().last().unwrap();
 
         let mut prefix_sum = 0;
-        // [(block_number, timestamp, prefix_sum_txns)]
         let blocks_info: HashMap<BlockNumber, (u64, usize)> = (zero_load_number..=tip_fixed_number)
             .map(|number| {
                 let block = node.get_block_by_number(number);
                 prefix_sum += block.transactions().len();
+                println!(
+                    "blocks[{}] n_transactions: {}",
+                    block.number(),
+                    block.transactions().len()
+                );
+                ckb_testkit::info!(
+                    "blocks[{}] n_transactions: {}",
+                    block.number(),
+                    block.transactions().len()
+                );
                 (block.number(), (block.timestamp(), prefix_sum))
             })
             .collect();
@@ -86,7 +100,7 @@ impl Watcher {
             if number > N_BLOCKS as u64 && blocks_info.contains_key(&(number - N_BLOCKS as u64)) {
                 let (b_timestamp, b_prefix_sum_txns) =
                     blocks_info.get(&(number - N_BLOCKS as u64)).unwrap();
-                let tps = ((prefix_sum_txns - b_prefix_sum_txns) as f64
+                let tps = ((prefix_sum_txns - b_prefix_sum_txns) as f64 * 1000.0
                     / (timestamp - b_timestamp) as f64) as u64;
                 if tps > max_tps {
                     max_tps = tps;

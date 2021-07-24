@@ -33,7 +33,7 @@ impl LiveCellProducer {
 
             for user in self.users.iter() {
                 let live_cells = user
-                    .get_live_single_secp256k1_cells(&self.nodes[0])
+                    .get_spendable_single_secp256k1_cells(&self.nodes[0])
                     .into_iter()
                     // TODO reduce competition
                     .filter(|cell| !self.seen_out_points.contains(&cell.out_point))
@@ -49,9 +49,10 @@ impl LiveCellProducer {
 }
 
 pub struct TransactionProducer {
-    cell_deps: Vec<CellDep>,
     // #{ lock_hash => user }
     users: HashMap<Byte32, User>,
+    cell_deps: Vec<CellDep>,
+    n_outputs: usize,
     // #{ lock_hash => live_cell }
     live_cells: HashMap<Byte32, CellMeta>,
     // #{ out_point => live_cell }
@@ -59,7 +60,7 @@ pub struct TransactionProducer {
 }
 
 impl TransactionProducer {
-    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>) -> Self {
+    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_outputs: usize) -> Self {
         let users = users
             .into_iter()
             .map(|user| (user.single_secp256k1_lock_hash(), user))
@@ -67,6 +68,7 @@ impl TransactionProducer {
         Self {
             users,
             cell_deps,
+            n_outputs,
             live_cells: HashMap::new(),
             backlogs: HashMap::new(),
         }
@@ -90,7 +92,7 @@ impl TransactionProducer {
                 }
             }
 
-            if self.live_cells.len() >= self.users.len() {
+            if self.live_cells.len() >= self.n_outputs {
                 let mut live_cells = HashMap::new();
                 std::mem::swap(&mut self.live_cells, &mut live_cells);
 
