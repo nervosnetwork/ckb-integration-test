@@ -86,20 +86,21 @@ impl User {
         }
     }
 
-    pub fn get_live_single_secp256k1_cells(&self, node: &Node) -> Vec<CellMeta> {
+    pub fn get_spendable_single_secp256k1_cells(&self, node: &Node) -> Vec<CellMeta> {
         let live_out_points = node
             .indexer()
             .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script())
             .expect("indexer get_live_cells_by_lock_script");
-        let live_cells = live_out_points
+        live_out_points
             .into_iter()
-            .map(|out_point| node.get_cell_meta(out_point))
-            .collect::<Vec<_>>();
-
-        // Filter out cells with non-empty output-data
-        live_cells
-            .into_iter()
-            .filter(|cell| cell.data_bytes == 0)
-            .collect()
+            .filter_map(|out_point| {
+                let cell_meta = node.get_cell_meta(out_point)?;
+                if cell_meta.data_bytes == 0 {
+                    Some(cell_meta)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
     }
 }

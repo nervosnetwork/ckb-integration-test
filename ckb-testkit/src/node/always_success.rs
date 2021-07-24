@@ -59,7 +59,7 @@ impl Node {
         live_out_points
             .into_iter()
             .filter_map(|out_point| {
-                let cell_meta = self.get_cell_meta(out_point);
+                let cell_meta = self.get_cell_meta(out_point)?;
                 if cell_meta.data_bytes == 0 {
                     Some(cell_meta)
                 } else {
