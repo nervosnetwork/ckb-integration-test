@@ -65,6 +65,10 @@ impl RpcClient {
         }
     }
 
+    pub fn url(&self) -> &str {
+        self.inner2021.url.as_ref()
+    }
+
     pub fn inner(&self) -> &Inner2021 {
         &self.inner2021
     }
