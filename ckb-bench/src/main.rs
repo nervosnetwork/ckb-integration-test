@@ -1,6 +1,6 @@
 mod bench;
-mod config;
 mod prepare;
+mod stat;
 mod watcher;
 
 #[cfg(test)]
@@ -13,7 +13,6 @@ use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
 use ckb_types::{packed::Byte32, prelude::*, H256};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
-use config::Url;
 use crossbeam_channel::bounded;
 use std::env;
 use std::path::PathBuf;
@@ -21,6 +20,7 @@ use std::process::exit;
 use std::str::FromStr;
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
+use url::Url;
 
 #[macro_export]
 macro_rules! prompt_and_exit {
@@ -47,7 +47,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let block_time_millis = value_t_or_exit!(arguments, "block_time_millis", u64);
             let miners = rpc_urls
                 .iter()
-                .map(|url| Node::init_from_url(url, Default::default()))
+                .map(|url| Node::init_from_url(url.as_str(), Default::default()))
                 .collect::<Vec<_>>();
             let mut mined_n_blocks = 0;
             loop {
@@ -81,7 +81,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         )
                     });
 
-                    Node::init_from_url(url, node_working_dir)
+                    Node::init_from_url(url.as_str(), node_working_dir)
                 })
                 .collect::<Vec<_>>();
             let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
@@ -130,7 +130,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                             err
                         )
                     });
-                    Node::init_from_url(url, node_working_dir)
+                    Node::init_from_url(url.as_str(), node_working_dir)
                 })
                 .collect::<Vec<_>>();
             let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
@@ -178,7 +178,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                             err
                         )
                     });
-                    Node::init_from_url(url, node_working_dir)
+                    Node::init_from_url(url.as_str(), node_working_dir)
                 })
                 .collect::<Vec<_>>();
             let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);

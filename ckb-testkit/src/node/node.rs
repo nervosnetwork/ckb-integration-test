@@ -76,9 +76,8 @@ impl Node {
         }
     }
 
-    pub fn init_from_url<S: ToString>(rpc_url: S, working_dir: PathBuf) -> Self {
-        let rpc_url = rpc_url.to_string();
-        let mut rpc_client = RpcClient::new(&rpc_url, true);
+    pub fn init_from_url(rpc_url: &str, working_dir: PathBuf) -> Self {
+        let mut rpc_client = RpcClient::new(rpc_url, true);
         let local_node_info = rpc_client.local_node_info();
         let is_ckb2021 = {
             let node_version = &local_node_info.version;
