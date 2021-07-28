@@ -11,7 +11,7 @@ use crate::prepare::{collect, dispatch, generate_privkeys};
 use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
-use ckb_types::{packed::Byte32, prelude::*, H256};
+use ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use crossbeam_channel::bounded;
 use std::env;
@@ -268,6 +268,17 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             println!("metrics: {:?}", metrics);
             ckb_testkit::info!("metrics: {:?}", metrics);
         }
+        ("stat", Some(arguments)) => {
+            let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
+            let from_number = value_t_or_exit!(arguments, "from_number", BlockNumber);
+            let to_number = value_t_or_exit!(arguments, "to_number", BlockNumber);
+            let stat_time_ms = value_t_or_exit!(arguments, "stat_time_ms", u64);
+            let stat_time = Duration::from_millis(stat_time_ms);
+            let node = Node::init_from_url(rpc_urls[0].as_str(), Default::default());
+            let metrics = stat::stat(&node, from_number, to_number, stat_time);
+            println!("metrics: {:?}", metrics);
+            ckb_testkit::info!("metrics: {:?}", metrics);
+        }
         _ => {
             eprintln!("wrong usage");
             exit(1);
@@ -284,6 +295,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -327,6 +339,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -367,6 +380,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -407,6 +421,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -430,6 +445,47 @@ fn clap_app() -> App<'static, 'static> {
                         .value_name("PATH")
                         .default_value(".")
                         .help("path to working directory"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("stat")
+                .about("report chain stat")
+                .arg(
+                    Arg::with_name("rpc-urls")
+                        .long("rpc-urls")
+                        .value_name("URLS")
+                        .required(true)
+                        .takes_value(true)
+                        .multiple(true)
+                        .use_delimiter(true)
+                        .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("from_number")
+                        .long("from_number")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .help("block number to stat from")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("to_number")
+                        .long("to_number")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .help("block number to stat to")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("stat_time_ms")
+                        .long("stat_time_ms")
+                        .value_name("TIME")
+                        .takes_value(true)
+                        .help("duration to stat")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
         )
 }
