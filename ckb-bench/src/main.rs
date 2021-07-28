@@ -15,6 +15,7 @@ use ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use crossbeam_channel::bounded;
 use std::env;
+use std::ops::Div;
 use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
@@ -183,7 +184,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .collect::<Vec<_>>();
             let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
             let n_outputs = value_t_or_exit!(arguments, "n_outputs", usize);
-            let delay_ms = value_t_or_exit!(arguments, "delay_ms", u64);
+            let t_delay = {
+                let delay_ms = value_t_or_exit!(arguments, "delay_ms", u64);
+                Duration::from_millis(delay_ms)
+            };
+            let t_bench = {
+                let bench_time_ms = value_t_or_exit!(arguments, "bench_time_ms", u64);
+                Duration::from_millis(bench_time_ms)
+            };
             let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
             });
@@ -230,8 +238,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             let zero_load_number = watcher.get_fixed_header().number();
             let mut i = 0;
-            let mut start_time = Instant::now();
-            let t_delay = Duration::from_millis(delay_ms);
+            let start_time = Instant::now();
             while let Ok(tx) = transaction_receiver.recv() {
                 if t_delay.as_millis() != 0 {
                     sleep(t_delay);
@@ -246,25 +253,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     ckb_testkit::error!("failed to send {:#x}, error: {:?}", tx.hash(), err);
                 }
 
-                if start_time.elapsed() > Duration::from_secs(60) {
-                    start_time = Instant::now();
-                    if watcher.is_steady_load(zero_load_number) {
-                        println!(
-                            "is_stead_load({}, {}) returns true",
-                            zero_load_number,
-                            watcher.get_fixed_header().number()
-                        );
-                        ckb_testkit::info!(
-                            "is_stead_load({}, {}) returns true",
-                            zero_load_number,
-                            watcher.get_fixed_header().number()
-                        );
-                        break;
-                    }
+                if start_time.elapsed() > t_bench {
+                    break;
                 }
             }
 
-            let metrics = watcher.calc_recent_metrics(zero_load_number);
+            let stat_time = t_bench.div(2);
+            let fixed_tip_number = watcher.get_fixed_header().number();
+            let metrics = stat::stat(&nodes[0], zero_load_number, fixed_tip_number, stat_time);
             println!("metrics: {:?}", metrics);
             ckb_testkit::info!("metrics: {:?}", metrics);
         }
