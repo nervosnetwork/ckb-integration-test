@@ -11,7 +11,7 @@ use crate::prepare::{collect, dispatch, generate_privkeys};
 use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, User};
-use ckb_types::{packed::Byte32, prelude::*, H256, core::BlockNumber};
+use ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use crossbeam_channel::bounded;
 use std::env;
@@ -295,6 +295,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -338,6 +339,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -378,6 +380,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -418,6 +421,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -449,6 +453,7 @@ fn clap_app() -> App<'static, 'static> {
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
+                        .value_name("URLS")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
