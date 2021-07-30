@@ -1,6 +1,7 @@
 pub use log;
 use std::cell::RefCell;
 
+// TODO LOG_TARGET should not be thread-local
 thread_local! {
     // Initialize at beginning of running case
     pub static LOG_TARGET: RefCell<String> = RefCell::new(String::new());
@@ -63,8 +64,10 @@ macro_rules! error {
     ($( $args:tt )*) => {
         $crate::logger::LOG_TARGET.with(|c| {
             if !c.borrow().is_empty() {
+                ::std::eprintln!($( $args )*);
                 $crate::logger::log::error!(target: &c.borrow(), $( $args )*);
             } else {
+                ::std::eprintln!($( $args )*);
                 $crate::logger::log::error!($( $args )*);
             }
         });
