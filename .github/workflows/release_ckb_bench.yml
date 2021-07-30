@@ -1,0 +1,25 @@
+name: release ckb-bench
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'rc-v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: olegtarasov/get-tag@v2.1
+      - name: build ckb-bench
+        run: |
+          cd ckb-bench && cargo build --release
+          cd target/release
+          tar -czvf ckb-bench-${{ env.GIT_TAG_NAME }}-unknown-linux-gnu.tar.gz ckb-bench
+      - name: release ckb-bench
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "ckb-bench/target/release/ckb-bench-${{ env.GIT_TAG_NAME }}-unknown-linux-gnu.tar.gz"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
