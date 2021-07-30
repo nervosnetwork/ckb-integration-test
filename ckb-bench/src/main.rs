@@ -10,7 +10,7 @@ use crate::bench::{LiveCellProducer, TransactionProducer};
 use crate::prepare::{collect, dispatch, generate_privkeys};
 use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
-use ckb_testkit::{Node, User};
+use ckb_testkit::{Node, Nodes, User};
 use ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use crossbeam_channel::bounded;
@@ -33,7 +33,7 @@ macro_rules! prompt_and_exit {
 }
 
 fn main() {
-    let _ = init_logger();
+    let _logger = init_logger();
     entrypoint(clap_app().get_matches());
 }
 
@@ -46,14 +46,16 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "n_blocks", u64);
             let block_time_millis = value_t_or_exit!(arguments, "block_time_millis", u64);
-            let miners = rpc_urls
+            let nodes: Nodes = rpc_urls
                 .iter()
                 .map(|url| Node::init_from_url(url.as_str(), Default::default()))
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>()
+                .into();
             let mut mined_n_blocks = 0;
+            let mut ensure_p2p_connected = false;
             loop {
-                for miner in miners.iter() {
-                    miner.mine(1);
+                for node in nodes.nodes() {
+                    node.mine(1);
                     if n_blocks != 0 {
                         mined_n_blocks += 1;
                     }
@@ -64,6 +66,10 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         sleep(Duration::from_millis(block_time_millis));
                     }
                 }
+                if !ensure_p2p_connected {
+                    ensure_p2p_connected = true;
+                    nodes.p2p_connect();
+                }
             }
         }
         ("dispatch", Some(arguments)) => {
@@ -73,7 +79,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .iter()
                 .map(|url| {
                     let port = url.port().unwrap();
-                    let node_working_dir = working_dir.join(&port.to_string());
+                    let host = url.host_str().unwrap();
+                    let node_working_dir = working_dir.join(&format!("{}:{}", host, port));
                     ::std::fs::create_dir_all(&node_working_dir).unwrap_or_else(|err| {
                         panic!(
                             "failed to create dir \"{}\", error: {}",
@@ -90,6 +97,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
             });
+            let genesis_block = nodes[0].get_block_by_number(0);
             let lender = {
                 let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
@@ -97,7 +105,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         err
                     )
                 });
-                User::new(nodes[0].get_block_by_number(0), Some(lender_privkey))
+                User::new(genesis_block.clone(), Some(lender_privkey))
             };
             let borrowers = {
                 let lender_byte32_privkey =
@@ -111,7 +119,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
+                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
             dispatch(&nodes, &lender, &borrowers, borrow_capacity);
@@ -123,7 +131,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .iter()
                 .map(|url| {
                     let port = url.port().unwrap();
-                    let node_working_dir = working_dir.join(&port.to_string());
+                    let host = url.host_str().unwrap();
+                    let node_working_dir = working_dir.join(&format!("{}:{}", host, port));
                     ::std::fs::create_dir_all(&node_working_dir).unwrap_or_else(|err| {
                         panic!(
                             "failed to create dir \"{}\", error: {}",
@@ -138,6 +147,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
             });
+            let genesis_block = nodes[0].get_block_by_number(0);
             let lender = {
                 let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
@@ -145,7 +155,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         err
                     )
                 });
-                User::new(nodes[0].get_block_by_number(0), Some(lender_privkey))
+                User::new(genesis_block.clone(), Some(lender_privkey))
             };
             let borrowers = {
                 let lender_byte32_privkey =
@@ -159,7 +169,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
+                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
             collect(&nodes, &lender, &borrowers);
@@ -171,7 +181,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .iter()
                 .map(|url| {
                     let port = url.port().unwrap();
-                    let node_working_dir = working_dir.join(&port.to_string());
+                    let host = url.host_str().unwrap();
+                    let node_working_dir = working_dir.join(&format!("{}:{}", host, port));
                     ::std::fs::create_dir_all(&node_working_dir).unwrap_or_else(|err| {
                         panic!(
                             "failed to create dir \"{}\", error: {}",
@@ -195,6 +206,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
                 prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
             });
+            let genesis_block = nodes[0].get_block_by_number(0);
             let borrowers = {
                 let lender_byte32_privkey =
                     Byte32::from_slice(H256::from_str(&lender_raw_privkey).unwrap().as_bytes())
@@ -207,11 +219,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
                 privkeys
                     .into_iter()
-                    .map(|privkey| User::new(nodes[0].get_block_by_number(0), Some(privkey)))
+                    .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
-            let (live_cell_sender, live_cell_receiver) = bounded(1000);
-            let (transaction_sender, transaction_receiver) = bounded(1000);
+            let (live_cell_sender, live_cell_receiver) = bounded(100000);
+            let (transaction_sender, transaction_receiver) = bounded(100000);
 
             let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
             spawn(move || {
@@ -239,6 +251,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let zero_load_number = watcher.get_fixed_header().number();
             let mut i = 0;
             let start_time = Instant::now();
+            let mut last_log_time = Instant::now();
+            let mut benched_transactions = 0u64;
+            ckb_testkit::info!(
+                "bench start with params n_outputs={}, t_delay={:?}, t_bench={:?}",
+                n_outputs,
+                t_delay,
+                t_bench
+            );
             while let Ok(tx) = transaction_receiver.recv() {
                 if t_delay.as_millis() != 0 {
                     sleep(t_delay);
@@ -253,6 +273,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     ckb_testkit::error!("failed to send {:#x}, error: {:?}", tx.hash(), err);
                 }
 
+                if last_log_time.elapsed() > Duration::from_secs(30) {
+                    last_log_time = Instant::now();
+                    ckb_testkit::info!("benched {} transactions", benched_transactions);
+                }
+                benched_transactions += 1;
                 if start_time.elapsed() > t_bench {
                     break;
                 }
@@ -261,8 +286,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let stat_time = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().number();
             let metrics = stat::stat(&nodes[0], zero_load_number, fixed_tip_number, stat_time);
-            println!("metrics: {:?}", metrics);
-            ckb_testkit::info!("metrics: {:?}", metrics);
+            ckb_testkit::info!("{:?}", metrics);
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
@@ -272,8 +296,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let stat_time = Duration::from_millis(stat_time_ms);
             let node = Node::init_from_url(rpc_urls[0].as_str(), Default::default());
             let metrics = stat::stat(&node, from_number, to_number, stat_time);
-            println!("metrics: {:?}", metrics);
-            ckb_testkit::info!("metrics: {:?}", metrics);
+            ckb_testkit::info!("{:?}", metrics);
         }
         _ => {
             eprintln!("wrong usage");
@@ -366,6 +389,15 @@ fn clap_app() -> App<'static, 'static> {
                         .value_name("TIME")
                         .takes_value(true)
                         .help("delay of sending transactions in milliseconds")
+                        .required(true)
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("bench_time_ms")
+                        .long("bench_time_ms")
+                        .value_name("TIME")
+                        .takes_value(true)
+                        .help("bench time period")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
@@ -494,6 +526,7 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
     };
     let config = ckb_logger_config::Config {
         filter,
+        color: false,
         log_to_file: false,
         log_to_stdout: true,
         ..Default::default()
