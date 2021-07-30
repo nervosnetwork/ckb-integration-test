@@ -17,6 +17,7 @@ pub struct Metrics {
     pub n_nodes: usize,
     pub n_outputs: usize,
     pub ckb_version: String,
+    pub delay_time_ms: Option<u64>,
 }
 
 pub fn stat(
@@ -24,6 +25,7 @@ pub fn stat(
     from_number: BlockNumber,
     to_number: BlockNumber,
     stat_time: Duration,
+    delay_time: Option<Duration>,
 ) -> Metrics {
     assert_ne!(from_number, 0);
     assert!(from_number < to_number);
@@ -94,5 +96,6 @@ pub fn stat(
     best_metrics.ckb_version = local_node_info.version;
     best_metrics.n_nodes = local_node_info.connections.value() as usize + 1;
     best_metrics.n_outputs = n_outputs;
+    best_metrics.delay_time_ms = delay_time.map(|t| t.as_millis() as u64);
     best_metrics
 }
