@@ -1,6 +1,6 @@
 use crate::prepare::generate_privkeys;
 use crate::tests::node_options;
-use crate::{clap_app, entrypoint};
+use crate::{clap_app, entrypoint, init_logger};
 use ckb_testkit::{Node, Nodes, User};
 use ckb_types::packed::Byte32;
 use ckb_types::prelude::*;
@@ -10,6 +10,7 @@ use std::str::FromStr;
 
 #[test]
 fn test_prepare() {
+    let _logger = init_logger();
     let lender_raw_privkey = "8c296482b9b763e8be974058272f377462f2975b94454dabb112de0f135e2064";
     env::set_var("CKB_BENCH_LENDER_PRIVKEY", lender_raw_privkey);
 
@@ -17,11 +18,6 @@ fn test_prepare() {
         .into_iter()
         .map(|node_options| {
             let mut node = Node::init("test_prepare", node_options, true);
-            println!(
-                "[Node {}] START log_path: \"{}\"",
-                node.node_name(),
-                node.log_path().display()
-            );
             node.start();
             node
         })
