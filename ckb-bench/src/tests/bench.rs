@@ -1,6 +1,6 @@
 use crate::prepare::generate_privkeys;
 use crate::tests::node_options;
-use crate::{clap_app, entrypoint};
+use crate::{clap_app, entrypoint, init_logger};
 use ckb_testkit::{Node, Nodes, User};
 use ckb_types::packed::Byte32;
 use ckb_types::prelude::*;
@@ -11,6 +11,7 @@ use std::thread::spawn;
 
 #[test]
 fn test_bench() {
+    let _logger = init_logger();
     let n_borrowers = 1000usize;
     let n_outputs = 2usize;
     let borrow_capacity = 7100000000u64;
@@ -21,11 +22,6 @@ fn test_bench() {
         .into_iter()
         .map(|node_options| {
             let mut node = Node::init("test_prepare", node_options, true);
-            println!(
-                "[Node {}] START log_path: \"{}\"",
-                node.node_name(),
-                node.log_path().display()
-            );
             node.start();
             node
         })
@@ -121,6 +117,8 @@ fn test_bench() {
             n_outputs.to_string().as_str(),
             "--delay_ms",
             1.to_string().as_str(),
+            "--bench_time_ms",
+            5000.to_string().as_str(),
             "--rpc-urls",
             &raw_nodes_urls,
         ]));

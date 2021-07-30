@@ -19,11 +19,11 @@ struct ProcessGuard(pub Child);
 
 impl Drop for ProcessGuard {
     fn drop(&mut self) {
-        let _ = self
+        let _x = self
             .0
             .kill()
             .map_err(|err| error!("failed to kill ckb process, error: {}", err));
-        let _ = self.0.wait();
+        let _y = self.0.wait();
     }
 }
 
@@ -77,6 +77,7 @@ impl Node {
     }
 
     pub fn init_from_url(rpc_url: &str, working_dir: PathBuf) -> Self {
+        crate::info!("init via \"{}\"", rpc_url);
         let mut rpc_client = RpcClient::new(rpc_url, true);
         let local_node_info = rpc_client.local_node_info();
         let is_ckb2021 = {
@@ -88,12 +89,6 @@ impl Node {
                 &version_compare::CompOp::Ge,
             )
             .unwrap_or(true);
-            crate::info!(
-                "target node \"{}\" is \"{}\", is_ckb2021: {}",
-                rpc_url,
-                node_version,
-                is_ckb2021
-            );
             is_ckb2021
         };
         if !is_ckb2021 {
@@ -234,7 +229,7 @@ impl Node {
         let start_time = Instant::now();
         while start_time.elapsed() <= Duration::from_secs(60) {
             if let Ok(local_node_info) = self.rpc_client().inner().local_node_info() {
-                let _ = self.rpc_client().tx_pool_info();
+                let _x = self.rpc_client().tx_pool_info();
                 return local_node_info;
             }
             match child_process.try_wait() {

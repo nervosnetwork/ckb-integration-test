@@ -8,10 +8,15 @@ use ckb_types::{
 
 pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capacity: u64) {
     // TODO return input cells intersection of live cells of nodes
+    ckb_testkit::info!(
+        "dispatch to {} borrowers, {} capacity per borrower",
+        borrowers.len(),
+        borrow_capacity
+    );
     let live_cells = lender.get_spendable_single_secp256k1_cells(&nodes[0]);
     let mut i_borrower = 0;
     let mut txs = Vec::new();
-    for chunk in live_cells.chunks(100) {
+    for chunk in live_cells.chunks(10) {
         let inputs = chunk;
         let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
         // TODO estimate tx fee
@@ -82,10 +87,14 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
 }
 
 pub fn collect(nodes: &[Node], lender: &User, borrowers: &[User]) {
+    ckb_testkit::info!("collect {} borrowers' capacity", borrowers.len());
     let mut txs = Vec::new();
     for borrower in borrowers.iter() {
         // TODO return input cells intersection of live cells of nodes
         let live_cells = borrower.get_spendable_single_secp256k1_cells(&nodes[0]);
+        if live_cells.is_empty() {
+            continue;
+        }
         for chunk in live_cells.chunks(100) {
             let inputs = chunk;
             let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
