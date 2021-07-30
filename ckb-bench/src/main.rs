@@ -283,20 +283,20 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 }
             }
 
-            let stat_time = t_bench.div(2);
+            let t_stat = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().number();
-            let metrics = stat::stat(&nodes[0], zero_load_number, fixed_tip_number, stat_time);
-            ckb_testkit::info!("{:?}", metrics);
+            let metrics = stat::stat(&nodes[0], zero_load_number, fixed_tip_number, t_stat, Some(t_delay));
+            ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let from_number = value_t_or_exit!(arguments, "from_number", BlockNumber);
             let to_number = value_t_or_exit!(arguments, "to_number", BlockNumber);
             let stat_time_ms = value_t_or_exit!(arguments, "stat_time_ms", u64);
-            let stat_time = Duration::from_millis(stat_time_ms);
+            let t_stat = Duration::from_millis(stat_time_ms);
             let node = Node::init_from_url(rpc_urls[0].as_str(), Default::default());
-            let metrics = stat::stat(&node, from_number, to_number, stat_time);
-            ckb_testkit::info!("{:?}", metrics);
+            let metrics = stat::stat(&node, from_number, to_number, t_stat, None);
+            ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
         }
         _ => {
             eprintln!("wrong usage");
