@@ -264,13 +264,25 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     sleep(t_delay);
                 }
 
-                i = (i + 1) % nodes.len();
-                let result = nodes[i]
-                    .rpc_client()
-                    .send_transaction_result(tx.data().into());
                 // TODO if error is TxPoolFull, then retry until success
-                if let Err(err) = result {
-                    ckb_testkit::error!("failed to send {:#x}, error: {:?}", tx.hash(), err);
+                loop {
+                    i = (i + 1) % nodes.len();
+                    let result = nodes[i]
+                        .rpc_client()
+                        .send_transaction_result(tx.data().into());
+                    if let Err(err) = result {
+                        if err.to_string().contains("PoolIsFull") {
+                            sleep(Duration::from_millis(10));
+                            continue;
+                        } else {
+                            ckb_testkit::error!(
+                                "failed to send {:#x}, error: {:?}",
+                                tx.hash(),
+                                err
+                            );
+                            break;
+                        }
+                    }
                 }
 
                 if last_log_time.elapsed() > Duration::from_secs(30) {
