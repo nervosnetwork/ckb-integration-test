@@ -107,9 +107,13 @@ impl Node {
             let store = RocksdbStore::new(&data_path.to_string_lossy());
             Some(Indexer::new(store, 1000000, 60 * 60))
         };
+        let node_options = NodeOptions {
+            node_name: rpc_url.to_string(),
+            ..Default::default()
+        };
         Self {
             // TODO get p2p listen address via RPC
-            node_options: Default::default(),
+            node_options,
             working_dir,
             rpc_client,
             p2p_listen: Default::default(),

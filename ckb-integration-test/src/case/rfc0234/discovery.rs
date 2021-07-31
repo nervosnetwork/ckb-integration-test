@@ -21,21 +21,21 @@ impl Case for RFC0234AfterSwitchDiscovery {
             make_all_nodes_connected_and_synced: false,
             node_options: vec![
                 NodeOptions {
-                    node_name: "node2021_1",
+                    node_name: String::from("node2021_1"),
                     ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "testdata/db/Epoch2V2TestData",
                     chain_spec: "testdata/spec/ckb2021",
                     app_config: "testdata/config/connect_outbound_interval_secs",
                 },
                 NodeOptions {
-                    node_name: "node2021_2",
+                    node_name: String::from("node2021_2"),
                     ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "testdata/db/Epoch2V2TestData",
                     chain_spec: "testdata/spec/ckb2021",
                     app_config: "testdata/config/connect_outbound_interval_secs",
                 },
                 NodeOptions {
-                    node_name: "node2021_3",
+                    node_name: String::from("node2021_3"),
                     ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "testdata/db/Epoch2V2TestData",
                     chain_spec: "testdata/spec/ckb2021",

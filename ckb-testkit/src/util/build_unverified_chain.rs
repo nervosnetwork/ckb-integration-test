@@ -57,7 +57,7 @@ pub fn build_unverified_chain(
     // Create a helper node. Lately use it to construct chain
     let mut helper_node = {
         let node_options = NodeOptions {
-            node_name: "helper",
+            node_name: String::from("helper"),
             ..base_node.node_options().clone()
         };
         let is_ckb2021 = base_node.rpc_client().ckb2021;

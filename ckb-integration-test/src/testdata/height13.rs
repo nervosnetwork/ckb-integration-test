@@ -7,7 +7,7 @@ pub struct Height13TestData;
 impl Testdata for Height13TestData {
     fn generate(&self) {
         let node_options = NodeOptions {
-            node_name: "node2019",
+            node_name: String::from("node2019"),
             ckb_binary: CKB2019.read().unwrap().clone(),
             initial_database: "testdata/db/empty",
             chain_spec: "testdata/spec/ckb2019",

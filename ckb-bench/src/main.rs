@@ -54,7 +54,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mut mined_n_blocks = 0;
             let mut ensure_p2p_connected = false;
             loop {
-                for node in nodes.nodes() {
+                for (i, node) in nodes.nodes().enumerate() {
                     node.mine(1);
                     if n_blocks != 0 {
                         mined_n_blocks += 1;
@@ -285,7 +285,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             let t_stat = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().number();
-            let metrics = stat::stat(&nodes[0], zero_load_number, fixed_tip_number, t_stat, Some(t_delay));
+            let metrics = stat::stat(
+                &nodes[0],
+                zero_load_number,
+                fixed_tip_number,
+                t_stat,
+                Some(t_delay),
+            );
             ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
         }
         ("stat", Some(arguments)) => {

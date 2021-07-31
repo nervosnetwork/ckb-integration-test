@@ -22,14 +22,14 @@ impl Case for RFC0240BeforeSwitch {
             make_all_nodes_connected_and_synced: true,
             node_options: vec![
                 NodeOptions {
-                    node_name: "node2019",
+                    node_name: String::from("node2019"),
                     ckb_binary: CKB2019.read().unwrap().clone(),
                     initial_database: "testdata/db/Epoch2V1TestData",
                     chain_spec: "testdata/spec/cellbase_maturity_not_zero_2019",
                     app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
-                    node_name: "node2021",
+                    node_name: String::from("node2021"),
                     ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "testdata/db/Epoch2V2TestData",
                     chain_spec: "testdata/spec/cellbase_maturity_not_zero_2021",

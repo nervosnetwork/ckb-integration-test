@@ -8,7 +8,7 @@ impl Testdata for Height100000TestData {
     fn generate(&self) {
         let mut node2021 = {
             let node_options = NodeOptions {
-                node_name: "node2021",
+                node_name: String::from("node2021"),
                 ckb_binary: CKB2021.read().unwrap().clone(),
                 initial_database: "testdata/db/empty",
                 chain_spec: "testdata/spec/ckb2021",
