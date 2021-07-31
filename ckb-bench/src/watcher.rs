@@ -22,7 +22,14 @@ impl Watcher {
     pub fn is_zero_load(&self) -> bool {
         self.nodes.nodes().all(|node| {
             let tx_pool_info = node.rpc_client().tx_pool_info();
-            if tx_pool_info.total_tx_cycles.value() != 0 || tx_pool_info.total_tx_size.value() != 0
+            // TODO FIXME
+            // if tx_pool_info.total_tx_cycles.value() != 0 || tx_pool_info.total_tx_size.value() != 0
+            // {
+            //     return false;
+            // }
+            if tx_pool_info.pending.value() != 0
+                || tx_pool_info.proposed.value() != 0
+                || tx_pool_info.orphan.value() != 0
             {
                 return false;
             }
