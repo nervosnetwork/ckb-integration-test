@@ -5,6 +5,8 @@ use ckb_types::{
     packed::{Byte32, CellInput, CellOutput},
     prelude::*,
 };
+use std::thread::sleep;
+use std::time::Duration;
 
 pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capacity: u64) {
     // TODO return input cells intersection of live cells of nodes
@@ -82,7 +84,17 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
         borrowers.len().saturating_sub(i_borrower),
     );
     for tx in txs {
-        nodes[0].submit_transaction(&tx);
+        while let Err(err) = nodes[0]
+            .rpc_client()
+            .send_transaction_result(tx.data().into())
+        {
+            ckb_testkit::debug!(
+                "failed to send transaction {:#x}, error: {}",
+                tx.hash(),
+                err
+            );
+            sleep(Duration::from_secs(1));
+        }
     }
 }
 
@@ -127,7 +139,17 @@ pub fn collect(nodes: &[Node], lender: &User, borrowers: &[User]) {
     }
 
     for tx in txs {
-        nodes[0].submit_transaction(&tx);
+        while let Err(err) = nodes[0]
+            .rpc_client()
+            .send_transaction_result(tx.data().into())
+        {
+            ckb_testkit::debug!(
+                "failed to send transaction {:#x}, error: {}",
+                tx.hash(),
+                err
+            );
+            sleep(Duration::from_secs(1));
+        }
     }
 }
 

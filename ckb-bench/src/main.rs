@@ -12,7 +12,7 @@ use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, Nodes, User};
 use ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
-use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use clap::{crate_version, value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use crossbeam_channel::bounded;
 use std::env;
 use std::ops::Div;
@@ -334,6 +334,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 fn clap_app() -> App<'static, 'static> {
     include_str!("../Cargo.toml");
     App::new("ckb-bench")
+        .version(crate_version!())
         .subcommand(
             SubCommand::with_name("mine")
                 .about("Mine specified number of blocks")

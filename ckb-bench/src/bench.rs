@@ -19,10 +19,11 @@ pub struct LiveCellProducer {
 
 impl LiveCellProducer {
     pub fn new(users: Vec<User>, nodes: Vec<Node>) -> Self {
+        let n_users = users.len();
         Self {
             users,
             nodes,
-            seen_out_points: LruCache::new(users.len() + 10),
+            seen_out_points: LruCache::new(n_users + 10),
         }
     }
 
