@@ -54,7 +54,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mut mined_n_blocks = 0;
             let mut ensure_p2p_connected = false;
             loop {
-                for (i, node) in nodes.nodes().enumerate() {
+                for node in nodes.nodes() {
                     node.mine(1);
                     if n_blocks != 0 {
                         mined_n_blocks += 1;
