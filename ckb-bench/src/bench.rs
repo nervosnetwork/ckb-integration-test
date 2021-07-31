@@ -22,7 +22,7 @@ impl LiveCellProducer {
         Self {
             users,
             nodes,
-            seen_out_points: LruCache::new(1000_000),
+            seen_out_points: LruCache::new(users.len() + 10),
         }
     }
 

@@ -295,6 +295,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 }
             }
 
+            while !watcher.is_zero_load() {
+                sleep(Duration::from_secs(10));
+                ckb_testkit::info!(
+                    "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
+                    watcher.get_fixed_header().number()
+                );
+            }
+
             let t_stat = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().number();
             let metrics = stat::stat(
