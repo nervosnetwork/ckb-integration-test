@@ -9,6 +9,7 @@ use ckb_indexer::{
 use ckb_jsonrpc_types::{Consensus, LocalNode};
 use ckb_types::core::BlockView;
 use fs_extra::dir::CopyOptions;
+use reqwest::Url;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{self, Child, Command, Stdio};
@@ -32,13 +33,13 @@ pub struct Node {
 
     pub(super) working_dir: PathBuf,
     pub(super) rpc_client: RpcClient,
-    pub(super) p2p_listen: String,
 
+    pub(super) p2p_address: Option<String>, // initialize when node start
     pub(super) consensus: Option<Consensus>, // initialize when node start
     pub(super) genesis_block: Option<BlockView>, // initialize when node start
-    pub(super) node_id: Option<String>,      // initialize when node start
+    pub(super) node_id: Option<String>,     // initialize when node start
     pub(super) indexer: Option<Indexer<RocksdbStore>>, // initialize when node start
-    _guard: Option<ProcessGuard>,            // initialize when node start
+    _guard: Option<ProcessGuard>,           // initialize when node start
 }
 
 impl Clone for Node {
@@ -47,7 +48,7 @@ impl Clone for Node {
             node_options: self.node_options.clone(),
             working_dir: self.working_dir().clone(),
             rpc_client: self.rpc_client.clone(),
-            p2p_listen: self.p2p_listen.clone(),
+            p2p_address: self.p2p_address.clone(),
             consensus: self.consensus.clone(),
             genesis_block: self.genesis_block.clone(),
             node_id: self.node_id.clone(),
@@ -67,7 +68,7 @@ impl Node {
             node_options,
             working_dir,
             rpc_client: RpcClient::new(&format!("http://127.0.0.1:{}/", rpc_port), is_ckb2021),
-            p2p_listen: format!("/ip4/0.0.0.0/tcp/{}", p2p_port),
+            p2p_address: None,
             consensus: None,
             genesis_block: None,
             node_id: None,
@@ -77,7 +78,6 @@ impl Node {
     }
 
     pub fn init_from_url(rpc_url: &str, working_dir: PathBuf) -> Self {
-        crate::info!("init via \"{}\"", rpc_url);
         let mut rpc_client = RpcClient::new(rpc_url, true);
         let local_node_info = rpc_client.local_node_info();
         let is_ckb2021 = {
@@ -100,6 +100,16 @@ impl Node {
             .get_block_by_number(0)
             .expect("get genesis block");
         let node_id = local_node_info.node_id.to_owned();
+        let p2p_address = {
+            let listened_address = local_node_info.addresses[0].address.clone();
+            let host_str = Url::parse(&rpc_url)
+                .expect("rpc_url is checked")
+                .host_str()
+                .expect("rpc_url has host")
+                .to_string();
+            let changed_listened_address = listened_address.replace("0.0.0.0", &host_str);
+            Some(changed_listened_address)
+        };
         let indexer = if working_dir.to_string_lossy().is_empty() {
             None
         } else {
@@ -107,12 +117,22 @@ impl Node {
             let store = RocksdbStore::new(&data_path.to_string_lossy());
             Some(Indexer::new(store, 1000000, 60 * 60))
         };
+        let node_options = NodeOptions {
+            node_name: rpc_url.to_string(),
+            ..Default::default()
+        };
+        crate::info!(
+            "init node, rpc_url: \"{}\", is_ckb2021: {}, p2p_address: {}",
+            rpc_url,
+            is_ckb2021,
+            p2p_address.as_ref().unwrap()
+        );
         Self {
             // TODO get p2p listen address via RPC
-            node_options: Default::default(),
+            node_options,
             working_dir,
             rpc_client,
-            p2p_listen: Default::default(),
+            p2p_address,
             consensus: Some(consensus),
             genesis_block: Some(genesis_block.into()),
             node_id: Some(node_id),
@@ -156,12 +176,13 @@ impl Node {
         self.genesis_block = Some(genesis_block);
         self._guard = Some(ProcessGuard(child_process));
         self.node_id = Some(local_node_info.node_id);
+        self.p2p_address = Some(local_node_info.addresses[0].address.clone());
         self.indexer = Some(indexer);
         crate::info!(
-            "[Node {}] START node_id: \"{}\", p2p_listen: \"{}\", log_path: \"{}\"",
+            "[Node {}] START node_id: \"{}\", p2p_address: \"{}\", log_path: \"{}\"",
             self.node_name(),
             self.node_id(),
-            self.p2p_listen,
+            self.p2p_address.as_ref().expect("checked"),
             self.log_path().display()
         );
     }
@@ -186,12 +207,8 @@ impl Node {
         &self.rpc_client
     }
 
-    pub fn p2p_listen(&self) -> String {
-        self.p2p_listen.clone()
-    }
-
     pub fn p2p_address(&self) -> String {
-        format!("{}/p2p/{}", self.p2p_listen(), self.node_id())
+        self.p2p_address.as_ref().unwrap().clone()
     }
 
     pub fn consensus(&self) -> &Consensus {

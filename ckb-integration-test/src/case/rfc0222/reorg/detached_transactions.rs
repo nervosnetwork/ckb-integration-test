@@ -84,7 +84,7 @@ impl Case for RFC0222ReorgDetachedTransactions {
             make_all_nodes_synced: false,
             make_all_nodes_connected_and_synced: false,
             node_options: vec![NodeOptions {
-                node_name: "node2021",
+                node_name: String::from("node2021"),
                 ckb_binary: CKB2021.read().unwrap().clone(),
                 initial_database: "testdata/db/Epoch2V2TestData",
                 chain_spec: "testdata/spec/ckb2021",

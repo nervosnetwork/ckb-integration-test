@@ -28,11 +28,11 @@ impl Node {
         if !connected {
             panic!(
                 "timeout to connect outbound peer, \
-                self node name: {}, self node id: {}, other node name: {}, other node id: {}",
+                self node name: {}, self p2p address: {}, other node name: {}, other p2p address: {}",
                 self.node_name(),
-                self.node_id(),
+                self.p2p_address(),
                 other.node_name(),
-                other.node_id(),
+                other.p2p_address(),
             );
         }
         crate::trace!("Node::p2p_connect end");

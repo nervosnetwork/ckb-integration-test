@@ -13,14 +13,14 @@ impl Case for BasicNetworking {
             make_all_nodes_connected_and_synced: false,
             node_options: vec![
                 NodeOptions {
-                    node_name: "node2019",
+                    node_name: String::from("node2019"),
                     ckb_binary: CKB2019.read().unwrap().clone(),
                     initial_database: "testdata/db/Height13TestData",
                     chain_spec: "testdata/spec/ckb2019",
                     app_config: "testdata/config/ckb2019",
                 },
                 NodeOptions {
-                    node_name: "node2021",
+                    node_name: String::from("node2021"),
                     ckb_binary: CKB2021.read().unwrap().clone(),
                     initial_database: "testdata/db/Height13TestData",
                     chain_spec: "testdata/spec/ckb2021",

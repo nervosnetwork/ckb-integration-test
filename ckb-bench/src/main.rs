@@ -285,7 +285,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             let t_stat = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().number();
-            let metrics = stat::stat(&nodes[0], zero_load_number, fixed_tip_number, t_stat, Some(t_delay));
+            let metrics = stat::stat(
+                &nodes[0],
+                zero_load_number,
+                fixed_tip_number,
+                t_stat,
+                Some(t_delay),
+            );
             ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
         }
         ("stat", Some(arguments)) => {
