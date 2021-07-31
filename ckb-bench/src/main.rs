@@ -287,7 +287,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let fixed_tip_number = watcher.get_fixed_header().number();
             let metrics = stat::stat(
                 &nodes[0],
-                zero_load_number,
+                zero_load_number + 1,
                 fixed_tip_number,
                 t_stat,
                 Some(t_delay),
