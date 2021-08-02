@@ -5,6 +5,7 @@ use ckb_types::{
     packed::{Byte32, CellInput, CellOutput},
     prelude::*,
 };
+use std::cmp::min;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -26,9 +27,9 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
         let outputs_capacity = inputs_capacity - fee;
         let n_outputs =
             if (outputs_capacity / borrow_capacity) as usize > borrowers.len() - i_borrower {
-                borrowers.len() - i_borrower
+                min(1500, borrowers.len() - i_borrower)
             } else {
-                (outputs_capacity / borrow_capacity) as usize
+                min(1500, (outputs_capacity / borrow_capacity) as usize)
             };
         let change_capacity = inputs_capacity - n_outputs as u64 * borrow_capacity - fee;
         let mut outputs = borrowers[i_borrower..i_borrower + n_outputs]

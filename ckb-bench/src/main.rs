@@ -42,7 +42,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
         ("mine", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "n_blocks", u64);
-            assert!(n_blocks > 0);
             let block_time_millis = value_t_or_exit!(arguments, "block_time_millis", u64);
             let nodes: Nodes = rpc_urls
                 .iter()
