@@ -3,8 +3,6 @@ use crate::{clap_app, entrypoint, init_logger};
 use ckb_testkit::{Node, Nodes};
 use std::env;
 
-// TODO ckb and ckb-bench binary path
-
 #[test]
 fn test_mine() {
     let _logger = init_logger();

@@ -17,6 +17,7 @@ pub struct LiveCellProducer {
     seen_out_points: LruCache<OutPoint, Instant>,
 }
 
+// TODO Add more logs
 impl LiveCellProducer {
     pub fn new(users: Vec<User>, nodes: Vec<Node>) -> Self {
         let n_users = users.len();
@@ -29,7 +30,6 @@ impl LiveCellProducer {
 
     pub fn run(mut self, live_cell_sender: Sender<CellMeta>) {
         loop {
-            // FIXME better use Nodes::get_fix_header()
             let min_tip_number = self
                 .nodes
                 .iter()

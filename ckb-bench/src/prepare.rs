@@ -8,8 +8,8 @@ use ckb_types::{
 use std::thread::sleep;
 use std::time::Duration;
 
+// TODO handle big cell
 pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capacity: u64) {
-    // TODO return input cells intersection of live cells of nodes
     ckb_testkit::info!(
         "dispatch to {} borrowers, {} capacity per borrower",
         borrowers.len(),
@@ -102,7 +102,6 @@ pub fn collect(nodes: &[Node], lender: &User, borrowers: &[User]) {
     ckb_testkit::info!("collect {} borrowers' capacity", borrowers.len());
     let mut txs = Vec::new();
     for borrower in borrowers.iter() {
-        // TODO return input cells intersection of live cells of nodes
         let live_cells = borrower.get_spendable_single_secp256k1_cells(&nodes[0]);
         if live_cells.is_empty() {
             continue;

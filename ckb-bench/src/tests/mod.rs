@@ -5,8 +5,6 @@ pub mod bench;
 pub mod mine;
 pub mod prepare;
 
-// TODO ckb binary path
-// TODO ckb-bench binary path
 pub(self) fn node_options() -> Vec<NodeOptions> {
     vec![
         NodeOptions {

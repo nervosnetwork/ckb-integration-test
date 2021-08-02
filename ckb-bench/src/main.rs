@@ -37,7 +37,6 @@ fn main() {
     entrypoint(clap_app().get_matches());
 }
 
-// TODO naming millis, ms
 pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
     match clap_arg_match.subcommand() {
         ("mine", Some(arguments)) => {
@@ -285,13 +284,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 t_delay,
                 t_bench
             );
-            // TODO recv_timeout
-            while let Ok(tx) = transaction_receiver.recv() {
+            loop {
+                let tx = transaction_receiver
+                    .recv_timeout(Duration::from_secs(60 * 3))
+                    .expect("timeout to wait transaction_receiver");
                 if t_delay.as_millis() != 0 {
                     sleep(t_delay);
                 }
 
-                // TODO if error is TxPoolFull, then retry until success
                 loop {
                     i = (i + 1) % nodes.len();
                     let result = nodes[i]
