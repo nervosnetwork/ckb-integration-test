@@ -122,6 +122,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
+            wait_for_nodes_sync(&nodes);
             dispatch(&nodes, &lender, &borrowers, borrow_capacity);
         }
         ("collect", Some(arguments)) => {
@@ -172,6 +173,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
+            wait_for_nodes_sync(&nodes);
             collect(&nodes, &lender, &borrowers);
         }
         ("bench", Some(arguments)) => {
@@ -224,6 +226,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             };
             let (live_cell_sender, live_cell_receiver) = bounded(100000);
             let (transaction_sender, transaction_receiver) = bounded(100000);
+
+            wait_for_nodes_sync(&nodes);
 
             let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
             spawn(move || {
@@ -560,4 +564,23 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
     };
     ckb_logger_service::init(None, config)
         .unwrap_or_else(|err| panic!("failed to init the logger service, error: {}", err))
+}
+
+fn wait_for_nodes_sync(nodes: &Vec<Node>) {
+    let max_tip_number = nodes
+        .iter()
+        .map(|node| node.get_tip_block_number())
+        .max()
+        .expect("should be ok for multiple nodes");
+    loop {
+        let min_tip_number = nodes
+            .iter()
+            .map(|node| node.get_tip_block_number())
+            .min()
+            .expect("should be ok for multiple nodes");
+        if min_tip_number >= max_tip_number {
+            break;
+        }
+        sleep(Duration::from_secs(1));
+    }
 }
