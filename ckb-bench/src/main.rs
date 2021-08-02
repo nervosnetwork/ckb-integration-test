@@ -40,35 +40,51 @@ fn main() {
 // TODO naming millis, ms
 pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
     match clap_arg_match.subcommand() {
-        // FIXME Currently, when specified `--n_blocks 10`, as we mine on different nodes,
-        // the chain may not grow up 10 height.
         ("mine", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let n_blocks = value_t_or_exit!(arguments, "n_blocks", u64);
+            assert!(n_blocks > 0);
             let block_time_millis = value_t_or_exit!(arguments, "block_time_millis", u64);
             let nodes: Nodes = rpc_urls
                 .iter()
                 .map(|url| Node::init_from_url(url.as_str(), Default::default()))
                 .collect::<Vec<_>>()
                 .into();
+
+            // ensure nodes be out of ibd
+            let fixed_tip_number = nodes.get_fixed_header().number();
+            if fixed_tip_number == 0 {
+                for node in nodes.nodes() {
+                    node.mine(1);
+                }
+            }
+
+            // connect nodes
+            nodes.p2p_connect();
+
+            // mine `n_blocks`
             let mut mined_n_blocks = 0;
-            let mut ensure_p2p_connected = false;
+            let mut last_print_instant = Instant::now();
             loop {
                 for node in nodes.nodes() {
                     node.mine(1);
-                    if n_blocks != 0 {
-                        mined_n_blocks += 1;
-                    }
+                    nodes.waiting_for_sync().expect("waiting for sync");
+                    mined_n_blocks += 1;
                     if n_blocks != 0 && mined_n_blocks >= n_blocks {
                         return;
+                    }
+
+                    if last_print_instant.elapsed() >= Duration::from_secs(10) {
+                        last_print_instant = Instant::now();
+                        ckb_testkit::info!(
+                            "mine {} blocks, fixed_tip_number: {}",
+                            mined_n_blocks,
+                            nodes.get_fixed_header().number()
+                        );
                     }
                     if block_time_millis != 0 {
                         sleep(Duration::from_millis(block_time_millis));
                     }
-                }
-                if !ensure_p2p_connected {
-                    ensure_p2p_connected = true;
-                    nodes.p2p_connect();
                 }
             }
         }
@@ -269,6 +285,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 t_delay,
                 t_bench
             );
+            // TODO recv_timeout
             while let Ok(tx) = transaction_receiver.recv() {
                 if t_delay.as_millis() != 0 {
                     sleep(t_delay);
