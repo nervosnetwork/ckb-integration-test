@@ -49,7 +49,7 @@ impl LiveCellProducer {
                             .transaction_info
                             .as_ref()
                             .expect("live cell's transaction info should be ok");
-                        if tx_info.block_number < min_tip_number {
+                        if tx_info.block_number > min_tip_number {
                             return false;
                         }
                         true
@@ -120,7 +120,7 @@ impl TransactionProducer {
                 });
                 let outputs = live_cells.values().map(|cell| {
                     CellOutput::new_builder()
-                        .capacity((cell.capacity().as_u64() - 1).pack())
+                        .capacity((cell.capacity().as_u64() - 1000).pack())
                         .lock(cell.cell_output.lock())
                         .build()
                 });

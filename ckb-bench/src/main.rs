@@ -123,6 +123,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .collect::<Vec<_>>()
             };
             wait_for_nodes_sync(&nodes);
+            wait_for_indexer_synced(&nodes);
             dispatch(&nodes, &lender, &borrowers, borrow_capacity);
         }
         ("collect", Some(arguments)) => {
@@ -174,6 +175,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .collect::<Vec<_>>()
             };
             wait_for_nodes_sync(&nodes);
+            wait_for_indexer_synced(&nodes);
             collect(&nodes, &lender, &borrowers);
         }
         ("bench", Some(arguments)) => {
@@ -224,10 +226,12 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
+            let is_production = arguments.is_present("is_production");
             let (live_cell_sender, live_cell_receiver) = bounded(100000);
             let (transaction_sender, transaction_receiver) = bounded(100000);
 
             wait_for_nodes_sync(&nodes);
+            wait_for_indexer_synced(&nodes);
 
             let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
             spawn(move || {
@@ -244,12 +248,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             });
 
             let watcher = Watcher::new(nodes.clone().into());
-            while !watcher.is_zero_load() {
-                sleep(Duration::from_secs(10));
-                ckb_testkit::info!(
-                    "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
-                    watcher.get_fixed_header().number()
-                );
+            if !is_production {
+                while !watcher.is_zero_load() {
+                    sleep(Duration::from_secs(10));
+                    ckb_testkit::info!(
+                        "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
+                        watcher.get_fixed_header().number()
+                    );
+                }
             }
 
             let zero_load_number = watcher.get_fixed_header().number();
@@ -274,17 +280,28 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     let result = nodes[i]
                         .rpc_client()
                         .send_transaction_result(tx.data().into());
-                    if let Err(err) = result {
-                        if err.to_string().contains("PoolIsFull") {
-                            sleep(Duration::from_millis(10));
-                            continue;
-                        } else {
-                            ckb_testkit::error!(
-                                "failed to send {:#x}, error: {:?}",
-                                tx.hash(),
-                                err
-                            );
-                            break;
+                    match result {
+                        Err(err) => {
+                            if err.to_string().contains("PoolIsFull") {
+                                sleep(Duration::from_millis(10));
+                                continue;
+                            } else if err
+                                .to_string()
+                                .contains("PoolRejectedDuplicatedTransaction")
+                            {
+                                break;
+                            } else {
+                                ckb_testkit::error!(
+                                    "failed to send {:#x}, error: {:?}",
+                                    tx.hash(),
+                                    err
+                                );
+                                break;
+                            }
+                        }
+                        Ok(hash) => {
+                            ckb_testkit::debug!("sent transaction {:#x}", hash);
+                            benched_transactions += 1;
                         }
                     }
                 }
@@ -293,18 +310,19 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     last_log_time = Instant::now();
                     ckb_testkit::info!("benched {} transactions", benched_transactions);
                 }
-                benched_transactions += 1;
                 if start_time.elapsed() > t_bench {
                     break;
                 }
             }
 
-            while !watcher.is_zero_load() {
-                sleep(Duration::from_secs(10));
-                ckb_testkit::info!(
-                    "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
-                    watcher.get_fixed_header().number()
-                );
+            if !is_production {
+                while !watcher.is_zero_load() {
+                    sleep(Duration::from_secs(10));
+                    ckb_testkit::info!(
+                        "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
+                        watcher.get_fixed_header().number()
+                    );
+                }
             }
 
             let t_stat = t_bench.div(2);
@@ -431,6 +449,11 @@ fn clap_app() -> App<'static, 'static> {
                         .help("bench time period")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("is_production")
+                        .long("is_production")
+                        .help("whether bench on production environment"),
                 ),
         )
         .subcommand(
@@ -596,5 +619,15 @@ fn wait_for_nodes_sync(nodes: &Vec<Node>) {
             break;
         }
         sleep(Duration::from_secs(1));
+    }
+}
+
+fn wait_for_indexer_synced(nodes: &Vec<Node>) {
+    for node in nodes.iter() {
+        ckb_testkit::info!(
+            "indexer for \"{}\" is synchronizing",
+            node.rpc_client().url()
+        );
+        let _wait_indexing_to_tip = node.indexer();
     }
 }
