@@ -18,7 +18,7 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
     let live_cells = lender.get_spendable_single_secp256k1_cells(&nodes[0]);
     let mut i_borrower = 0;
     let mut txs = Vec::new();
-    for chunk in live_cells.chunks(10) {
+    for chunk in live_cells.chunks(1) {
         let inputs = chunk;
         let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
         // TODO estimate tx fee
