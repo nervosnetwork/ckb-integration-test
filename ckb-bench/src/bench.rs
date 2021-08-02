@@ -29,15 +29,31 @@ impl LiveCellProducer {
 
     pub fn run(mut self, live_cell_sender: Sender<CellMeta>) {
         loop {
-            // TODO Reduce useless travels
-            // sleep(Duration::from_secs(1));
-
+            // FIXME better use Nodes::get_fix_header()
+            let min_tip_number = self
+                .nodes
+                .iter()
+                .map(|node| node.get_tip_block_number())
+                .min()
+                .unwrap();
             for user in self.users.iter() {
                 let live_cells = user
                     .get_spendable_single_secp256k1_cells(&self.nodes[0])
                     .into_iter()
                     // TODO reduce competition
-                    .filter(|cell| !self.seen_out_points.contains(&cell.out_point))
+                    .filter(|cell| {
+                        if self.seen_out_points.contains(&cell.out_point) {
+                            return false;
+                        }
+                        let tx_info = cell
+                            .transaction_info
+                            .as_ref()
+                            .expect("live cell's transaction info should be ok");
+                        if tx_info.block_number < min_tip_number {
+                            return false;
+                        }
+                        true
+                    })
                     .collect::<Vec<_>>();
                 for cell in live_cells {
                     self.seen_out_points
