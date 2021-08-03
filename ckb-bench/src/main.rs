@@ -83,7 +83,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             loop {
                 for node in nodes.nodes() {
                     node.mine(1);
-                    nodes.waiting_for_sync().expect("waiting for sync");
                     mined_n_blocks += 1;
                     if n_blocks != 0 && mined_n_blocks >= n_blocks {
                         return;
