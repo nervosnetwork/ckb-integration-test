@@ -50,7 +50,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .into();
 
             // ensure nodes be out of ibd
-            let max_tip_number = nodes.nodes().map(|node| node.get_tip_block_number()).max();
+            let max_tip_number = nodes.nodes().map(|node| node.get_tip_block_number()).max().unwrap();
             if max_tip_number == 0 {
                 for node in nodes.nodes() {
                     node.mine(1);
