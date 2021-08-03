@@ -50,7 +50,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .into();
 
             // ensure nodes be out of ibd
-            let max_tip_number = nodes.nodes().map(|node| node.get_tip_block_number()).max().unwrap();
+            let max_tip_number = nodes
+                .nodes()
+                .map(|node| node.get_tip_block_number())
+                .max()
+                .unwrap();
             if max_tip_number == 0 {
                 for node in nodes.nodes() {
                     node.mine(1);
@@ -60,6 +64,18 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             // connect nodes
             nodes.p2p_connect();
+            let max_tip_number = nodes
+                .nodes()
+                .map(|node| node.get_tip_block_number())
+                .max()
+                .unwrap();
+            while nodes
+                .nodes()
+                .any(|node| node.get_tip_block_number() < max_tip_number)
+            {
+                sleep(Duration::from_secs(10));
+                ckb_testkit::info!("wait nodes sync");
+            }
 
             // mine `n_blocks`
             let mut mined_n_blocks = 0;
