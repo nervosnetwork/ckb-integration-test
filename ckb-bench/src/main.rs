@@ -50,10 +50,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .into();
 
             // ensure nodes be out of ibd
-            let fixed_tip_number = nodes.get_fixed_header().number();
-            if fixed_tip_number == 0 {
+            let max_tip_number = nodes.nodes().map(|node| node.get_tip_block_number()).max();
+            if max_tip_number == 0 {
                 for node in nodes.nodes() {
                     node.mine(1);
+                    break;
                 }
             }
 
@@ -606,6 +607,7 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
 }
 
 fn wait_for_nodes_sync(nodes: &Vec<Node>) {
+    ckb_testkit::info!("wait for nodes sync");
     for node_a in nodes.iter() {
         for node_b in nodes.iter() {
             if node_a.p2p_address() != node_b.p2p_address() && !node_a.is_p2p_connected(node_b) {
@@ -639,11 +641,8 @@ fn wait_for_nodes_sync(nodes: &Vec<Node>) {
 }
 
 fn wait_for_indexer_synced(nodes: &Vec<Node>) {
+    ckb_testkit::info!("wait for indexer sync");
     for node in nodes.iter() {
-        ckb_testkit::info!(
-            "indexer for \"{}\" is synchronizing",
-            node.rpc_client().url()
-        );
         let _wait_indexing_to_tip = node.indexer();
     }
 }
