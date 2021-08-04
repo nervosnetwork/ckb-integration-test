@@ -8,7 +8,7 @@ mod watcher;
 mod tests;
 
 use crate::bench::{LiveCellProducer, TransactionProducer};
-use crate::prepare::{collect, dispatch, generate_privkeys};
+use crate::prepare::{collect, dispatch, derive_privkeys};
 use crate::utils::maybe_retry_send_transaction;
 use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
@@ -152,7 +152,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                                 err
                             )
                         });
-                let privkeys = generate_privkeys(owner_byte32_privkey, n_users);
+                let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
@@ -207,7 +207,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                                 err
                             )
                         });
-                let privkeys = generate_privkeys(owner_byte32_privkey, n_users);
+                let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
@@ -238,7 +238,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
             let n_inout = value_t_or_exit!(arguments, "n-inout", usize);
-            let t_delay = {
+            let t_tx_interval = {
                 let tx_interval_ms = value_t_or_exit!(arguments, "tx-interval-ms", u64);
                 Duration::from_millis(tx_interval_ms)
             };
@@ -262,18 +262,22 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                                 err
                             )
                         });
-                let privkeys = generate_privkeys(owner_byte32_privkey, n_users);
+                let privkeys = derive_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
             let is_smoking_test = arguments.is_present("is-smoking-test");
-            let (live_cell_sender, live_cell_receiver) = bounded(100000);
-            let (transaction_sender, transaction_receiver) = bounded(100000);
+            let (live_cell_sender, live_cell_receiver) = bounded(10000000);
+            let (transaction_sender, transaction_receiver) = bounded(1000000);
 
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
+            ckb_testkit::info!(
+                "bench with params --n-users {} --n-inout {} --tx-interval-ms {} --bench-time-ms {}",
+                users.len(), n_inout, t_tx_interval.as_millis(), t_bench.as_millis(),
+            );
 
             let live_cell_producer = LiveCellProducer::new(users.clone(), nodes.clone());
             spawn(move || {
@@ -305,25 +309,18 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let start_time = Instant::now();
             let mut last_log_time = Instant::now();
             let mut benched_transactions = 0u64;
-            ckb_testkit::info!(
-                "bench start with params n_inout={}, t_delay={:?}, t_bench={:?}",
-                n_inout,
-                t_delay,
-                t_bench
-            );
             loop {
                 let tx = transaction_receiver
                     .recv_timeout(Duration::from_secs(60 * 3))
                     .expect("timeout to wait transaction_receiver");
-                if t_delay.as_millis() != 0 {
-                    sleep(t_delay);
+                if t_tx_interval.as_millis() != 0 {
+                    sleep(t_tx_interval);
                 }
 
                 loop {
                     i = (i + 1) % nodes.len();
                     match maybe_retry_send_transaction(&nodes[i], &tx) {
-                        Ok(hash) => {
-                            ckb_testkit::debug!("sent transaction {:#x}", hash);
+                        Ok(_hash) => {
                             benched_transactions += 1;
                             break;
                         }
@@ -363,7 +360,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 zero_load_number + 1,
                 fixed_tip_number,
                 t_stat,
-                Some(t_delay),
+                Some(t_tx_interval),
             );
             ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
         }

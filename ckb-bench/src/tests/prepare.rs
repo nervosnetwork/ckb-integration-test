@@ -1,4 +1,4 @@
-use crate::prepare::generate_privkeys;
+use crate::prepare::derive_privkeys;
 use crate::tests::node_options;
 use crate::{clap_app, entrypoint, init_logger};
 use ckb_testkit::{Node, Nodes, User};
@@ -36,7 +36,7 @@ fn test_prepare() {
         let h256 = H256::from_str(owner_raw_privkey).unwrap();
         Byte32::from_slice(h256.as_bytes()).unwrap()
     };
-    let users: Vec<_> = generate_privkeys(owner_byte32_privkey, n_users)
+    let users: Vec<_> = derive_privkeys(owner_byte32_privkey, n_users)
         .into_iter()
         .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
         .collect();

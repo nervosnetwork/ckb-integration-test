@@ -26,7 +26,7 @@ pub fn dispatch(
     capacity_per_cell: u64,
 ) {
     ckb_testkit::info!(
-        "dispatch to {} users, {} cells per user, {} capacity per cell",
+        "dispatch with params --n-users {} --cells-per-user {} --capacity-per-cell {}",
         users.len(),
         cells_per_user,
         capacity_per_cell
@@ -54,11 +54,10 @@ pub fn dispatch(
     }
 
     let total_outs = users.len() * cells_per_user as usize;
-    let index_user = |out_i: usize| out_i % (cells_per_user as usize);
+    let index_user = |out_i: usize| out_i / (cells_per_user as usize);
 
-    ckb_testkit::info!("constructing transactions...");
+    let mut last_logging_time = Instant::now();
     let mut i_out = 0usize;
-    let mut txs = Vec::new();
     while let Some(input) = live_cells.pop_front() {
         let input_capacity = input.capacity().as_u64();
         // TODO estimate tx fee
@@ -108,7 +107,18 @@ pub fn dispatch(
                 .build()
         };
 
-        txs.push(signed_tx.clone());
+        let result = maybe_retry_send_transaction(&nodes[0], &signed_tx);
+        if last_logging_time.elapsed() > Duration::from_secs(30) {
+            last_logging_time = Instant::now();
+            ckb_testkit::info!("dispatch {}/{} outputs", i_out + 1, total_outs)
+        }
+        assert!(
+            result.is_ok(),
+            "dispatch-transaction {:#x} should be ok but got {}",
+            signed_tx.hash(),
+            result.unwrap_err()
+        );
+
         i_out += n_outs;
         if i_out == total_outs {
             break;
@@ -128,27 +138,15 @@ pub fn dispatch(
         }
     }
 
-    assert!(i_out == total_outs);
-    let total_txs = txs.len();
-    let mut last_logging_time = Instant::now();
-    for (i, tx) in txs.iter().enumerate() {
-        let result = maybe_retry_send_transaction(&nodes[0], tx);
-        if last_logging_time.elapsed() > Duration::from_secs(30) {
-            last_logging_time = Instant::now();
-            ckb_testkit::info!("sent {}/{} collect-transactions", i + 1, total_txs)
-        }
-        assert!(
-            result.is_ok(),
-            "dispatch-transaction should be ok but got {}",
-            result.unwrap_err()
-        );
-    }
+    ckb_testkit::info!("finished dispatch");
+    assert!(i_out >= total_outs);
 }
 
 pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
-    ckb_testkit::info!("collect {} users' capacity", users.len());
-    let mut txs = Vec::new();
-    for user in users.iter() {
+    ckb_testkit::info!("collect with params --n-users {}", users.len());
+    let n_users = users.len();
+    let mut last_logging_time = Instant::now();
+    for (i_user, user) in users.iter().enumerate() {
         let live_cells = user.get_spendable_single_secp256k1_cells(&nodes[0]);
         if live_cells.is_empty() {
             continue;
@@ -180,27 +178,23 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
                 .as_advanced_builder()
                 .set_witnesses(vec![witness])
                 .build();
-            txs.push(signed_tx);
+            let result = maybe_retry_send_transaction(&nodes[0], &signed_tx);
+            if last_logging_time.elapsed() > Duration::from_secs(30) {
+                last_logging_time = Instant::now();
+                ckb_testkit::info!("already collected {}/{} users", i_user, n_users)
+            }
+            assert!(
+                result.is_ok(),
+                "collect-transaction {:#x} should be ok but got {}",
+                signed_tx.hash(),
+                result.unwrap_err()
+            );
         }
     }
-
-    let total_txs = txs.len();
-    let mut last_logging_time = Instant::now();
-    for (i, tx) in txs.iter().enumerate() {
-        let result = maybe_retry_send_transaction(&nodes[0], tx);
-        if last_logging_time.elapsed() > Duration::from_secs(30) {
-            last_logging_time = Instant::now();
-            ckb_testkit::info!("sent {}/{} collect-transactions", i + 1, total_txs)
-        }
-        assert!(
-            result.is_ok(),
-            "collect-transaction should be ok but got {}",
-            result.unwrap_err()
-        );
-    }
+    ckb_testkit::info!("finished collecting");
 }
 
-pub fn generate_privkeys(basic_raw_privkey: Byte32, n: usize) -> Vec<Privkey> {
+pub fn derive_privkeys(basic_raw_privkey: Byte32, n: usize) -> Vec<Privkey> {
     let mut raw_privkeys = (0..n).fold(vec![basic_raw_privkey], |mut raw_privkeys, _| {
         let last_raw_privkey = raw_privkeys.last().unwrap();
         let next_raw_privkey = ckb_hash::blake2b_256(last_raw_privkey.as_bytes()).pack();
