@@ -10,6 +10,7 @@ use ckb_types::{
 };
 use std::cmp::min;
 use std::collections::VecDeque;
+use std::time::{Duration, Instant};
 
 /// count of two-in-two-out txs a block should capable to package.
 const TWO_IN_TWO_OUT_COUNT: u64 = 1_000;
@@ -55,6 +56,7 @@ pub fn dispatch(
     let total_outs = users.len() * cells_per_user as usize;
     let index_user = |out_i: usize| out_i % (cells_per_user as usize);
 
+    ckb_testkit::info!("constructing transactions...");
     let mut i_out = 0usize;
     let mut txs = Vec::new();
     while let Some(input) = live_cells.pop_front() {
@@ -127,8 +129,14 @@ pub fn dispatch(
     }
 
     assert!(i_out == total_outs);
-    for tx in txs {
-        let result = maybe_retry_send_transaction(&nodes[0], &tx);
+    let total_txs = txs.len();
+    let mut last_logging_time = Instant::now();
+    for (i, tx) in txs.iter().enumerate() {
+        let result = maybe_retry_send_transaction(&nodes[0], tx);
+        if last_logging_time.elapsed() > Duration::from_secs(30) {
+            last_logging_time = Instant::now();
+            ckb_testkit::info!("sent {}/{} collect-transactions", i + 1, total_txs)
+        }
         assert!(
             result.is_ok(),
             "dispatch-transaction should be ok but got {}",
@@ -176,8 +184,14 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
         }
     }
 
-    for tx in txs {
-        let result = maybe_retry_send_transaction(&nodes[0], &tx);
+    let total_txs = txs.len();
+    let mut last_logging_time = Instant::now();
+    for (i, tx) in txs.iter().enumerate() {
+        let result = maybe_retry_send_transaction(&nodes[0], tx);
+        if last_logging_time.elapsed() > Duration::from_secs(30) {
+            last_logging_time = Instant::now();
+            ckb_testkit::info!("sent {}/{} collect-transactions", i + 1, total_txs)
+        }
         assert!(
             result.is_ok(),
             "collect-transaction should be ok but got {}",
