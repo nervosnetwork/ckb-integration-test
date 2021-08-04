@@ -15,7 +15,7 @@ pub struct Metrics {
     pub average_block_transactions_size: usize,
     pub average_block_time_ms: u64,
     pub n_nodes: usize,
-    pub n_outputs: usize,
+    pub n_inout: usize,
     pub ckb_version: String,
     pub delay_time_ms: Option<u64>,
 }
@@ -33,7 +33,7 @@ pub fn stat(
     let mut j = from_number;
     let mut total_transactions = 0;
     let mut total_transactions_size = 0;
-    let mut n_outputs = 0;
+    let mut n_inout = 0;
     let mut best_metrics = Metrics::default();
     loop {
         let block_i = node.get_block_by_number(i);
@@ -48,9 +48,9 @@ pub fn stat(
             }
             total_transactions += block_j.transactions().len();
             total_transactions_size += block_j.data().serialized_size_without_uncle_proposals();
-            if n_outputs == 0 {
+            if n_inout == 0 {
                 if block_j.transactions().len() > 1 {
-                    n_outputs = block_j.transactions()[1].outputs().len();
+                    n_inout = block_j.transactions()[1].outputs().len();
                 }
             }
             j += 1;
@@ -95,7 +95,7 @@ pub fn stat(
     let local_node_info = node.rpc_client().local_node_info();
     best_metrics.ckb_version = local_node_info.version;
     best_metrics.n_nodes = local_node_info.connections.value() as usize + 1;
-    best_metrics.n_outputs = n_outputs;
+    best_metrics.n_inout = n_inout;
     best_metrics.delay_time_ms = delay_time.map(|t| t.as_millis() as u64);
     best_metrics
 }

@@ -6,8 +6,8 @@ use std::env;
 #[test]
 fn test_mine() {
     let _logger = init_logger();
-    let lender_raw_privkey = "8c296482b9b763e8be974058272f377462f2975b94454dabb112de0f135e2064";
-    env::set_var("CKB_BENCH_LENDER_PRIVKEY", lender_raw_privkey);
+    let owner_raw_privkey = "8c296482b9b763e8be974058272f377462f2975b94454dabb112de0f135e2064";
+    env::set_var("CKB_BENCH_OWNER_PRIVKEY", owner_raw_privkey);
 
     let nodes: Nodes = node_options()
         .into_iter()
@@ -29,10 +29,10 @@ fn test_mine() {
         // Mine some blocks
         let matches = clap_app().get_matches_from(vec![
             "./target/debug/ckb-bench",
-            "mine",
-            "--n_blocks",
+            "miner",
+            "--n-blocks",
             "100",
-            "--block_time_millis",
+            "--block-time-ms",
             "1",
             "--rpc-urls",
             &raw_nodes_urls,

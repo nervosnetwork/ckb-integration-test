@@ -11,8 +11,8 @@ use std::str::FromStr;
 #[test]
 fn test_prepare() {
     let _logger = init_logger();
-    let lender_raw_privkey = "8c296482b9b763e8be974058272f377462f2975b94454dabb112de0f135e2064";
-    env::set_var("CKB_BENCH_LENDER_PRIVKEY", lender_raw_privkey);
+    let owner_raw_privkey = "8c296482b9b763e8be974058272f377462f2975b94454dabb112de0f135e2064";
+    env::set_var("CKB_BENCH_OWNER_PRIVKEY", owner_raw_privkey);
 
     let nodes: Nodes = node_options()
         .into_iter()
@@ -29,18 +29,18 @@ fn test_prepare() {
         .collect::<Vec<_>>()
         .join(",");
     let node = nodes.get_node("node2021_1");
-    let n_borrowers = 10;
-    let borrow_capacity = 7100000000;
+    let n_users = 10;
+    let capacity_per_cell = 7100000000;
     let genesis_block = node.get_block_by_number(0);
-    let lender_byte32_privkey = {
-        let h256 = H256::from_str(lender_raw_privkey).unwrap();
+    let owner_byte32_privkey = {
+        let h256 = H256::from_str(owner_raw_privkey).unwrap();
         Byte32::from_slice(h256.as_bytes()).unwrap()
     };
-    let users: Vec<_> = generate_privkeys(lender_byte32_privkey, n_borrowers)
+    let users: Vec<_> = generate_privkeys(owner_byte32_privkey, n_users)
         .into_iter()
         .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
         .collect();
-    assert_eq!(users.len(), n_borrowers);
+    assert_eq!(users.len(), n_users);
 
     {
         // Mine some blocks
@@ -50,7 +50,7 @@ fn test_prepare() {
     }
 
     {
-        // Dispatch capacity to borrowers
+        // Dispatch capacity to users
         for user in users.iter() {
             let cells = user.get_spendable_single_secp256k1_cells(node);
             assert!(cells.is_empty());
@@ -58,12 +58,12 @@ fn test_prepare() {
         entrypoint(clap_app().get_matches_from(vec![
             "./target/debug/ckb-bench",
             "dispatch",
-            "--working_dir",
+            "--data-dir",
             &node.working_dir().display().to_string(),
-            "--n_borrowers",
-            n_borrowers.to_string().as_str(),
-            "--borrow_capacity",
-            borrow_capacity.to_string().as_str(),
+            "--n-users",
+            n_users.to_string().as_str(),
+            "--capacity-per-cell",
+            capacity_per_cell.to_string().as_str(),
             "--rpc-urls",
             &raw_nodes_urls,
         ]));
@@ -78,22 +78,22 @@ fn test_prepare() {
             let cells = user.get_spendable_single_secp256k1_cells(node);
             let total_capacity: u64 = cells.iter().map(|cell| cell.capacity().as_u64()).sum();
             assert_eq!(
-                total_capacity, borrow_capacity,
+                total_capacity, capacity_per_cell,
                 "user-{} actual capacity: {}, expected capacity: {}",
-                i, total_capacity, borrow_capacity,
+                i, total_capacity, capacity_per_cell,
             );
         }
     }
 
     {
-        // Collect borrowers' cells to lender
+        // Collect users' cells to owner
         entrypoint(clap_app().get_matches_from(vec![
             "./target/debug/ckb-bench",
             "collect",
-            "--working_dir",
+            "--data-dir",
             &node.working_dir().display().to_string(),
-            "--n_borrowers",
-            n_borrowers.to_string().as_str(),
+            "--n-users",
+            n_users.to_string().as_str(),
             "--rpc-urls",
             &raw_nodes_urls,
         ]));

@@ -10,41 +10,40 @@ use std::thread::sleep;
 use std::time::Duration;
 
 // TODO handle big cell
-pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capacity: u64) {
+pub fn dispatch(nodes: &[Node], owner: &User, users: &[User], capacity_per_cell: u64) {
     ckb_testkit::info!(
-        "dispatch to {} borrowers, {} capacity per borrower",
-        borrowers.len(),
-        borrow_capacity
+        "dispatch to {} users, {} capacity per user",
+        users.len(),
+        capacity_per_cell
     );
-    let live_cells = lender.get_spendable_single_secp256k1_cells(&nodes[0]);
-    let mut i_borrower = 0;
+    let live_cells = owner.get_spendable_single_secp256k1_cells(&nodes[0]);
+    let mut i_user = 0;
     let mut txs = Vec::new();
     for chunk in live_cells.chunks(1) {
         let inputs = chunk;
         let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
         // TODO estimate tx fee
-        let fee = (inputs_capacity / borrow_capacity) * 1000;
+        let fee = (inputs_capacity / capacity_per_cell) * 1000;
         let outputs_capacity = inputs_capacity - fee;
-        let n_outputs =
-            if (outputs_capacity / borrow_capacity) as usize > borrowers.len() - i_borrower {
-                min(1500, borrowers.len() - i_borrower)
-            } else {
-                min(1500, (outputs_capacity / borrow_capacity) as usize)
-            };
-        let change_capacity = inputs_capacity - n_outputs as u64 * borrow_capacity - fee;
-        let mut outputs = borrowers[i_borrower..i_borrower + n_outputs]
+        let n_outputs = if (outputs_capacity / capacity_per_cell) as usize > users.len() - i_user {
+            min(1500, users.len() - i_user)
+        } else {
+            min(1500, (outputs_capacity / capacity_per_cell) as usize)
+        };
+        let change_capacity = inputs_capacity - n_outputs as u64 * capacity_per_cell - fee;
+        let mut outputs = users[i_user..i_user + n_outputs]
             .iter()
-            .map(|borrower| {
+            .map(|user| {
                 CellOutput::new_builder()
-                    .capacity(borrow_capacity.pack())
-                    .lock(borrower.single_secp256k1_lock_script())
+                    .capacity(capacity_per_cell.pack())
+                    .lock(user.single_secp256k1_lock_script())
                     .build()
             })
             .collect::<Vec<_>>();
         if change_capacity >= Capacity::bytes(67).unwrap().as_u64() {
             let change_output = CellOutput::new_builder()
                 .capacity(change_capacity.pack())
-                .lock(lender.single_secp256k1_lock_script())
+                .lock(owner.single_secp256k1_lock_script())
                 .build();
             outputs.push(change_output);
         }
@@ -59,9 +58,9 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
             )
             .outputs(outputs)
             .outputs_data(outputs_data)
-            .cell_dep(lender.single_secp256k1_cell_dep())
+            .cell_dep(owner.single_secp256k1_cell_dep())
             .build();
-        let witness = lender
+        let witness = owner
             .single_secp256k1_signed_witness(&unsigned_tx)
             .as_bytes()
             .pack();
@@ -71,18 +70,18 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
             .build();
 
         txs.push(signed_tx);
-        i_borrower += n_outputs;
-        if i_borrower >= borrowers.len() {
+        i_user += n_outputs;
+        if i_user >= users.len() {
             break;
         }
     }
 
     let total_capacity: u64 = live_cells.iter().map(|cell| cell.capacity().as_u64()).sum();
     assert!(
-        i_borrower >= borrowers.len(),
-        "lender has not enough capacity for borrowers, total_capacity: {}, rest {} borrowers",
+        i_user >= users.len(),
+        "owner has not enough capacity for users, total_capacity: {}, rest {} users",
         total_capacity,
-        borrowers.len().saturating_sub(i_borrower),
+        users.len().saturating_sub(i_user),
     );
     for tx in txs {
         while let Err(err) = nodes[0]
@@ -99,11 +98,11 @@ pub fn dispatch(nodes: &[Node], lender: &User, borrowers: &[User], borrow_capaci
     }
 }
 
-pub fn collect(nodes: &[Node], lender: &User, borrowers: &[User]) {
-    ckb_testkit::info!("collect {} borrowers' capacity", borrowers.len());
+pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
+    ckb_testkit::info!("collect {} users' capacity", users.len());
     let mut txs = Vec::new();
-    for borrower in borrowers.iter() {
-        let live_cells = borrower.get_spendable_single_secp256k1_cells(&nodes[0]);
+    for user in users.iter() {
+        let live_cells = user.get_spendable_single_secp256k1_cells(&nodes[0]);
         if live_cells.is_empty() {
             continue;
         }
@@ -114,7 +113,7 @@ pub fn collect(nodes: &[Node], lender: &User, borrowers: &[User]) {
             let fee = inputs.len() as u64 * 1000;
             let output = CellOutput::new_builder()
                 .capacity((inputs_capacity - fee).pack())
-                .lock(lender.single_secp256k1_lock_script())
+                .lock(owner.single_secp256k1_lock_script())
                 .build();
             let unsigned_tx = TransactionBuilder::default()
                 .inputs(
@@ -124,9 +123,9 @@ pub fn collect(nodes: &[Node], lender: &User, borrowers: &[User]) {
                 )
                 .output(output)
                 .output_data(Default::default())
-                .cell_dep(lender.single_secp256k1_cell_dep())
+                .cell_dep(owner.single_secp256k1_cell_dep())
                 .build();
-            let witness = borrower
+            let witness = user
                 .single_secp256k1_signed_witness(&unsigned_tx)
                 .as_bytes()
                 .pack();

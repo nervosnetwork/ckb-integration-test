@@ -39,10 +39,10 @@ fn main() {
 
 pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
     match clap_arg_match.subcommand() {
-        ("mine", Some(arguments)) => {
+        ("miner", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
-            let n_blocks = value_t_or_exit!(arguments, "n_blocks", u64);
-            let block_time_millis = value_t_or_exit!(arguments, "block_time_millis", u64);
+            let n_blocks = value_t_or_exit!(arguments, "n-blocks", u64);
+            let mining_interval_ms = value_t_or_exit!(arguments, "mining-interval-ms", u64);
             let nodes: Nodes = rpc_urls
                 .iter()
                 .map(|url| Node::init_from_url(url.as_str(), Default::default()))
@@ -96,57 +96,57 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                             nodes.get_fixed_header().number()
                         );
                     }
-                    if block_time_millis != 0 {
-                        sleep(Duration::from_millis(block_time_millis));
+                    if mining_interval_ms != 0 {
+                        sleep(Duration::from_millis(mining_interval_ms));
                     }
                 }
             }
         }
         ("dispatch", Some(arguments)) => {
-            let working_dir = value_t_or_exit!(arguments, "working_dir", PathBuf);
+            let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
                     let port = url.port().unwrap();
                     let host = url.host_str().unwrap();
-                    let node_working_dir = working_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_working_dir).unwrap_or_else(|err| {
+                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
+                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
                         panic!(
                             "failed to create dir \"{}\", error: {}",
-                            node_working_dir.display(),
+                            node_data_dir.display(),
                             err
                         )
                     });
 
-                    Node::init_from_url(url.as_str(), node_working_dir)
+                    Node::init_from_url(url.as_str(), node_data_dir)
                 })
                 .collect::<Vec<_>>();
-            let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
-            let borrow_capacity = value_t_or_exit!(arguments, "borrow_capacity", u64);
-            let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
-                prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
+            let n_users = value_t_or_exit!(arguments, "n-users", usize);
+            let capacity_per_cell = value_t_or_exit!(arguments, "capacity-per-cell", u64);
+            let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!("cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}", err)
             });
             let genesis_block = nodes[0].get_block_by_number(0);
-            let lender = {
-                let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
+            let owner = {
+                let owner_privkey = Privkey::from_str(&owner_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
-                        "failed to parse CKB_BENCH_LENDER_PRIVKEY to Privkey, error: {}",
+                        "failed to parse CKB_BENCH_OWNER_PRIVKEY to Privkey, error: {}",
                         err
                     )
                 });
-                User::new(genesis_block.clone(), Some(lender_privkey))
+                User::new(genesis_block.clone(), Some(owner_privkey))
             };
-            let borrowers = {
-                let lender_byte32_privkey =
-                    Byte32::from_slice(H256::from_str(&lender_raw_privkey).unwrap().as_bytes())
+            let users = {
+                let owner_byte32_privkey =
+                    Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
                         .unwrap_or_else(|err| {
                             prompt_and_exit!(
-                                "failed to parse CKB_BENCH_LENDER_PRIVKEY to Byte32, error: {}",
+                                "failed to parse CKB_BENCH_OWNER_PRIVKEY to Byte32, error: {}",
                                 err
                             )
                         });
-                let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
+                let privkeys = generate_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
@@ -154,51 +154,51 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             };
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
-            dispatch(&nodes, &lender, &borrowers, borrow_capacity);
+            dispatch(&nodes, &owner, &users, capacity_per_cell);
         }
         ("collect", Some(arguments)) => {
-            let working_dir = value_t_or_exit!(arguments, "working_dir", PathBuf);
+            let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
                     let port = url.port().unwrap();
                     let host = url.host_str().unwrap();
-                    let node_working_dir = working_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_working_dir).unwrap_or_else(|err| {
+                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
+                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
                         panic!(
                             "failed to create dir \"{}\", error: {}",
-                            node_working_dir.display(),
+                            node_data_dir.display(),
                             err
                         )
                     });
-                    Node::init_from_url(url.as_str(), node_working_dir)
+                    Node::init_from_url(url.as_str(), node_data_dir)
                 })
                 .collect::<Vec<_>>();
-            let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
-            let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
-                prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
+            let n_users = value_t_or_exit!(arguments, "n-users", usize);
+            let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!("cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}", err)
             });
             let genesis_block = nodes[0].get_block_by_number(0);
-            let lender = {
-                let lender_privkey = Privkey::from_str(&lender_raw_privkey).unwrap_or_else(|err| {
+            let owner = {
+                let owner_privkey = Privkey::from_str(&owner_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
-                        "failed to parse CKB_BENCH_LENDER_PRIVKEY to Privkey, error: {}",
+                        "failed to parse CKB_BENCH_OWNER_PRIVKEY to Privkey, error: {}",
                         err
                     )
                 });
-                User::new(genesis_block.clone(), Some(lender_privkey))
+                User::new(genesis_block.clone(), Some(owner_privkey))
             };
-            let borrowers = {
-                let lender_byte32_privkey =
-                    Byte32::from_slice(H256::from_str(&lender_raw_privkey).unwrap().as_bytes())
+            let users = {
+                let owner_byte32_privkey =
+                    Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
                         .unwrap_or_else(|err| {
                             prompt_and_exit!(
-                                "failed to parse CKB_BENCH_LENDER_PRIVKEY to Byte32, error: {}",
+                                "failed to parse CKB_BENCH_OWNER_PRIVKEY to Byte32, error: {}",
                                 err
                             )
                         });
-                let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
+                let privkeys = generate_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
@@ -206,79 +206,79 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             };
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
-            collect(&nodes, &lender, &borrowers);
+            collect(&nodes, &owner, &users);
         }
         ("bench", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
-            let working_dir = value_t_or_exit!(arguments, "working_dir", PathBuf);
+            let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
                     let port = url.port().unwrap();
                     let host = url.host_str().unwrap();
-                    let node_working_dir = working_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_working_dir).unwrap_or_else(|err| {
+                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
+                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
                         panic!(
                             "failed to create dir \"{}\", error: {}",
-                            node_working_dir.display(),
+                            node_data_dir.display(),
                             err
                         )
                     });
-                    Node::init_from_url(url.as_str(), node_working_dir)
+                    Node::init_from_url(url.as_str(), node_data_dir)
                 })
                 .collect::<Vec<_>>();
-            let n_borrowers = value_t_or_exit!(arguments, "n_borrowers", usize);
-            let n_outputs = value_t_or_exit!(arguments, "n_outputs", usize);
+            let n_users = value_t_or_exit!(arguments, "n-users", usize);
+            let n_inout = value_t_or_exit!(arguments, "n-inout", usize);
             let t_delay = {
-                let delay_ms = value_t_or_exit!(arguments, "delay_ms", u64);
-                Duration::from_millis(delay_ms)
+                let tx_interval_ms = value_t_or_exit!(arguments, "tx-interval-ms", u64);
+                Duration::from_millis(tx_interval_ms)
             };
             let t_bench = {
-                let bench_time_ms = value_t_or_exit!(arguments, "bench_time_ms", u64);
+                let bench_time_ms = value_t_or_exit!(arguments, "bench-time-ms", u64);
                 Duration::from_millis(bench_time_ms)
             };
-            let lender_raw_privkey = env::var("CKB_BENCH_LENDER_PRIVKEY").unwrap_or_else(|err| {
-                prompt_and_exit!("cannot find \"CKB_BENCH_LENDER_PRIVKEY\" from environment variables, error: {}", err)
+            let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
+                prompt_and_exit!("cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}", err)
             });
             let genesis_block = nodes[0].get_block_by_number(0);
-            let borrowers = {
-                let lender_byte32_privkey =
-                    Byte32::from_slice(H256::from_str(&lender_raw_privkey).unwrap().as_bytes())
+            let users = {
+                let owner_byte32_privkey =
+                    Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
                         .unwrap_or_else(|err| {
                             prompt_and_exit!(
-                                "failed to parse CKB_BENCH_LENDER_PRIVKEY to Byte32, error: {}",
+                                "failed to parse CKB_BENCH_OWNER_PRIVKEY to Byte32, error: {}",
                                 err
                             )
                         });
-                let privkeys = generate_privkeys(lender_byte32_privkey, n_borrowers);
+                let privkeys = generate_privkeys(owner_byte32_privkey, n_users);
                 privkeys
                     .into_iter()
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
-            let is_production = arguments.is_present("is_production");
+            let is_smoking_test = arguments.is_present("is-smoking-test");
             let (live_cell_sender, live_cell_receiver) = bounded(100000);
             let (transaction_sender, transaction_receiver) = bounded(100000);
 
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
 
-            let live_cell_producer = LiveCellProducer::new(borrowers.clone(), nodes.clone());
+            let live_cell_producer = LiveCellProducer::new(users.clone(), nodes.clone());
             spawn(move || {
                 live_cell_producer.run(live_cell_sender);
             });
 
             let transaction_producer = TransactionProducer::new(
-                borrowers.clone(),
-                vec![borrowers[0].single_secp256k1_cell_dep()],
-                n_outputs,
+                users.clone(),
+                vec![users[0].single_secp256k1_cell_dep()],
+                n_inout,
             );
             spawn(move || {
                 transaction_producer.run(live_cell_receiver, transaction_sender);
             });
 
             let watcher = Watcher::new(nodes.clone().into());
-            if !is_production {
+            if !is_smoking_test {
                 while !watcher.is_zero_load() {
                     sleep(Duration::from_secs(10));
                     ckb_testkit::info!(
@@ -294,8 +294,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mut last_log_time = Instant::now();
             let mut benched_transactions = 0u64;
             ckb_testkit::info!(
-                "bench start with params n_outputs={}, t_delay={:?}, t_bench={:?}",
-                n_outputs,
+                "bench start with params n_inout={}, t_delay={:?}, t_bench={:?}",
+                n_inout,
                 t_delay,
                 t_bench
             );
@@ -347,7 +347,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 }
             }
 
-            if !is_production {
+            if !is_smoking_test {
                 while !watcher.is_zero_load() {
                     sleep(Duration::from_secs(10));
                     ckb_testkit::info!(
@@ -370,9 +370,9 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
-            let from_number = value_t_or_exit!(arguments, "from_number", BlockNumber);
-            let to_number = value_t_or_exit!(arguments, "to_number", BlockNumber);
-            let stat_time_ms = value_t_or_exit!(arguments, "stat_time_ms", u64);
+            let from_number = value_t_or_exit!(arguments, "from-number", BlockNumber);
+            let to_number = value_t_or_exit!(arguments, "to-number", BlockNumber);
+            let stat_time_ms = value_t_or_exit!(arguments, "stat-period-ms", u64);
             let t_stat = Duration::from_millis(stat_time_ms);
             let node = Node::init_from_url(rpc_urls[0].as_str(), Default::default());
             let metrics = stat::stat(&node, from_number, to_number, t_stat, None);
@@ -390,12 +390,13 @@ fn clap_app() -> App<'static, 'static> {
     App::new("ckb-bench")
         .version(crate_version!())
         .subcommand(
-            SubCommand::with_name("mine")
-                .about("Mine specified number of blocks")
+            SubCommand::with_name("miner")
+                .about("runs ckb miner")
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
                         .value_name("URLS")
+                        .long_help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -403,23 +404,22 @@ fn clap_app() -> App<'static, 'static> {
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("n_blocks")
+                    Arg::with_name("n-blocks")
                         .short("b")
-                        .long("n_blocks")
+                        .long("n-blocks")
                         .value_name("NUMBER")
                         .takes_value(true)
-                        .help("number of blocks to mine, default is infinite(0)")
+                        .help("How many blocks to mine, 0 means infinitely")
                         .default_value("0")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("block_time_millis")
-                        .long("block_time_millis")
+                    Arg::with_name("mining-interval-ms")
+                        .long("mining-interval-ms")
                         .value_name("TIME")
                         .takes_value(true)
-                        .help("block time, default is 0")
-                        .default_value("0")
+                        .help("How long it takes to mine a block.\nNote that it is different with \"block time interval\", we can/should not control the block time interval")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
@@ -428,18 +428,19 @@ fn clap_app() -> App<'static, 'static> {
             SubCommand::with_name("bench")
                 .about("bench the target ckb nodes")
                 .arg(
-                    Arg::with_name("working_dir")
-                        .long("working_dir")
+                    Arg::with_name("data-dir")
+                        .long("data-dir")
                         .required(true)
                         .takes_value(true)
                         .value_name("PATH")
-                        .default_value(".")
-                        .help("path to working directory"),
+                        .default_value("./data")
+                        .help("Data directory"),
                 )
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
                         .value_name("URLS")
+                        .help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -447,54 +448,55 @@ fn clap_app() -> App<'static, 'static> {
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("n_borrowers")
-                        .long("n_borrowers")
+                    Arg::with_name("n-users")
+                        .long("n-users")
                         .value_name("NUMBER")
                         .takes_value(true)
                         .required(true)
-                        .help("number of borrowers")
+                        .help("Number of users")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("n_outputs")
-                        .long("n_outputs")
+                    Arg::with_name("n-inout")
+                        .long("n-inout")
                         .value_name("NUMBER")
                         .takes_value(true)
                         .required(true)
-                        .help("count of outputs of a transaction")
+                        .help("input-output pairs of a transaction")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("delay_ms")
-                        .long("delay_ms")
+                    Arg::with_name("tx-interval-ms")
+                        .long("tx-interval-ms")
                         .value_name("TIME")
                         .takes_value(true)
-                        .help("delay of sending transactions in milliseconds")
+                        .help("Interval of sending transactions in milliseconds")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("bench_time_ms")
-                        .long("bench_time_ms")
+                    Arg::with_name("bench-time-ms")
+                        .long("bench-time-ms")
                         .value_name("TIME")
                         .takes_value(true)
-                        .help("bench time period")
+                        .help("Bench time period")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("is_production")
-                        .long("is_production")
-                        .help("whether bench on production environment"),
+                    Arg::with_name("is-smoking-test")
+                        .long("is-smoking-test")
+                        .help("Whether the target network is production network, like mainnet, testnet, devnet"),
                 ),
         )
         .subcommand(
             SubCommand::with_name("dispatch")
-                .about("dispatch lender's capacity to borrowers")
+                .about("dispatch capacity to users")
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
                         .value_name("URLS")
+                        .help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -502,40 +504,41 @@ fn clap_app() -> App<'static, 'static> {
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("n_borrowers")
-                        .long("n_borrowers")
+                    Arg::with_name("n-users")
+                        .long("n-users")
                         .value_name("NUMBER")
                         .takes_value(true)
                         .required(true)
-                        .help("number of borrowers")
+                        .help("Number of users")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("borrow_capacity")
-                        .long("borrow_capacity")
+                    Arg::with_name("capacity-per-cell")
+                        .long("capacity-per-cell")
                         .value_name("NUMBER")
                         .takes_value(true)
                         .required(true)
-                        .help("how much capacity to borrow")
+                        .help("Capacity per cell")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("working_dir")
-                        .long("working_dir")
+                    Arg::with_name("data-dir")
+                        .long("data-dir")
                         .required(true)
                         .takes_value(true)
                         .value_name("PATH")
-                        .default_value(".")
-                        .help("path to working directory"),
+                        .default_value("./data")
+                        .help("Data directory"),
                 ),
         )
         .subcommand(
             SubCommand::with_name("collect")
-                .about("collect borrowers' capacity back to lender")
+                .about("collect capacity back to owner")
                 .arg(
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
                         .value_name("URLS")
+                        .help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -543,22 +546,22 @@ fn clap_app() -> App<'static, 'static> {
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("n_borrowers")
-                        .long("n_borrowers")
+                    Arg::with_name("n-users")
+                        .long("n-users")
                         .value_name("NUMBER")
                         .takes_value(true)
-                        .help("number of borrowers")
+                        .help("Number of users")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("working_dir")
-                        .long("working_dir")
+                    Arg::with_name("data-dir")
+                        .long("data-dir")
                         .required(true)
                         .takes_value(true)
                         .value_name("PATH")
-                        .default_value(".")
-                        .help("path to working directory"),
+                        .default_value("./data")
+                        .help("Data directory"),
                 ),
         )
         .subcommand(
@@ -568,6 +571,7 @@ fn clap_app() -> App<'static, 'static> {
                     Arg::with_name("rpc-urls")
                         .long("rpc-urls")
                         .value_name("URLS")
+                        .long_help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
                         .required(true)
                         .takes_value(true)
                         .multiple(true)
@@ -575,29 +579,29 @@ fn clap_app() -> App<'static, 'static> {
                         .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("from_number")
-                        .long("from_number")
+                    Arg::with_name("from-number")
+                        .long("from-number")
                         .value_name("NUMBER")
                         .takes_value(true)
-                        .help("block number to stat from")
+                        .help("From block number")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("to_number")
-                        .long("to_number")
+                    Arg::with_name("to-number")
+                        .long("to-number")
                         .value_name("NUMBER")
                         .takes_value(true)
-                        .help("block number to stat to")
+                        .help("To block number")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
-                    Arg::with_name("stat_time_ms")
-                        .long("stat_time_ms")
+                    Arg::with_name("stat-period-ms")
+                        .long("stat-period-ms")
                         .value_name("TIME")
                         .takes_value(true)
-                        .help("duration to stat")
+                        .help("Stat period")
                         .required(true)
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
@@ -622,7 +626,7 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
 }
 
 fn wait_for_nodes_sync(nodes: &Vec<Node>) {
-    ckb_testkit::info!("wait for nodes sync");
+    ckb_testkit::info!("wait_for_nodes_sync");
     for node_a in nodes.iter() {
         for node_b in nodes.iter() {
             if node_a.p2p_address() != node_b.p2p_address() && !node_a.is_p2p_connected(node_b) {
@@ -637,7 +641,7 @@ fn wait_for_nodes_sync(nodes: &Vec<Node>) {
         }
     }
 
-    let max_tip_number = nodes
+    let target_tip_number = nodes
         .iter()
         .map(|node| node.get_tip_block_number())
         .max()
@@ -648,15 +652,20 @@ fn wait_for_nodes_sync(nodes: &Vec<Node>) {
             .map(|node| node.get_tip_block_number())
             .min()
             .expect("should be ok for multiple nodes");
-        if min_tip_number >= max_tip_number {
+        if min_tip_number >= target_tip_number {
             break;
         }
-        sleep(Duration::from_secs(1));
+        ckb_testkit::info!(
+            "wait_for_nodes_sync, target_tip_number is {}, min_tip_number is {}",
+            target_tip_number,
+            min_tip_number
+        );
+        sleep(Duration::from_secs(10));
     }
 }
 
 fn wait_for_indexer_synced(nodes: &Vec<Node>) {
-    ckb_testkit::info!("wait for indexer sync");
+    ckb_testkit::info!("wait_for_indexer_synced");
     for node in nodes.iter() {
         let _wait_indexing_to_tip = node.indexer();
     }

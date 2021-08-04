@@ -69,7 +69,7 @@ pub struct TransactionProducer {
     // #{ lock_hash => user }
     users: HashMap<Byte32, User>,
     cell_deps: Vec<CellDep>,
-    n_outputs: usize,
+    n_inout: usize,
     // #{ lock_hash => live_cell }
     live_cells: HashMap<Byte32, CellMeta>,
     // #{ out_point => live_cell }
@@ -77,7 +77,7 @@ pub struct TransactionProducer {
 }
 
 impl TransactionProducer {
-    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_outputs: usize) -> Self {
+    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize) -> Self {
         let users = users
             .into_iter()
             .map(|user| (user.single_secp256k1_lock_hash(), user))
@@ -85,7 +85,7 @@ impl TransactionProducer {
         Self {
             users,
             cell_deps,
-            n_outputs,
+            n_inout,
             live_cells: HashMap::new(),
             backlogs: HashMap::new(),
         }
@@ -109,7 +109,7 @@ impl TransactionProducer {
                 }
             }
 
-            if self.live_cells.len() >= self.n_outputs {
+            if self.live_cells.len() >= self.n_inout {
                 let mut live_cells = HashMap::new();
                 std::mem::swap(&mut self.live_cells, &mut live_cells);
 
