@@ -1,6 +1,7 @@
 mod bench;
 mod prepare;
 mod stat;
+mod utils;
 mod watcher;
 
 #[cfg(test)]
@@ -8,6 +9,7 @@ mod tests;
 
 use crate::bench::{LiveCellProducer, TransactionProducer};
 use crate::prepare::{collect, dispatch, generate_privkeys};
+use crate::utils::maybe_retry_send_transaction;
 use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
 use ckb_testkit::{Node, Nodes, User};
@@ -123,9 +125,13 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 })
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
+            let cells_per_user = value_t_or_exit!(arguments, "cells-per-user", u64);
             let capacity_per_cell = value_t_or_exit!(arguments, "capacity-per-cell", u64);
             let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
-                prompt_and_exit!("cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}", err)
+                prompt_and_exit!(
+                    "cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}",
+                    err
+                )
             });
             let genesis_block = nodes[0].get_block_by_number(0);
             let owner = {
@@ -154,7 +160,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             };
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
-            dispatch(&nodes, &owner, &users, capacity_per_cell);
+            dispatch(&nodes, &owner, &users, cells_per_user, capacity_per_cell);
         }
         ("collect", Some(arguments)) => {
             let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
@@ -177,7 +183,10 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
             let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
-                prompt_and_exit!("cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}", err)
+                prompt_and_exit!(
+                    "cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}",
+                    err
+                )
             });
             let genesis_block = nodes[0].get_block_by_number(0);
             let owner = {
@@ -238,7 +247,10 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 Duration::from_millis(bench_time_ms)
             };
             let owner_raw_privkey = env::var("CKB_BENCH_OWNER_PRIVKEY").unwrap_or_else(|err| {
-                prompt_and_exit!("cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}", err)
+                prompt_and_exit!(
+                    "cannot find \"CKB_BENCH_OWNER_PRIVKEY\" from environment variables, error: {}",
+                    err
+                )
             });
             let genesis_block = nodes[0].get_block_by_number(0);
             let users = {
@@ -309,31 +321,18 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
                 loop {
                     i = (i + 1) % nodes.len();
-                    let result = nodes[i]
-                        .rpc_client()
-                        .send_transaction_result(tx.data().into());
-                    match result {
-                        Err(err) => {
-                            if err.to_string().contains("PoolIsFull") {
-                                sleep(Duration::from_millis(10));
-                                continue;
-                            } else if err
-                                .to_string()
-                                .contains("PoolRejectedDuplicatedTransaction")
-                            {
-                                break;
-                            } else {
-                                ckb_testkit::error!(
-                                    "failed to send {:#x}, error: {:?}",
-                                    tx.hash(),
-                                    err
-                                );
-                                break;
-                            }
-                        }
+                    match maybe_retry_send_transaction(&nodes[i], &tx) {
                         Ok(hash) => {
                             ckb_testkit::debug!("sent transaction {:#x}", hash);
                             benched_transactions += 1;
+                            break;
+                        }
+                        Err(err) => {
+                            ckb_testkit::error!(
+                                "failed to send tx {:#x}, error: {}",
+                                tx.hash(),
+                                err
+                            );
                         }
                     }
                 }
@@ -510,6 +509,15 @@ fn clap_app() -> App<'static, 'static> {
                         .takes_value(true)
                         .required(true)
                         .help("Number of users")
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+                .arg(
+                    Arg::with_name("cells-per-user")
+                        .long("cells-per-user")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Cells per user")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 )
                 .arg(
