@@ -23,7 +23,7 @@ impl Case for LargeDepGroup {
             make_all_nodes_synced: false,
             make_all_nodes_connected_and_synced: false,
             node_options: vec![NodeOptions {
-                node_name: "node2021",
+                node_name: String::from("node2021"),
                 ckb_binary: CKB2021.read().unwrap().clone(),
                 initial_database: "testdata/db/Height1000002V2TestData",
                 chain_spec: "testdata/spec/ckb2021",
@@ -75,7 +75,7 @@ impl Case for LargeDepGroup {
                         node2021.mine(1);
                         let txhash = node2021.get_tip_block().transaction(0).unwrap().hash();
                         let out_point = OutPoint::new(txhash, 0);
-                        let cell_meta = node2021.get_cell_meta(out_point.clone());
+                        let cell_meta = node2021.get_cell_meta(out_point.clone()).unwrap();
                         let input = CellInput::new(out_point, 0);
                         inputs_capacity += cell_meta.capacity().as_u64();
                         inputs_.push(input);
@@ -115,7 +115,7 @@ impl Case for LargeDepGroup {
                         node2021.mine(1);
                         let txhash = node2021.get_tip_block().transaction(0).unwrap().hash();
                         let out_point = OutPoint::new(txhash, 0);
-                        node2021.get_cell_meta(out_point.clone())
+                        node2021.get_cell_meta(out_point.clone()).unwrap()
                     };
                     let tx = node2021
                         .always_success_transaction(&input)

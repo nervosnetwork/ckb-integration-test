@@ -62,18 +62,15 @@ use crate::util::calc_epoch_start_number;
 use crate::CKB2021;
 use ckb_jsonrpc_types::TransactionTemplate;
 use ckb_testkit::util::{build_unverified_chain, BuildUnverifiedChainParam};
-use ckb_testkit::{Node, NodeOptions, Nodes};
+use ckb_testkit::{NodeOptions, Nodes};
 use ckb_types::packed::Block;
 use ckb_types::{
-    core::{BlockView, EpochNumber, ScriptHashType},
+    core::{EpochNumber, ScriptHashType},
     packed::Script,
     prelude::*,
 };
-use std::thread::sleep;
-use std::time::Duration;
 
 const RFC0222_EPOCH_NUMBER: EpochNumber = 3;
-const ERROR_MULTIPLE_MATCHES: &str = "MultipleMatches";
 
 pub struct RFC0222ReorgDetachedTransactions;
 
