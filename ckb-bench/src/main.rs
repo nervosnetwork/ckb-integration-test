@@ -8,7 +8,7 @@ mod watcher;
 mod tests;
 
 use crate::bench::{LiveCellProducer, TransactionProducer};
-use crate::prepare::{collect, dispatch, derive_privkeys};
+use crate::prepare::{collect, derive_privkeys, dispatch};
 use crate::utils::maybe_retry_send_transaction;
 use crate::watcher::Watcher;
 use ckb_crypto::secp::Privkey;
@@ -317,19 +317,15 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     sleep(t_tx_interval);
                 }
 
-                loop {
-                    i = (i + 1) % nodes.len();
-                    match maybe_retry_send_transaction(&nodes[i], &tx) {
-                        Ok(_hash) => {
-                            benched_transactions += 1;
-                            break;
-                        }
-                        Err(err) => {
-                            ckb_testkit::error!(
-                                "failed to send tx {:#x}, error: {}",
-                                tx.hash(),
-                                err
-                            );
+                i = (i + 1) % nodes.len();
+                match maybe_retry_send_transaction(&nodes[i], &tx) {
+                    Ok(_hash) => {
+                        benched_transactions += 1;
+                    }
+                    Err(err) => {
+                        // double spending, discard this transaction
+                        if !err.contains("TransactionFailedToResolve") {
+                            ckb_testkit::error!("failed to send tx {:#x}, error: {}", tx.hash(), err);
                         }
                     }
                 }
