@@ -1,4 +1,5 @@
 mod always_success;
+mod builder;
 mod genesis_block_info;
 mod get_transaction;
 mod indexer;
@@ -10,3 +11,4 @@ mod rpc;
 
 pub use node::Node;
 pub use node_options::NodeOptions;
+pub use builder::BuildInstruction;
