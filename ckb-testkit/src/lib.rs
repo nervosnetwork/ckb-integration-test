@@ -6,6 +6,6 @@ mod user;
 pub mod util;
 
 pub use logger::LOG_TARGET;
-pub use node::{Node, NodeOptions, BuildInstruction};
+pub use node::{BuildInstruction, Node, NodeOptions};
 pub use nodes::Nodes;
 pub use user::User;

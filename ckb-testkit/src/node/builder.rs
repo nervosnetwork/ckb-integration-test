@@ -42,7 +42,7 @@ impl Node {
         &self,
         target_height: BlockNumber,
         instructions: Vec<BuildInstruction>,
-    ) -> Result<(), String>{
+    ) -> Result<(), String> {
         let initial_tip_number = self.get_tip_block_number();
         assert!(self.consensus().permanent_difficulty_in_dummy);
         assert!(instructions.iter().all(|option| {
@@ -76,7 +76,9 @@ impl Node {
                 for param in params {
                     match param {
                         BuildInstruction::SendTransaction { transaction, .. } => {
-                            self.rpc_client().send_transaction_result(transaction.data().into()).map_err(|err|err.to_string())?;
+                            self.rpc_client()
+                                .send_transaction_result(transaction.data().into())
+                                .map_err(|err| err.to_string())?;
                         }
                         BuildInstruction::Propose {
                             proposal_short_id, ..
@@ -112,13 +114,13 @@ impl Node {
                 } else {
                     self.rpc_client()
                         .submit_block("".to_string(), updated_block.into())
-                        .map_err(|err|err.to_string())?;
+                        .map_err(|err| err.to_string())?;
                 }
             } else {
                 let block: packed::Block = template.into();
                 self.rpc_client()
                     .submit_block("".to_string(), block.into())
-                    .map_err(|err|err.to_string())?;
+                    .map_err(|err| err.to_string())?;
             }
         }
         Ok(())
@@ -148,7 +150,9 @@ impl Node {
         let mut fixed_number = min_tip_number;
 
         for number in (0..=min_tip_number).rev() {
-            if self.rpc_client().get_block_hash(number) == source_node.rpc_client().get_block_hash(number) {
+            if self.rpc_client().get_block_hash(number)
+                == source_node.rpc_client().get_block_hash(number)
+            {
                 fixed_number = number;
                 break;
             }

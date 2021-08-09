@@ -9,6 +9,6 @@ mod node_options;
 mod p2p;
 mod rpc;
 
+pub use builder::BuildInstruction;
 pub use node::Node;
 pub use node_options::NodeOptions;
-pub use builder::BuildInstruction;

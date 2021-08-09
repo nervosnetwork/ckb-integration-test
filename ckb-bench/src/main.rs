@@ -325,7 +325,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     Err(err) => {
                         // double spending, discard this transaction
                         if !err.contains("TransactionFailedToResolve") {
-                            ckb_testkit::error!("failed to send tx {:#x}, error: {}", tx.hash(), err);
+                            ckb_testkit::error!(
+                                "failed to send tx {:#x}, error: {}",
+                                tx.hash(),
+                                err
+                            );
                         }
                     }
                 }
