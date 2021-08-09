@@ -1,5 +1,4 @@
 use ckb_testkit::Node;
-use ckb_types::core::cell::CellMeta;
 use ckb_types::core::{Capacity, TransactionBuilder, TransactionView};
 use ckb_types::packed::{Bytes, CellDep, CellInput, CellOutput, OutPoint, Script};
 use ckb_types::prelude::*;
@@ -10,25 +9,6 @@ pub(super) fn build_transaction(
     cell_deps: Vec<CellDep>,
 ) -> TransactionView {
     let input = node.get_spendable_always_success_cells()[0].to_owned();
-    TransactionBuilder::default()
-        .input(CellInput::new(input.out_point.clone(), 0))
-        .output(
-            CellOutput::new_builder()
-                .lock(input.cell_output.lock())
-                .type_(type_.pack())
-                .capacity(input.capacity().pack())
-                .build(),
-        )
-        .output_data(Default::default())
-        .set_cell_deps(cell_deps)
-        .build()
-}
-
-pub(super) fn build_transaction_with_input(
-    input: &CellMeta,
-    type_: Option<Script>,
-    cell_deps: Vec<CellDep>,
-) -> TransactionView {
     TransactionBuilder::default()
         .input(CellInput::new(input.out_point.clone(), 0))
         .output(

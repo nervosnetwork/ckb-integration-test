@@ -18,8 +18,6 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0221::after_switch::RFC0221AfterSwitch),
         Box::new(rfc0222::before_switch::RFC0222BeforeSwitch),
         Box::new(rfc0222::after_switch::RFC0222AfterSwitch),
-        Box::new(rfc0222::reorg::attached_blocks::RFC0222ReorgAttachedBlocks),
-        Box::new(rfc0222::reorg::detached_transactions::RFC0222ReorgDetachedTransactions),
         Box::new(rfc0223::before_switch::RFC0223BeforeSwitch),
         Box::new(rfc0223::after_switch::RFC0223AfterSwitch),
         Box::new(rfc0224::before_switch::RFC0224BeforeSwitch),
