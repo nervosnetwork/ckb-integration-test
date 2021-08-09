@@ -24,6 +24,10 @@ pub enum BuildInstruction {
     ProcessWithoutVerify {
         block_number: BlockNumber,
     },
+    HeaderTimestamp {
+        block_number: BlockNumber,
+        timestamp: u64,
+    },
 }
 
 impl BuildInstruction {
@@ -33,6 +37,7 @@ impl BuildInstruction {
             BuildInstruction::Propose { block_number, .. } => *block_number,
             BuildInstruction::Commit { block_number, .. } => *block_number,
             BuildInstruction::ProcessWithoutVerify { block_number } => *block_number,
+            BuildInstruction::HeaderTimestamp { block_number, .. } => *block_number,
         }
     }
 }
@@ -104,6 +109,9 @@ impl Node {
                         }
                         BuildInstruction::ProcessWithoutVerify { .. } => {
                             process_without_verify = true;
+                        }
+                        BuildInstruction::HeaderTimestamp { timestamp, .. } => {
+                            template.current_time = ckb_jsonrpc_types::Timestamp::from(timestamp);
                         }
                     }
                 }
