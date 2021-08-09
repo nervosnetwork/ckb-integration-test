@@ -70,13 +70,12 @@ genesis_epoch_length = 1000
 permanent_difficulty_in_dummy = true
 
 [params.hardfork]
-# infinite epoch number, never reach the epochs
-rfc_0221 = 3
-rfc_0222 = 3
-rfc_0223 = 3
-rfc_0224 = 3
-rfc_0232 = 3
-rfc_0240 = 3
+rfc_0028 = 3
+rfc_0029 = 3
+rfc_0030 = 3
+rfc_0031 = 3
+rfc_0032 = 3
+rfc_0036 = 3
 
 [pow]
 func = "Dummy"
