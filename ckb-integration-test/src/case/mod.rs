@@ -1,5 +1,6 @@
 mod basic;
 mod case_options;
+mod rfc0030;
 mod rfc0221;
 mod rfc0222;
 mod rfc0223;
@@ -8,8 +9,7 @@ mod rfc0234;
 mod rfc0240;
 
 pub use case_options::CaseOptions;
-use ckb_testkit::Node;
-use ckb_testkit::Nodes;
+use ckb_testkit::{Node, Nodes};
 
 pub fn all_cases() -> Vec<Box<dyn Case>> {
     vec![
@@ -28,6 +28,7 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0234::discovery::RFC0234AfterSwitchDiscovery),
         Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
         Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
+        Box::new(rfc0030::rfc0030::RFC0030),
     ]
 }
 
