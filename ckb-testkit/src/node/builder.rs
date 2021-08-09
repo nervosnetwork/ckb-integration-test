@@ -94,7 +94,11 @@ impl Node {
                                 data: transaction.data().into(),
                                 ..Default::default()
                             };
-                            if !template.transactions.contains(&transaction_template) {
+                            if !template
+                                .transactions
+                                .iter()
+                                .any(|tx| tx.hash.as_bytes() == transaction.hash().as_bytes())
+                            {
                                 template.transactions.push(transaction_template);
                             }
                         }
@@ -138,12 +142,14 @@ impl Node {
         };
         target_node.start();
 
-        target_node.pull_node(self);
+        target_node
+            .pull_node(self)
+            .expect("cloned node pull from source node should be ok");
 
         target_node
     }
 
-    pub fn pull_node(&self, source_node: &Node) {
+    pub fn pull_node(&self, source_node: &Node) -> Result<(), String> {
         assert!(self.get_tip_block_number() <= source_node.get_tip_block_number());
         let min_tip_number = self.get_tip_block_number();
         let max_tip_number = source_node.get_tip_block_number();
@@ -158,9 +164,12 @@ impl Node {
             }
         }
 
-        for number in fixed_number..=max_tip_number {
+        for number in fixed_number + 1..=max_tip_number {
             let block = source_node.get_block_by_number(number);
-            self.submit_block(&block);
+            self.rpc_client()
+                .submit_block(block.number().to_string(), block.data().into())
+                .map_err(|err| err.to_string())?;
         }
+        Ok(())
     }
 }

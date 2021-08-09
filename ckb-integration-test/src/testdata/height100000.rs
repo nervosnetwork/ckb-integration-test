@@ -1,5 +1,5 @@
 use crate::testdata::{dump_testdata, Testdata};
-use crate::{CKB2021};
+use crate::CKB2021;
 use ckb_testkit::{Node, NodeOptions};
 
 pub struct Height100000TestData;
