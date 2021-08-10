@@ -13,9 +13,9 @@ use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
 /// count of two-in-two-out txs a block should capable to package.
-const TWO_IN_TWO_OUT_COUNT: u64 = 1_000;
-const MAX_OUT_COUNT: u64 = TWO_IN_TWO_OUT_COUNT;
-const FEE_RATE_OF_OUTPUT: u64 = 1000;
+pub const TWO_IN_TWO_OUT_COUNT: u64 = 1_000;
+pub const MAX_OUT_COUNT: u64 = TWO_IN_TWO_OUT_COUNT;
+pub const FEE_RATE_OF_OUTPUT: u64 = 1000;
 
 // TODO handle big cell
 pub fn dispatch(

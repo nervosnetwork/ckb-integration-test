@@ -1,4 +1,7 @@
-use crate::{Node, User};
+use crate::{
+    Node, User, GENESIS_DEP_GROUP_TRANSACTION_INDEX, GENESIS_SIGHASH_ALL_DEP_GROUP_CELL_INDEX,
+    SIGHASH_ALL_DATA_HASH, SIGHASH_ALL_TYPE_HASH,
+};
 use ckb_crypto::secp::Pubkey;
 use ckb_hash::blake2b_256;
 use ckb_types::core::cell::CellMeta;
@@ -6,26 +9,32 @@ use ckb_types::core::EpochNumberWithFraction;
 use ckb_types::{
     bytes::Bytes,
     core::{DepType, ScriptHashType, TransactionView},
-    h256,
     packed::{Byte32, CellDep, OutPoint, Script, WitnessArgs},
     prelude::*,
     H160, H256,
 };
 
-pub const GENESIS_DEP_GROUP_TRANSACTION_INDEX: usize = 1;
-pub const GENESIS_SIGHASH_ALL_DEP_GROUP_CELL_INDEX: usize = 0;
-pub const SIGHASH_ALL_TYPE_HASH: H256 =
-    h256!("0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8");
-
 impl User {
-    pub fn single_secp256k1_lock_hash(&self) -> Byte32 {
-        self.single_secp256k1_lock_script().calc_script_hash()
-    }
-
-    pub fn single_secp256k1_lock_script(&self) -> Script {
+    pub fn single_secp256k1_lock_script_via_type(&self) -> Script {
         Script::new_builder()
             .hash_type(ScriptHashType::Type.into())
             .code_hash(SIGHASH_ALL_TYPE_HASH.pack())
+            .args(self.single_secp256k1_address().0.pack())
+            .build()
+    }
+
+    pub fn single_secp256k1_lock_script_via_data(&self) -> Script {
+        Script::new_builder()
+            .hash_type(ScriptHashType::Data.into())
+            .code_hash(SIGHASH_ALL_DATA_HASH.pack())
+            .args(self.single_secp256k1_address().0.pack())
+            .build()
+    }
+
+    pub fn single_secp256k1_lock_script_via_data1(&self) -> Script {
+        Script::new_builder()
+            .hash_type(ScriptHashType::Data1.into())
+            .code_hash(SIGHASH_ALL_DATA_HASH.pack())
             .args(self.single_secp256k1_address().0.pack())
             .build()
     }
@@ -89,10 +98,24 @@ impl User {
 
     pub fn get_spendable_single_secp256k1_cells(&self, node: &Node) -> Vec<CellMeta> {
         let tip_number = node.get_tip_block_number();
-        let live_out_points = node
-            .indexer()
-            .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script())
-            .expect("indexer get_live_cells_by_lock_script");
+        let mut live_out_points = Vec::new();
+
+        live_out_points.extend(
+            node.indexer()
+                .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script_via_type())
+                .expect("indexer get_live_cells_by_lock_script"),
+        );
+        live_out_points.extend(
+            node.indexer()
+                .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script_via_data())
+                .expect("indexer get_live_cells_by_lock_script"),
+        );
+        live_out_points.extend(
+            node.indexer()
+                .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script_via_data1())
+                .expect("indexer get_live_cells_by_lock_script"),
+        );
+
         live_out_points
             .into_iter()
             .filter_map(|out_point| {

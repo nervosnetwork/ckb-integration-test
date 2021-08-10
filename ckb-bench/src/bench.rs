@@ -1,6 +1,6 @@
-use ckb_testkit::{Node, User};
-use ckb_types::core::{TransactionBuilder, TransactionView};
-use ckb_types::packed::{CellDep, CellOutput};
+use ckb_testkit::{Node, User, SIGHASH_ALL_DATA_HASH, SIGHASH_ALL_TYPE_HASH};
+use ckb_types::core::{ScriptHashType, TransactionBuilder, TransactionView};
+use ckb_types::packed::{CellDep, CellOutput, Script};
 use ckb_types::{
     core::cell::CellMeta,
     packed::{Byte32, CellInput, OutPoint},
@@ -78,12 +78,27 @@ pub struct TransactionProducer {
 
 impl TransactionProducer {
     pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize) -> Self {
-        let users = users
-            .into_iter()
-            .map(|user| (user.single_secp256k1_lock_hash(), user))
-            .collect();
+        let mut users_map = HashMap::new();
+        for user in users {
+            users_map.insert(
+                user.single_secp256k1_lock_script_via_type()
+                    .calc_script_hash(),
+                user.clone(),
+            );
+            users_map.insert(
+                user.single_secp256k1_lock_script_via_data()
+                    .calc_script_hash(),
+                user.clone(),
+            );
+            users_map.insert(
+                user.single_secp256k1_lock_script_via_data1()
+                    .calc_script_hash(),
+                user.clone(),
+            );
+        }
+
         Self {
-            users,
+            users: users_map,
             cell_deps,
             n_inout,
             live_cells: HashMap::new(),
@@ -98,7 +113,7 @@ impl TransactionProducer {
     ) {
         while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = live_cell.cell_output.calc_lock_hash();
-            match self.live_cells.entry(lock_hash) {
+            match self.live_cells.entry(lock_hash.clone()) {
                 std::collections::hash_map::Entry::Occupied(entry) => {
                     if entry.get().out_point == live_cell.out_point {
                         self.backlogs.insert(live_cell.out_point.clone(), live_cell);
@@ -113,17 +128,37 @@ impl TransactionProducer {
                 let mut live_cells = HashMap::new();
                 std::mem::swap(&mut self.live_cells, &mut live_cells);
 
-                let inputs = live_cells.values().map(|cell| {
-                    CellInput::new_builder()
-                        .previous_output(cell.out_point.clone())
-                        .build()
-                });
-                let outputs = live_cells.values().map(|cell| {
-                    CellOutput::new_builder()
-                        .capacity((cell.capacity().as_u64() - 1000).pack())
-                        .lock(cell.cell_output.lock())
-                        .build()
-                });
+                let inputs = live_cells
+                    .values()
+                    .map(|cell| {
+                        CellInput::new_builder()
+                            .previous_output(cell.out_point.clone())
+                            .build()
+                    })
+                    .collect::<Vec<_>>();
+                let outputs = live_cells
+                    .values()
+                    .map(|cell| {
+                        // use tx_index as random number
+                        let tx_index = cell.transaction_info.as_ref().unwrap().index;
+                        let user = self.users.get(&lock_hash).expect("should be ok");
+                        match tx_index % 3 {
+                            0 => CellOutput::new_builder()
+                                .capacity((cell.capacity().as_u64() - 1000).pack())
+                                .lock(user.single_secp256k1_lock_script_via_data())
+                                .build(),
+                            1 => CellOutput::new_builder()
+                                .capacity((cell.capacity().as_u64() - 1000).pack())
+                                .lock(user.single_secp256k1_lock_script_via_type())
+                                .build(),
+                            2 => CellOutput::new_builder()
+                                .capacity((cell.capacity().as_u64() - 1000).pack())
+                                .lock(user.single_secp256k1_lock_script_via_data1())
+                                .build(),
+                            _ => unreachable!(),
+                        }
+                    })
+                    .collect::<Vec<_>>();
                 let outputs_data = live_cells.values().map(|_| Default::default());
                 let raw_tx = TransactionBuilder::default()
                     .inputs(inputs)
