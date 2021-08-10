@@ -58,12 +58,19 @@ pub fn dispatch(
 
     let mut last_logging_time = Instant::now();
     let mut i_out = 0usize;
+    let mut inputs = Vec::new();
     while let Some(input) = live_cells.pop_front() {
-        let input_capacity = input.capacity().as_u64();
+        inputs.push(input);
+
+        let inputs_capacity: u64 = inputs.iter().map(|input| input.capacity().as_u64()).sum();
         // TODO estimate tx fee
         let fee = MAX_OUT_COUNT * FEE_RATE_OF_OUTPUT;
-        let outputs_capacity = input_capacity - fee;
+        let outputs_capacity = inputs_capacity - fee;
         let mut n_outs = min(MAX_OUT_COUNT, outputs_capacity / capacity_per_cell) as usize;
+        if n_outs == 0 {
+            continue;
+        }
+
         if i_out + n_outs >= total_outs {
             n_outs = total_outs - i_out;
         }
@@ -88,7 +95,11 @@ pub fn dispatch(
 
         let signed_tx = {
             let unsigned_tx = TransactionBuilder::default()
-                .input(CellInput::new(input.out_point.clone(), 0))
+                .inputs(
+                    inputs
+                        .iter()
+                        .map(|input| CellInput::new(input.out_point.clone(), 0)),
+                )
                 .outputs_data(
                     (0..outputs.len())
                         .map(|_| Default::default())
