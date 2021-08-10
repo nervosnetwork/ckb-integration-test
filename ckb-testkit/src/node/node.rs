@@ -231,6 +231,10 @@ impl Node {
         self.indexer.as_ref().expect("uninitialized indexer")
     }
 
+    pub fn indexer_unchecked(&self) -> &Indexer<RocksdbStore> {
+        self.indexer.as_ref().expect("uninitialized indexer")
+    }
+
     pub fn stop(&mut self) {
         crate::info!(
             "[Node {}] STOP log_path: {}",

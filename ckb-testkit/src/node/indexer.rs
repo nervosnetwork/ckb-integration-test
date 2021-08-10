@@ -6,7 +6,7 @@ use ckb_types::packed::OutPoint;
 impl Node {
     pub fn get_cell_meta(&self, out_point: OutPoint) -> Option<CellMeta> {
         let detail = self
-            .indexer()
+            .indexer_unchecked()
             .get_detailed_live_cell(&out_point)
             .expect("indexer get_detailed_live_cell")?;
         // FIXME now the transaction_info.block_epoch is fake
