@@ -2,6 +2,7 @@ use crate::{Node, User};
 use ckb_crypto::secp::Pubkey;
 use ckb_hash::blake2b_256;
 use ckb_types::core::cell::CellMeta;
+use ckb_types::core::EpochNumberWithFraction;
 use ckb_types::{
     bytes::Bytes,
     core::{DepType, ScriptHashType, TransactionView},
@@ -87,6 +88,7 @@ impl User {
     }
 
     pub fn get_spendable_single_secp256k1_cells(&self, node: &Node) -> Vec<CellMeta> {
+        let tip_number = node.get_tip_block_number();
         let live_out_points = node
             .indexer()
             .get_live_cells_by_lock_script(&self.single_secp256k1_lock_script())
@@ -95,11 +97,28 @@ impl User {
             .into_iter()
             .filter_map(|out_point| {
                 let cell_meta = node.get_cell_meta(out_point)?;
-                if cell_meta.data_bytes == 0 {
-                    Some(cell_meta)
-                } else {
-                    None
+
+                let txinfo = cell_meta
+                    .transaction_info
+                    .as_ref()
+                    .expect("committed tx has transaction_info");
+                if txinfo.is_cellbase() {
+                    let cellbase_maturity: EpochNumberWithFraction = {
+                        EpochNumberWithFraction::from_full_value(
+                            node.consensus().cellbase_maturity.into(),
+                        )
+                    };
+                    // We didn't fill the block_epoch inside `fn get_cell_meta`
+                    if txinfo.block_number + cellbase_maturity.number() * 1800 > tip_number {
+                        return None;
+                    }
                 }
+
+                if cell_meta.data_bytes != 0 {
+                    return None;
+                }
+
+                Some(cell_meta)
             })
             .collect::<Vec<_>>()
     }
