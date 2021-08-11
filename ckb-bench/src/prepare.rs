@@ -183,26 +183,28 @@ pub fn dispatch(
 
         if txs.is_empty() {
             break;
-        } else if last_sent_time.elapsed() > Duration::from_secs(60) && last_txs_len == txs.len() {
-            txs.iter().for_each(|tx| {
-                let result = nodes[0]
-                    .rpc_client()
-                    .send_transaction_result(tx.data().into());
-                match result {
-                    Ok(_) => {
-                        ckb_testkit::info!("resend tx {:#x} success", tx.hash());
-                    }
-                    Err(err) => {
-                        if !err.to_string().contains("Duplicated") {
-                            ckb_testkit::error!(
-                                "failed to send tx {:#x}, error: {}",
-                                tx.hash(),
-                                err
-                            );
+        } else if last_sent_time.elapsed() > Duration::from_secs(60) {
+            if last_txs_len == txs.len() {
+                txs.iter().for_each(|tx| {
+                    let result = nodes[0]
+                        .rpc_client()
+                        .send_transaction_result(tx.data().into());
+                    match result {
+                        Ok(_) => {
+                            ckb_testkit::info!("resend tx {:#x} success", tx.hash());
+                        }
+                        Err(err) => {
+                            if !err.to_string().contains("Duplicated") {
+                                ckb_testkit::error!(
+                                    "failed to send tx {:#x}, error: {}",
+                                    tx.hash(),
+                                    err
+                                );
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
             last_txs_len = txs.len();
             last_sent_time = Instant::now();
         } else {
