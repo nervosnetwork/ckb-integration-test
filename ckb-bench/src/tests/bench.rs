@@ -13,15 +13,16 @@ use std::thread::spawn;
 fn test_bench() {
     let _logger = init_logger();
     let n_users = 1000usize;
-    let n_inout = 2usize;
+    let cells_per_user = 2;
     let capacity_per_cell = 7100000000u64;
+    let n_inout = 2usize;
     let owner_raw_privkey = "8c296482b9b763e8be974058272f377462f2975b94454dabb112de0f135e2064";
     env::set_var("CKB_BENCH_OWNER_PRIVKEY", owner_raw_privkey);
 
     let nodes: Nodes = node_options()
         .into_iter()
         .map(|node_options| {
-            let mut node = Node::init("test_prepare", node_options, true);
+            let mut node = Node::init("test_bench", node_options, true);
             node.start();
             node
         })
@@ -47,14 +48,31 @@ fn test_bench() {
     assert_eq!(users.len(), n_users);
 
     {
-        // Mine some blocks
+        // Mine some CKBs
         node.mine(100);
         nodes.p2p_connect();
         nodes.waiting_for_sync().expect("nodes should be synced");
     }
 
+    // Spawn mining blocks at background
+    let _miner_guard = {
+        let matches = clap_app().get_matches_from(vec![
+            "./target/debug/ckb-bench",
+            "miner",
+            "--n-blocks",
+            "0",
+            "--mining-interval-ms",
+            "1000",
+            "--rpc-urls",
+            &raw_nodes_urls,
+        ]);
+        spawn(move || {
+            entrypoint(matches);
+        })
+    };
+
+    // Dispatch capacity to users
     {
-        // Dispatch capacity to users
         for user in users.iter() {
             let cells = user.get_spendable_single_secp256k1_cells(node);
             assert!(cells.is_empty());
@@ -66,46 +84,49 @@ fn test_bench() {
             &node.working_dir().display().to_string(),
             "--n-users",
             n_users.to_string().as_str(),
+            "--cells-per-user",
+            cells_per_user.to_string().as_str(),
             "--capacity-per-cell",
             capacity_per_cell.to_string().as_str(),
             "--rpc-urls",
             &raw_nodes_urls,
         ]));
-        for _ in 0..10 {
-            for node in nodes.nodes() {
-                node.mine(1);
-                nodes.p2p_connect();
-                nodes.waiting_for_sync().expect("nodes should be synced");
+        loop {
+            node.mine(1);
+            let tx_pool_info = node.rpc_client().tx_pool_info();
+            if tx_pool_info.pending.value() == 0
+                && tx_pool_info.proposed.value() == 0
+                && tx_pool_info.orphan.value() == 0
+            {
+                break;
             }
         }
+        nodes.p2p_connect();
+        nodes.waiting_for_sync().expect("nodes should be synced");
+
         for (i, user) in users.iter().enumerate() {
             let cells = user.get_spendable_single_secp256k1_cells(node);
-            let total_capacity: u64 = cells.iter().map(|cell| cell.capacity().as_u64()).sum();
             assert_eq!(
-                total_capacity, capacity_per_cell,
-                "user-{} actual capacity: {}, expected capacity: {}",
-                i, total_capacity, capacity_per_cell,
+                cells.len(),
+                cells_per_user,
+                "user-{}'s cells actual: {}, expected: {}",
+                i,
+                cells.len(),
+                cells_per_user
+            );
+            assert!(
+                cells
+                    .iter()
+                    .all(|cell| cell.capacity().as_u64() == capacity_per_cell),
+                "user-{}'s cell actual capacity, expected: {}",
+                i,
+                capacity_per_cell
             );
         }
     }
 
+    // Bench
     {
-        let _miner_guard = {
-            // Spawn mining blocks at background
-            let matches = clap_app().get_matches_from(vec![
-                "./target/debug/ckb-bench",
-                "miner",
-                "--n-blocks",
-                "0",
-                "--block-time-ms",
-                "1000",
-                "--rpc-urls",
-                &raw_nodes_urls,
-            ]);
-            spawn(move || {
-                entrypoint(matches);
-            })
-        };
         entrypoint(clap_app().get_matches_from(vec![
             "./target/debug/ckb-bench",
             "bench",
