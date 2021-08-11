@@ -60,7 +60,7 @@ pub fn dispatch(
     let mut last_logging_time = Instant::now();
     let mut i_out = 0usize;
     let mut inputs = Vec::new();
-    let mut txhashes = Vec::new();
+    let mut txs = Vec::new();
     while let Some(input) = live_cells.pop_front() {
         inputs.push(input);
 
@@ -134,7 +134,7 @@ pub fn dispatch(
 
         // Reset `inputs`, it already been using.
         inputs = Vec::new();
-        txhashes.push(signed_tx.hash());
+        txs.push(signed_tx.clone());
         i_out += n_outs;
         if i_out == total_outs {
             break;
@@ -156,31 +156,55 @@ pub fn dispatch(
         }
     }
 
-    let sent_n_transactions = txhashes.len();
+    let sent_n_transactions = txs.len();
+    let mut last_txs_len = sent_n_transactions;
+    let mut last_sent_time = Instant::now();
     loop {
         ckb_testkit::info!(
             "waiting dispatch-transactions been committed, rest {}/{}",
-            txhashes.len(),
+            txs.len(),
             sent_n_transactions
         );
 
-        txhashes = txhashes
+        txs = txs
             .into_iter()
-            .filter(|hash| {
-                let txstatus_opt = nodes[0].rpc_client().get_transaction(hash.clone());
+            .filter(|tx| {
+                let txstatus_opt = nodes[0].rpc_client().get_transaction(tx.hash());
                 if let Some(txstatus) = txstatus_opt {
                     if txstatus.tx_status.status == Status::Committed {
                         return false;
                     }
                 } else {
-                    ckb_testkit::error!("tx {:#x} disappeared!", hash);
+                    ckb_testkit::error!("tx {:#x} disappeared!", tx.hash());
                 }
                 true
             })
             .collect();
 
-        if txhashes.is_empty() {
+        if txs.is_empty() {
             break;
+        } else if last_sent_time.elapsed() > Duration::from_secs(60) && last_txs_len == txs.len() {
+            txs.iter().for_each(|tx| {
+                let result = nodes[0]
+                    .rpc_client()
+                    .send_transaction_result(tx.data().into());
+                match result {
+                    Ok(_) => {
+                        ckb_testkit::info!("resend tx {:#x} success", tx.hash());
+                    }
+                    Err(err) => {
+                        if !err.to_string().contains("Duplicated") {
+                            ckb_testkit::error!(
+                                "failed to send tx {:#x}, error: {}",
+                                tx.hash(),
+                                err
+                            );
+                        }
+                    }
+                }
+            });
+            last_txs_len = txs.len();
+            last_sent_time = Instant::now();
         } else {
             sleep(Duration::from_secs(1));
         }

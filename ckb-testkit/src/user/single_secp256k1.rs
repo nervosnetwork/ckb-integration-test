@@ -9,7 +9,7 @@ use ckb_types::core::EpochNumberWithFraction;
 use ckb_types::{
     bytes::Bytes,
     core::{DepType, ScriptHashType, TransactionView},
-    packed::{Byte32, CellDep, OutPoint, Script, WitnessArgs},
+    packed::{CellDep, OutPoint, Script, WitnessArgs},
     prelude::*,
     H160, H256,
 };

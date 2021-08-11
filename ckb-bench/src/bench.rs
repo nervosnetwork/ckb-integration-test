@@ -1,6 +1,6 @@
-use ckb_testkit::{Node, User, SIGHASH_ALL_DATA_HASH, SIGHASH_ALL_TYPE_HASH};
-use ckb_types::core::{ScriptHashType, TransactionBuilder, TransactionView};
-use ckb_types::packed::{CellDep, CellOutput, Script};
+use ckb_testkit::{Node, User};
+use ckb_types::core::{TransactionBuilder, TransactionView};
+use ckb_types::packed::{CellDep, CellOutput};
 use ckb_types::{
     core::cell::CellMeta,
     packed::{Byte32, CellInput, OutPoint},
