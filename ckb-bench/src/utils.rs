@@ -1,15 +1,14 @@
 use ckb_testkit::Node;
 use ckb_types::core::TransactionView;
-use ckb_types::packed::Byte32;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-pub fn maybe_retry_send_transaction(node: &Node, tx: &TransactionView) -> Result<Byte32, String> {
+pub fn maybe_retry_send_transaction(node: &Node, tx: &TransactionView) -> Result<bool, String> {
     let mut last_logging_time = Instant::now();
     loop {
         let result = node.rpc_client().send_transaction_result(tx.data().into());
         match result {
-            Ok(hash) => return Ok(hash),
+            Ok(_hash) => return Ok(true),
             Err(err) => {
                 let raw_err = err.to_string();
                 if raw_err.contains("PoolIsFull") {
@@ -22,7 +21,7 @@ pub fn maybe_retry_send_transaction(node: &Node, tx: &TransactionView) -> Result
                         );
                     }
                 } else if raw_err.contains("PoolRejectedDuplicatedTransaction") {
-                    return Ok(tx.hash());
+                    return Ok(false);
                 } else {
                     return Err(raw_err);
                 }

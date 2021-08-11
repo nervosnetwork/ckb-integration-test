@@ -309,6 +309,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let start_time = Instant::now();
             let mut last_log_time = Instant::now();
             let mut benched_transactions = 0u64;
+            let mut duplicated_transactions = 0u64;
             loop {
                 let tx = transaction_receiver
                     .recv_timeout(Duration::from_secs(60 * 3))
@@ -319,8 +320,12 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
                 i = (i + 1) % nodes.len();
                 match maybe_retry_send_transaction(&nodes[i], &tx) {
-                    Ok(_hash) => {
-                        benched_transactions += 1;
+                    Ok(is_accepted) => {
+                        if is_accepted {
+                            benched_transactions += 1;
+                        } else {
+                            duplicated_transactions += 1;
+                        }
                     }
                     Err(err) => {
                         // double spending, discard this transaction
@@ -336,7 +341,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
                 if last_log_time.elapsed() > Duration::from_secs(30) {
                     last_log_time = Instant::now();
-                    ckb_testkit::info!("benched {} transactions", benched_transactions);
+                    ckb_testkit::info!(
+                        "benched {} transactions, {} duplicated",
+                        benched_transactions,
+                        duplicated_transactions
+                    );
                 }
                 if start_time.elapsed() > t_bench {
                     break;
