@@ -119,6 +119,9 @@ impl TransactionProducer {
             }
             Err(_) => false,
         };
+        if enabled_data1_script {
+            ckb_testkit::info!("enabled transaction script using ScriptHashType::Data1");
+        }
 
         while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = live_cell.cell_output.calc_lock_hash();
