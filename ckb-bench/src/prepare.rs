@@ -1,5 +1,6 @@
 use crate::utils::maybe_retry_send_transaction;
 use ckb_crypto::secp::Privkey;
+use ckb_jsonrpc_types::Status;
 use ckb_testkit::{Node, User};
 use ckb_types::core::cell::CellMeta;
 use ckb_types::packed::OutPoint;
@@ -10,6 +11,7 @@ use ckb_types::{
 };
 use std::cmp::min;
 use std::collections::VecDeque;
+use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 /// count of two-in-two-out txs a block should capable to package.
@@ -17,7 +19,6 @@ pub const TWO_IN_TWO_OUT_COUNT: u64 = 1_000;
 pub const MAX_OUT_COUNT: u64 = TWO_IN_TWO_OUT_COUNT;
 pub const FEE_RATE_OF_OUTPUT: u64 = 1000;
 
-// TODO handle big cell
 pub fn dispatch(
     nodes: &[Node],
     owner: &User,
@@ -43,7 +44,7 @@ pub fn dispatch(
         let need_capacity = users.len() as u64 * cells_per_user * capacity_per_cell + total_fee;
         assert!(
             total_capacity > need_capacity,
-            "insufficient capacity, owner's total_capacity({}) <= {} = n_users({}) * cells_per_user({}) * capacity_per_cell({}) + total_fee({})",
+            "insufficient capacity, owner's total_capacity({}) <= need_capacity({}) = n_users({}) * cells_per_user({}) * capacity_per_cell({}) + total_fee({})",
             total_capacity,
             need_capacity,
             users.len(),
@@ -59,6 +60,7 @@ pub fn dispatch(
     let mut last_logging_time = Instant::now();
     let mut i_out = 0usize;
     let mut inputs = Vec::new();
+    let mut txhashes = Vec::new();
     while let Some(input) = live_cells.pop_front() {
         inputs.push(input);
 
@@ -80,7 +82,7 @@ pub fn dispatch(
         if change_capacity >= Capacity::bytes(67).unwrap().as_u64() {
             let change_output = CellOutput::new_builder()
                 .capacity(change_capacity.pack())
-                .lock(owner.single_secp256k1_lock_script())
+                .lock(owner.single_secp256k1_lock_script_via_data())
                 .build();
             outputs.push(change_output);
         }
@@ -88,7 +90,7 @@ pub fn dispatch(
             let user = &users[index_user(i)];
             let cell_output = CellOutput::new_builder()
                 .capacity(capacity_per_cell.pack())
-                .lock(user.single_secp256k1_lock_script())
+                .lock(user.single_secp256k1_lock_script_via_data())
                 .build();
             outputs.push(cell_output);
         }
@@ -121,19 +123,24 @@ pub fn dispatch(
         let result = maybe_retry_send_transaction(&nodes[0], &signed_tx);
         if last_logging_time.elapsed() > Duration::from_secs(30) {
             last_logging_time = Instant::now();
-            ckb_testkit::info!("dispatch {}/{} outputs", i_out + 1, total_outs)
+            ckb_testkit::info!("dispatching {}/{} outputs", i_out + 1, total_outs)
         }
         assert!(
             result.is_ok(),
-            "dispatch-transaction {:#x} should be ok but got {}",
+            "sending dispatch-transaction {:#x} should be ok but got {}",
             signed_tx.hash(),
             result.unwrap_err()
         );
 
+        // Reset `inputs`, it already been using.
+        inputs = Vec::new();
+        txhashes.push(signed_tx.hash());
         i_out += n_outs;
         if i_out == total_outs {
             break;
         }
+
+        // Reuse the change output, we can construct chained transactions
         if signed_tx.outputs().len() > n_outs {
             // the 1st output is a change cell, push it back into live_cells as it is a live cell
             let change_live_cell = {
@@ -149,8 +156,43 @@ pub fn dispatch(
         }
     }
 
+    let sent_n_transactions = txhashes.len();
+    loop {
+        ckb_testkit::info!(
+            "waiting dispatch-transactions been committed, rest {}/{}",
+            txhashes.len(),
+            sent_n_transactions
+        );
+
+        txhashes = txhashes
+            .into_iter()
+            .filter(|hash| {
+                let txstatus_opt = nodes[0].rpc_client().get_transaction(hash.clone());
+                if let Some(txstatus) = txstatus_opt {
+                    if txstatus.tx_status.status == Status::Committed {
+                        return false;
+                    }
+                } else {
+                    ckb_testkit::error!("tx {:#x} disappeared!", hash);
+                }
+                true
+            })
+            .collect();
+
+        if txhashes.is_empty() {
+            break;
+        } else {
+            sleep(Duration::from_secs(1));
+        }
+    }
+
+    assert!(
+        i_out >= total_outs,
+        "i_out: {}, total_outs: {}",
+        i_out,
+        total_outs
+    );
     ckb_testkit::info!("finished dispatch");
-    assert!(i_out >= total_outs);
 }
 
 pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
@@ -169,7 +211,7 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
             let fee = inputs.len() as u64 * 1000;
             let output = CellOutput::new_builder()
                 .capacity((inputs_capacity - fee).pack())
-                .lock(owner.single_secp256k1_lock_script())
+                .lock(owner.single_secp256k1_lock_script_via_data())
                 .build();
             let unsigned_tx = TransactionBuilder::default()
                 .inputs(
