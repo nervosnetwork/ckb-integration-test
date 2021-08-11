@@ -147,14 +147,16 @@ impl TransactionProducer {
                                 .capacity((cell.capacity().as_u64() - 1000).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
                                 .build(),
-                            1 => CellOutput::new_builder()
+                            1 | 2 => CellOutput::new_builder()
                                 .capacity((cell.capacity().as_u64() - 1000).pack())
                                 .lock(user.single_secp256k1_lock_script_via_type())
                                 .build(),
-                            2 => CellOutput::new_builder()
-                                .capacity((cell.capacity().as_u64() - 1000).pack())
-                                .lock(user.single_secp256k1_lock_script_via_data1())
-                                .build(),
+                            // 2 => {
+                            //     CellOutput::new_builder()
+                            //         .capacity((cell.capacity().as_u64() - 1000).pack())
+                            //         .lock(user.single_secp256k1_lock_script_via_data1())
+                            //         .build()
+                            // },
                             _ => unreachable!(),
                         }
                     })
