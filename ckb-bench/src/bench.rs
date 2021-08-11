@@ -111,6 +111,15 @@ impl TransactionProducer {
         live_cell_receiver: Receiver<CellMeta>,
         transaction_sender: Sender<TransactionView>,
     ) {
+        let enabled_data1_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA1_SCRIPT") {
+            Ok(raw) => {
+                raw.parse()
+                    .map_err(|err| ckb_testkit::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
+                    .unwrap_or(false)
+            }
+            Err(_) => false,
+        };
+
         while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = live_cell.cell_output.calc_lock_hash();
             match self.live_cells.entry(lock_hash.clone()) {
@@ -147,16 +156,23 @@ impl TransactionProducer {
                                 .capacity((cell.capacity().as_u64() - 1000).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
                                 .build(),
-                            1 | 2 => CellOutput::new_builder()
+                            1 => CellOutput::new_builder()
                                 .capacity((cell.capacity().as_u64() - 1000).pack())
                                 .lock(user.single_secp256k1_lock_script_via_type())
                                 .build(),
-                            // 2 => {
-                            //     CellOutput::new_builder()
-                            //         .capacity((cell.capacity().as_u64() - 1000).pack())
-                            //         .lock(user.single_secp256k1_lock_script_via_data1())
-                            //         .build()
-                            // },
+                            2 => {
+                                if enabled_data1_script {
+                                    CellOutput::new_builder()
+                                        .capacity((cell.capacity().as_u64() - 1000).pack())
+                                        .lock(user.single_secp256k1_lock_script_via_data1())
+                                        .build()
+                                } else {
+                                    CellOutput::new_builder()
+                                        .capacity((cell.capacity().as_u64() - 1000).pack())
+                                        .lock(user.single_secp256k1_lock_script_via_data())
+                                        .build()
+                                }
+                            }
                             _ => unreachable!(),
                         }
                     })
