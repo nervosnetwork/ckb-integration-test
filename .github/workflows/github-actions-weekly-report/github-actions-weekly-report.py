@@ -84,6 +84,8 @@ def get_jobs(run):
     })
     jobs = resp.json()["jobs"]
 
+    jobs = [ job for job in jobs if "completed_at" in job ]
+
     # Attach job duratioins onto job fields
     for job in jobs:
         job_name = job["name"]
