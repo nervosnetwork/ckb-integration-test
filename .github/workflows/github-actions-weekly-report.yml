@@ -1,0 +1,50 @@
+name: Generate Weekly CI Report
+
+# Required secrets:
+#
+# * `REPO_ACCESS_TOKEN`: (optional) A repo scoped [GitHub Personal Access Token][pat]. See [token] for further details.
+#
+# [pat]: https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token
+# [token]: https://github.com/peter-evans/repository-dispatch#token
+
+on:
+  # Manurally trigger
+  workflow_dispatch:
+
+jobs:
+
+  repo-access-token:
+    name: Check whether REPO_ACCESS_TOKEN is set
+    runs-on: ubuntu-latest
+    env:
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+    outputs:
+      is-set: ${{ steps.is-set.outputs.is-set }}
+    steps:
+      - name: Check is set
+        id: is-set
+        run: |
+          if [ ${#REPO_ACCESS_TOKEN} = 0 ]; then
+            echo "::set-output name=is-set::false"
+          else
+            echo "::set-output name=is-set::true"
+          fi
+
+  report:
+    name: Generate Weekly CI Report
+    if: ${{ needs.repo-access-token.outputs.is-set == 'true' }}
+    needs: [ repo-access-token ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: pip3 install -r .github/workflows/github-actions-weekly-report/requirements.txt
+      - run: python3 .github/workflows/github-actions-weekly-report/github-actions-weekly-report.py weekly-ci-report.xlsx
+        env:
+          ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW: "fork-tests-checks.yml"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Weekly CI Report
+          path: weekly-ci-report.xlsx
+          if-no-files-found: error
