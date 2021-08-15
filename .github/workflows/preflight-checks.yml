@@ -47,7 +47,7 @@ jobs:
   trigger-required-checks-manurally:
     name: Trigger Required Checks Manurally
     if: |
-      needs.repo-access-token.outputs.is-set == 'true' && github.github.event_name == 'workflow_dispatch'
+      needs.repo-access-token.outputs.is-set == 'true' && github.event_name == 'workflow_dispatch'
     needs: [ repo-access-token ]
     runs-on: ubuntu-latest
     steps:
@@ -70,7 +70,7 @@ jobs:
   trigger-required-checks-cron:
     name: Trigger Required Checks Cron
     if: |
-      needs.repo-access-token.outputs.is-set == 'true' && github.github.event_name == 'schedule'
+      needs.repo-access-token.outputs.is-set == 'true' && github.event_name == 'schedule'
     needs: [ repo-access-token ]
     runs-on: ubuntu-latest
     steps:
