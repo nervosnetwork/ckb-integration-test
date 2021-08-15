@@ -84,7 +84,7 @@ def get_jobs(run):
     })
     jobs = resp.json()["jobs"]
 
-    jobs = [ job for job in jobs if "completed_at" in job ]
+    jobs = [ job for job in jobs if job["completed_at"] is not None ]
 
     # Attach job duratioins onto job fields
     for job in jobs:
