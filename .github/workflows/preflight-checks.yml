@@ -1,0 +1,89 @@
+name: Preflight Checks
+
+# Required secrets:
+#
+# * `REPO_ACCESS_TOKEN`: (optional) A repo scoped [GitHub Personal Access Token][pat]. See [token] for further details.
+#
+# [pat]: https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token
+# [token]: https://github.com/peter-evans/repository-dispatch#token
+
+on:
+  # Manurally trigger
+  workflow_dispatch:
+    inputs:
+      ckb_github_repository:
+        description: "the repository of ckb. For example, \"nervosnerwork/ckb\"."
+        required: true
+        default: "nervosnetwork/ckb"
+      ckb_github_sha:
+        description: "The commit SHA of ckb repository that triggered the workflow run."
+        required: true
+        default: "develop"
+  schedule:
+    - cron: '0 * * * *'
+
+env:
+  os_matrix: '[ "ubuntu-latest", "macos-latest", "windows-latest" ]'
+
+jobs:
+
+  repo-access-token:
+    name: Check whether REPO_ACCESS_TOKEN is set
+    runs-on: ubuntu-latest
+    env:
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+    outputs:
+      is-set: ${{ steps.is-set.outputs.is-set }}
+    steps:
+      - name: Check is set
+        id: is-set
+        run: |
+          if [ ${#REPO_ACCESS_TOKEN} = 0 ]; then
+            echo "::set-output name=is-set::false"
+          else
+            echo "::set-output name=is-set::true"
+          fi
+
+  trigger-required-checks-manurally:
+    name: Trigger Required Checks Manurally
+    if: ${{ needs.repo-access-token.outputs.is-set == 'true' && github.github.event_name == 'workflow_dispatch' }}
+    needs: [ repo-access-token ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          event-type: fork-tests-checks
+          client-payload: |
+            {
+              "github": {
+                "sha": "${{ github.sha }}"
+              },
+              "env": {
+                "os_matrix": ${{ env.os_matrix }},
+                "ckb_github_repository": "${{ github.event.inputs.ckb_github_repository }}",
+                "ckb_github_sha": "${{ github.event.inputs.ckb_github_sha }}"
+              }
+            }
+
+  trigger-required-checks-cron:
+    name: Trigger Required Checks Cron
+    if: ${{ needs.repo-access-token.outputs.is-set == 'true' && github.github.event_name == 'schedule' }}
+    needs: [ repo-access-token ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          event-type: fork-tests-checks
+          client-payload: |
+            {
+              "github": {
+                "sha": "${{ github.sha }}"
+              },
+              "env": {
+                "os_matrix": ${{ env.os_matrix }},
+                "ckb_github_repository": "nervosnetwork/ckb",
+                "ckb_github_sha": "develop"
+              }
+            }
