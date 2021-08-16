@@ -70,7 +70,6 @@ def get_last_week_runs():
         print("[DEBUG] {} ~ {} {} runs ...".format(
             weekly_runs[-1]["created_at"], now, len(weekly_runs)))
 
-
     return weekly_runs
 
 
@@ -81,7 +80,7 @@ def get_jobs(run):
     })
     jobs = resp.json()["jobs"]
 
-    jobs = [ job for job in jobs if job["completed_at"] is not None ]
+    jobs = [job for job in jobs if job["completed_at"] is not None]
 
     # Attach job duratioins onto job fields
     for job in jobs:
@@ -95,8 +94,45 @@ def get_jobs(run):
     return jobs
 
 
-COLUMNS = [ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF' ]
-COLUMNS_MAP = { counter: column_name for (counter, column_name) in enumerate(COLUMNS) }
+COLUMNS = [
+    'A',
+    'B',
+    'C',
+    'D',
+    'E',
+    'F',
+    'G',
+    'H',
+    'I',
+    'J',
+    'K',
+    'L',
+    'M',
+    'N',
+    'O',
+    'P',
+    'Q',
+    'R',
+    'S',
+    'T',
+    'U',
+    'V',
+    'W',
+    'X',
+    'Y',
+    'Z',
+    'AA',
+    'AB',
+    'AC',
+    'AD',
+    'AE',
+    'AF']
+COLUMNS_MAP = {
+    counter: column_name for (
+        counter,
+        column_name) in enumerate(COLUMNS)}
+
+
 def column_name(counter):
     return COLUMNS_MAP[counter]
 
@@ -107,7 +143,7 @@ def column_title_position(counter):
 
 def report(runs):
     wb = Workbook()
-    
+
     # align sheet "WorkflowRuns"
     ws_runs = wb.active
     ws_runs.title = "WorkflowRuns"
@@ -118,12 +154,13 @@ def report(runs):
     ws_jobs[column_title_position(0)] = "Workflow ID"
     jobs_titles = get_jobs_titles(runs)
     for (i, title) in enumerate(jobs_titles):
-        ws_jobs[column_title_position(i+1)] = title
+        ws_jobs[column_title_position(i + 1)] = title
     title_to_column = {}
     for (i, title) in enumerate(jobs_titles):
         title_to_column[title] = column_name(i + 1)
 
-    columns_with_durations = [ title_to_column[title] for title in jobs_titles if "duration" in title ]
+    columns_with_durations = [title_to_column[title]
+                              for title in jobs_titles if "duration" in title]
 
     for run in runs:
         run_workflow_id = run["workflow_id"]
@@ -142,7 +179,7 @@ def report(runs):
             job_metric["{} conclusion".format(job_name)] = conclusion
             job_metric["{} durations".format(job_name)] = durations
 
-        if not all([ title in job_metric for title in jobs_titles ]):
+        if not all([title in job_metric for title in jobs_titles]):
             continue
 
         jobs_raw_metrics = []
@@ -157,36 +194,47 @@ def report(runs):
             continue
 
         # append workflows to sheet "WorkflowRuns"
-        pending_time = (to_datetime(jobs[0]["started_at"]) - run_created_at).total_seconds()
-        duration_jobs_cols = ",".join([ "WorkflowJobs!{}{}".format(col, ws_jobs.max_row) for col in columns_with_durations ])
+        pending_time = (
+            to_datetime(
+                jobs[0]["started_at"]) -
+            run_created_at).total_seconds()
+        duration_jobs_cols = ",".join(["WorkflowJobs!{}{}".format(
+            col, ws_jobs.max_row) for col in columns_with_durations])
         avg_jobs_execution_time = "=AVERAGE({})".format(duration_jobs_cols)
         max_jobs_execution_time = "=MAX({})".format(duration_jobs_cols)
         sum_jobs_execution_time = "=SUM({})".format(duration_jobs_cols)
         ws_runs.append([
-                run_workflow_id,
-                run_created_at,
-                run["event"],
-                run_author,
-                run["head_branch"],
-                run["conclusion"],
-                run_durations,
-                pending_time,
-                avg_jobs_execution_time,
-                max_jobs_execution_time,
-                sum_jobs_execution_time
-                ])
+            run_workflow_id,
+            run_created_at,
+            run["event"],
+            run_author,
+            run["head_branch"],
+            run["conclusion"],
+            run_durations,
+            pending_time,
+            avg_jobs_execution_time,
+            max_jobs_execution_time,
+            sum_jobs_execution_time
+        ])
 
     # sheet DataAnalyze
-    workflow_run_avg='=AVERAGE(WorkflowRuns!G2:G'+str(ws_runs.max_row)+')/'+str(60)
-    workflow_success_percentile_99='=PERCENTILE(IF(WorkflowRuns!F2:F'+str(ws_runs.max_row)+'="success",WorkflowRuns!G2:G'+str(ws_runs.max_row)+'),0.99)/'+str(60)
-    workflow_max='=MAX(WorkflowRuns!G2:G'+str(ws_runs.max_row)+')/'+str(60)
-    workflow_success_rate='=COUNTIF(WorkflowRuns!F2:F'+str(ws_runs.max_row)+',"success")/'+str(ws_runs.max_row-1)+'*100'
+    workflow_run_avg = '=AVERAGE(WorkflowRuns!G2:G' + \
+        str(ws_runs.max_row) + ')/' + str(60)
+    workflow_success_percentile_99 = '=PERCENTILE(IF(WorkflowRuns!F2:F' + str(
+        ws_runs.max_row) + '="success",WorkflowRuns!G2:G' + str(ws_runs.max_row) + '),0.99)/' + str(60)
+    workflow_max = '=MAX(WorkflowRuns!G2:G' + \
+        str(ws_runs.max_row) + ')/' + str(60)
+    workflow_success_rate = '=COUNTIF(WorkflowRuns!F2:F' + str(
+        ws_runs.max_row) + ',"success")/' + str(ws_runs.max_row - 1) + '*100'
 
-    workflow_wait_avg='=AVERAGE(WorkflowRuns!H2:H'+str(ws_runs.max_row)+')/'+str(60)
-    workflow_success_wait_percentile_99='=PERCENTILE(IF(WorkflowRuns!F2:F'+str(ws_runs.max_row)+'="success",WorkflowRuns!H2:H'+str(ws_runs.max_row)+'),0.99)/'+str(60)
-    workflow_wait_max='=MAX(WorkflowRuns!H2:H'+str(ws_runs.max_row)+')/'+str(60)
-    
-    ws_summary=wb.create_sheet("Summary",0)
+    workflow_wait_avg = '=AVERAGE(WorkflowRuns!H2:H' + \
+        str(ws_runs.max_row) + ')/' + str(60)
+    workflow_success_wait_percentile_99 = '=PERCENTILE(IF(WorkflowRuns!F2:F' + str(
+        ws_runs.max_row) + '="success",WorkflowRuns!H2:H' + str(ws_runs.max_row) + '),0.99)/' + str(60)
+    workflow_wait_max = '=MAX(WorkflowRuns!H2:H' + \
+        str(ws_runs.max_row) + ')/' + str(60)
+
+    ws_summary = wb.create_sheet("Summary", 0)
     ws_summary['A1'] = "workflow_run_avg(minues)"
     ws_summary['B1'] = workflow_run_avg
     ws_summary['A2'] = "workflow_success_percentile_99(minues)"
@@ -208,19 +256,27 @@ def report(runs):
             continue
 
         title_job_durations = title
-        title_job_conclusion = jobs_titles[i-1]
+        title_job_conclusion = jobs_titles[i - 1]
         column_name_job_durations = title_to_column[title_job_durations]
         column_name_job_conclusion = title_to_column[title_job_conclusion]
 
         i_row = ws_summary.max_row + 1
-        ws_summary[ "A{}".format(i_row + 1) ] = "Avg {} (minutes)".format(title_job_durations)
-        ws_summary[ "B{}".format(i_row + 1) ] = "=AVERAGE(WorkflowJobs!{}2:{}{})/60".format(column_name_job_durations, column_name_job_durations, ws_jobs.max_row)
-        ws_summary[ "A{}".format(i_row + 2) ] = "Percentile-99 {} (minutes)".format(title_job_durations)
-        ws_summary[ "B{}".format(i_row + 2) ] = "=PERCENTILE(IF(WorkflowJobs!{}2:{}{}=\"success\",WorkflowJobs!{}2:{}{}),0.99)/60".format(column_name_job_conclusion, column_name_job_conclusion, ws_jobs.max_row, column_name_job_durations, column_name_job_durations, ws_jobs.max_row)
-        ws_summary[ "A{}".format(i_row + 3) ] = "Max {} (minutes)".format(title_job_durations)
-        ws_summary[ "B{}".format(i_row + 3) ] = "=Max(WorkflowJobs!{}2:{}{})/60".format(column_name_job_durations, column_name_job_durations, ws_jobs.max_row)
-        ws_summary[ "A{}".format(i_row + 4) ] = "Success Rate of {} (minutes)".format(title_job_durations)
-        ws_summary[ "B{}".format(i_row + 4) ] = "=COUNTIF(WorkflowJobs!{}2:{}{}, \"success\")/{}*100".format(column_name_job_conclusion, column_name_job_conclusion, ws_jobs.max_row, ws_jobs.max_row)
+        ws_summary["A{}".format(
+            i_row + 1)] = "Avg {} (minutes)".format(title_job_durations)
+        ws_summary["B{}".format(i_row + 1)] = "=AVERAGE(WorkflowJobs!{}2:{}{})/60".format(
+            column_name_job_durations, column_name_job_durations, ws_jobs.max_row)
+        ws_summary["A{}".format(
+            i_row + 2)] = "Percentile-99 {} (minutes)".format(title_job_durations)
+        ws_summary["B{}".format(i_row + 2)] = "=PERCENTILE(IF(WorkflowJobs!{}2:{}{}=\"success\",WorkflowJobs!{}2:{}{}),0.99)/60".format(
+            column_name_job_conclusion, column_name_job_conclusion, ws_jobs.max_row, column_name_job_durations, column_name_job_durations, ws_jobs.max_row)
+        ws_summary["A{}".format(
+            i_row + 3)] = "Max {} (minutes)".format(title_job_durations)
+        ws_summary["B{}".format(i_row + 3)] = "=Max(WorkflowJobs!{}2:{}{})/60".format(
+            column_name_job_durations, column_name_job_durations, ws_jobs.max_row)
+        ws_summary["A{}".format(
+            i_row + 4)] = "Success Rate of {} (minutes)".format(title_job_durations)
+        ws_summary["B{}".format(i_row + 4)] = "=COUNTIF(WorkflowJobs!{}2:{}{}, \"success\")/{}*100".format(
+            column_name_job_conclusion, column_name_job_conclusion, ws_jobs.max_row, ws_jobs.max_row)
 
     wb.save(FILENAME_WEEKLY_REPORT)
 
@@ -246,11 +302,11 @@ def get_jobs_titles(runs):
         jobs = run["jobs"]
         for job in jobs:
             name = job["name"]
-            durations  = "{} durations".format(name)
+            durations = "{} durations".format(name)
             conclusion = "{} conclusion".format(name)
             titles.add(durations)
             titles.add(conclusion)
-    return [ title for title in sorted(titles) ]
+    return [title for title in sorted(titles)]
 
 
 def main():
