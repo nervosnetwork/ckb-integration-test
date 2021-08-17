@@ -11,7 +11,7 @@ on:
   # Manurally trigger
   workflow_dispatch:
   schedule:
-    - cron: '40 5 * * 2'
+    - cron: '25 6 * * 2'
 
 jobs:
 
@@ -79,4 +79,5 @@ jobs:
           branch-suffix: timestamp
           delete-branch: true
           title: "[create-pull-request] add fork-tests-checks weekly report ${{ steps.get-date.outputs.date }}"
+          push-to-fork: keroro520/ckb-assets
       - run: echo "Pull Request URL - ${{ steps.cpr.outputs.pull-request-url }}"
