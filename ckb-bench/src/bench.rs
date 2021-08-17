@@ -1,5 +1,6 @@
+use ckb_testkit::util::since_from_absolute_epoch_number_with_fraction;
 use ckb_testkit::{Node, User};
-use ckb_types::core::{TransactionBuilder, TransactionView};
+use ckb_types::core::{EpochNumberWithFraction, TransactionBuilder, TransactionView};
 use ckb_types::packed::{CellDep, CellOutput};
 use ckb_types::{
     core::cell::CellMeta,
@@ -119,9 +120,19 @@ impl TransactionProducer {
             }
             Err(_) => false,
         };
-        if enabled_data1_script {
-            ckb_testkit::info!("enabled transaction script using ScriptHashType::Data1");
-        }
+        let enabled_invalid_since_epoch = match ::std::env::var("CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH") {
+            Ok(raw) => {
+                raw.parse()
+                    .map_err(|err| ckb_testkit::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH={}\", error: {}", raw, err))
+                    .unwrap_or(false)
+            }
+            Err(_) => false,
+        };
+        ckb_testkit::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data1_script);
+        ckb_testkit::info!(
+            "CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH = {}",
+            enabled_invalid_since_epoch
+        );
 
         while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = live_cell.cell_output.calc_lock_hash();
@@ -140,11 +151,19 @@ impl TransactionProducer {
                 let mut live_cells = HashMap::new();
                 std::mem::swap(&mut self.live_cells, &mut live_cells);
 
+                let since = if enabled_invalid_since_epoch {
+                    since_from_absolute_epoch_number_with_fraction(
+                        EpochNumberWithFraction::new_unchecked(0, 1, 1),
+                    )
+                } else {
+                    0
+                };
                 let inputs = live_cells
                     .values()
                     .map(|cell| {
                         CellInput::new_builder()
                             .previous_output(cell.out_point.clone())
+                            .since(since.pack())
                             .build()
                     })
                     .collect::<Vec<_>>();
