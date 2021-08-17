@@ -104,15 +104,15 @@ jobs:
       run: mkdir artifacts
 
     - name: Create archive for Linux
-      run: 7z a -ttar -so -an ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }} | 7z a -si ./artifacts/${{ env.PACKAGE }}-linux-x86_64.tar.gz
+      run: 7z a -ttar -so -an ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }} | 7z a -si ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-linux-x86_64.tar.gz
       if: matrix.os == 'ubuntu-latest'
 
     - name: Create archive for Windows
-      run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-windows-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}.exe
+      run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-windows-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}.exe
       if: matrix.os == 'windows-latest'
 
     - name: Create archive for MacOS
-      run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-mac-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}
+      run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-mac-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}
       if: matrix.os == 'macos-latest'
 
     - name: Upload artifacts
