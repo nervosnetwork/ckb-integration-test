@@ -10,34 +10,42 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub enum BuildInstruction {
     SendTransaction {
-        block_number: BlockNumber,
+        template_number: BlockNumber,
         transaction: TransactionView,
     },
     Propose {
-        block_number: BlockNumber,
+        template_number: BlockNumber,
         proposal_short_id: ProposalShortId,
     },
     Commit {
-        block_number: BlockNumber,
+        template_number: BlockNumber,
         transaction: TransactionView,
     },
     ProcessWithoutVerify {
-        block_number: BlockNumber,
+        template_number: BlockNumber,
     },
     HeaderTimestamp {
-        block_number: BlockNumber,
+        template_number: BlockNumber,
         timestamp: u64,
     },
 }
 
 impl BuildInstruction {
-    pub fn block_number(&self) -> BlockNumber {
+    pub fn template_number(&self) -> BlockNumber {
         match self {
-            BuildInstruction::SendTransaction { block_number, .. } => *block_number,
-            BuildInstruction::Propose { block_number, .. } => *block_number,
-            BuildInstruction::Commit { block_number, .. } => *block_number,
-            BuildInstruction::ProcessWithoutVerify { block_number } => *block_number,
-            BuildInstruction::HeaderTimestamp { block_number, .. } => *block_number,
+            BuildInstruction::SendTransaction {
+                template_number, ..
+            } => *template_number,
+            BuildInstruction::Propose {
+                template_number, ..
+            } => *template_number,
+            BuildInstruction::Commit {
+                template_number, ..
+            } => *template_number,
+            BuildInstruction::ProcessWithoutVerify { template_number } => *template_number,
+            BuildInstruction::HeaderTimestamp {
+                template_number, ..
+            } => *template_number,
         }
     }
 }
@@ -48,21 +56,14 @@ impl Node {
         target_height: BlockNumber,
         instructions: Vec<BuildInstruction>,
     ) -> Result<(), String> {
-        let initial_tip_number = self.get_tip_block_number();
         assert!(self.consensus().permanent_difficulty_in_dummy);
-        assert!(
-            instructions.iter().all(|option| {
-                initial_tip_number < option.block_number() && option.block_number() <= target_height
-            }),
-            "initial_tip_number: {}, target_height: {}, instructions: {:?}",
-            initial_tip_number,
-            target_height,
-            instructions,
-        );
+        let initial_tip_number = self.get_tip_block_number();
         let mut instructions_map: HashMap<BlockNumber, Vec<BuildInstruction>> = HashMap::new();
         for instruction in instructions {
+            assert!(initial_tip_number < instruction.template_number());
+            assert!(target_height >= instruction.template_number());
             instructions_map
-                .entry(instruction.block_number())
+                .entry(instruction.template_number())
                 .or_default()
                 .push(instruction);
         }
