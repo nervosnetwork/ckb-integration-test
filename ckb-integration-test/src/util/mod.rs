@@ -1,3 +1,5 @@
+pub mod instructions;
+
 use ckb_testkit::Node;
 use ckb_types::core::{BlockNumber, EpochNumber};
 
