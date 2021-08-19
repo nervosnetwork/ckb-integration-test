@@ -1,3 +1,5 @@
+pub mod macros;
+
 use ckb_types::core::{BlockNumber, EpochNumberWithFraction};
 use lazy_static::lazy_static;
 use std::env;
