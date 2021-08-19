@@ -2,11 +2,15 @@
 macro_rules! assert_result_eq {
     ($left:expr, $right:expr) => {
         if $left.is_err() && $right.is_err() {
-            let left_raw_err = $left.as_ref().unwrap_err().to_string();
-            let right_raw_err = $right.as_ref().unwrap_err().to_string();
-            assert!(left_raw_err.contains(&right_raw_err) || right_raw_err.contains(&left_raw_err));
+            let left_ = $left.as_ref().map_err(|err| err.to_string());
+            let right_ = $right.as_ref().map_err(|err| err.to_string());
+            let left_raw_err = left_.as_ref().unwrap_err();
+            let right_raw_err = right_.as_ref().unwrap_err();
+            assert!(left_raw_err.contains(right_raw_err) || right_raw_err.contains(left_raw_err));
         } else {
-            assert_eq!($left, $right);
+            let left_ = $left.as_ref().map_err(|err| err.to_string());
+            let right_ = $right.as_ref().map_err(|err| err.to_string());
+            assert_eq!(left_, right_);
         }
     };
     ($left:expr, $right:expr,) => {
@@ -14,11 +18,15 @@ macro_rules! assert_result_eq {
     };
     ($left:expr, $right:expr, $($arg:tt)+) => {
         if $left.is_err() && $right.is_err() {
-            let left_raw_err = $left.as_ref().unwrap_err().to_string();
-            let right_raw_err = $right.as_ref().unwrap_err().to_string();
-            assert!(left_raw_err.contains(&right_raw_err) || right_raw_err.contains(&left_raw_err), $($arg)+);
+            let left_ = $left.as_ref().map_err(|err| err.to_string());
+            let right_ = $right.as_ref().map_err(|err| err.to_string());
+            let left_raw_err = left_.as_ref().unwrap_err();
+            let right_raw_err = right_.as_ref().unwrap_err();
+            assert!(left_raw_err.contains(right_raw_err) || right_raw_err.contains(left_raw_err), $($arg)+);
         } else {
-            assert_eq!($left, $right, $($arg)+);
+            let left_ = $left.as_ref().map_err(|err| err.to_string());
+            let right_ = $right.as_ref().map_err(|err| err.to_string());
+            assert_eq!(left_, right_, $($arg)+);
         }
     }
 }
