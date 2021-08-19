@@ -50,18 +50,24 @@ impl Node {
     ) -> Result<(), String> {
         let initial_tip_number = self.get_tip_block_number();
         assert!(self.consensus().permanent_difficulty_in_dummy);
-        assert!(instructions.iter().all(|option| {
-            initial_tip_number < option.block_number() && option.block_number() <= target_height
-        }));
-        let mut params_map: HashMap<BlockNumber, Vec<BuildInstruction>> = HashMap::new();
-        for param in instructions {
-            params_map
-                .entry(param.block_number())
+        assert!(
+            instructions.iter().all(|option| {
+                initial_tip_number < option.block_number() && option.block_number() <= target_height
+            }),
+            "initial_tip_number: {}, target_height: {}, instructions: {:?}",
+            initial_tip_number,
+            target_height,
+            instructions,
+        );
+        let mut instructions_map: HashMap<BlockNumber, Vec<BuildInstruction>> = HashMap::new();
+        for instruction in instructions {
+            instructions_map
+                .entry(instruction.block_number())
                 .or_default()
-                .push(param);
+                .push(instruction);
         }
 
-        // build chain according to params
+        // build chain according to instructions
         let mut next_template_number = self.get_tip_block_number() + 1;
         loop {
             let mut template = self.rpc_client().get_block_template(None, None, None);
@@ -76,19 +82,21 @@ impl Node {
                 next_template_number += 1;
             }
 
-            if let Some(params) = params_map.remove(&template.number.value()) {
+            if let Some(instructions) = instructions_map.remove(&number) {
                 let mut process_without_verify = false;
-                for param in params {
-                    match param {
+                for instruction in instructions {
+                    match &instruction {
                         BuildInstruction::SendTransaction { transaction, .. } => {
                             self.rpc_client()
                                 .send_transaction_result(transaction.data().into())
-                                .map_err(|err| err.to_string())?;
+                                .map_err(|err| {
+                                    format!("failed to execute {:?}, error: {}", instruction, err)
+                                })?;
                         }
                         BuildInstruction::Propose {
                             proposal_short_id, ..
                         } => {
-                            let proposal_short_id = proposal_short_id.into();
+                            let proposal_short_id = proposal_short_id.to_owned().into();
                             if !template.proposals.contains(&proposal_short_id) {
                                 template.proposals.push(proposal_short_id);
                             }
@@ -111,7 +119,7 @@ impl Node {
                             process_without_verify = true;
                         }
                         BuildInstruction::HeaderTimestamp { timestamp, .. } => {
-                            template.current_time = ckb_jsonrpc_types::Timestamp::from(timestamp);
+                            template.current_time = ckb_jsonrpc_types::Timestamp::from(*timestamp);
                         }
                     }
                 }
@@ -126,13 +134,15 @@ impl Node {
                 } else {
                     self.rpc_client()
                         .submit_block("".to_string(), updated_block.into())
-                        .map_err(|err| err.to_string())?;
+                        .map_err(|err| {
+                            format!("failed to send block {}, error: {}", number, err)
+                        })?;
                 }
             } else {
                 let block: packed::Block = template.into();
                 self.rpc_client()
                     .submit_block("".to_string(), block.into())
-                    .map_err(|err| err.to_string())?;
+                    .map_err(|err| format!("failed to send block {}, error: {}", number, err))?;
             }
         }
         Ok(())

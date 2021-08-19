@@ -1,11 +1,9 @@
-use crate::Node;
+use crate::{Node, SYSTEM_CELL_ALWAYS_SUCCESS_INDEX};
 use ckb_types::{
     core::{cell::CellMeta, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{CellDep, CellInput, CellOutput, OutPoint, Script},
     prelude::*,
 };
-
-pub const SYSTEM_CELL_ALWAYS_SUCCESS_INDEX: u32 = 5;
 
 impl Node {
     pub fn always_success_script(&self) -> Script {

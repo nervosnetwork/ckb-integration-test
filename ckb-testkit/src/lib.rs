@@ -12,6 +12,7 @@ pub use user::User;
 
 use ckb_types::{h256, H256};
 
+pub const SYSTEM_CELL_ALWAYS_SUCCESS_INDEX: u32 = 5;
 pub const GENESIS_DEP_GROUP_TRANSACTION_INDEX: usize = 1;
 pub const GENESIS_SIGHASH_ALL_DEP_GROUP_CELL_INDEX: usize = 0;
 pub const SIGHASH_ALL_TYPE_HASH: H256 =
