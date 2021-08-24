@@ -4,6 +4,7 @@ use ckb_types::core::{BlockView, EpochNumberWithFraction, TransactionInfo};
 use ckb_types::packed::OutPoint;
 
 impl Node {
+    // NOTICE: This function use `indexer_unchecked`
     pub fn get_cell_meta(&self, out_point: OutPoint) -> Option<CellMeta> {
         let detail = self
             .indexer_unchecked()
