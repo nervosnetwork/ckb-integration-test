@@ -102,7 +102,7 @@ fn clap_app() -> App<'static, 'static> {
                         .long("ckb2019")
                         .takes_value(true)
                         .value_name("PATH")
-                        .help("Path to ckb v1 executable"),
+                        .help("Path to ckb2019 executable"),
                 )
                 .arg(
                     Arg::with_name("ckb2021")
@@ -110,7 +110,7 @@ fn clap_app() -> App<'static, 'static> {
                         .takes_value(true)
                         .value_name("PATH")
                         .required(false)
-                        .help("Path to ckb v2 executable"),
+                        .help("Path to ckb2021 executable"),
                 ),
         )
 }

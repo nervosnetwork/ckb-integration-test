@@ -2,6 +2,14 @@
 
 ## Usage
 
+### Run all cases
+
 ```shell
-cargo run -- run --ckb2019 <path to ckb2019> --ckb2021 <path to ckb2021>
+cargo run -- run --ckb2021 <path to ckb2021>
+```
+
+### Run specific cases
+
+```shell
+cargo run -- run --ckb2021 <path to ckb2021> --cases <cases name seperated by space>
 ```
