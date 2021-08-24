@@ -7,6 +7,7 @@ mod rfc0029;
 mod rfc0030;
 mod rfc0031;
 mod rfc0032;
+mod rfc0034;
 mod rfc0036;
 
 pub use case_options::CaseOptions;
@@ -22,6 +23,7 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0031::rfc0031::RFC0031),
         Box::new(rfc0036::rfc0036::RFC0036),
         Box::new(rfc0032::rfc0032::RFC0032),
+        Box::new(rfc0034::rfc0034::RFC0034),
         Box::new(identify::connection::IdentifyConnection),
         Box::new(identify::identical_key_pair::IdentifyIdenticalKeyPair),
         Box::new(discovery::flood_attack::DiscoveryFloodAttack),
