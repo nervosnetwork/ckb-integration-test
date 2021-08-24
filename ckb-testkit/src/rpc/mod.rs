@@ -31,7 +31,14 @@ lazy_static! {
 macro_rules! item2019_to_item2021 {
     ($item2019:expr) => {{
         let raw2019 = serde_json::to_string(&$item2019).unwrap();
-        let raw2021 = raw2019.replace("uncles_hash", "extra_hash");
+        let raw2021 = raw2019
+            // interfaces that includes block header
+            .replace("uncles_hash", "extra_hash")
+            // get_consensus
+            .replace(
+                "\"permanent_difficulty_in_dummy\":",
+                "\"hardfork_features\":[],\"permanent_difficulty_in_dummy\":",
+            );
         serde_json::from_str(&raw2021).unwrap()
     }};
 }
@@ -205,9 +212,16 @@ impl RpcClient {
     }
 
     pub fn get_consensus(&self) -> Consensus {
-        self.inner()
-            .get_consensus()
-            .expect("rpc call get_consensus")
+        if self.ckb2021 {
+            self.inner2021
+                .get_consensus()
+                .expect("rpc call get_consensus")
+        } else {
+            item2019_to_item2021!(self
+                .inner2019
+                .get_consensus()
+                .expect("rpc call get_consensus"))
+        }
     }
 
     pub fn local_node_info(&self) -> LocalNode {
