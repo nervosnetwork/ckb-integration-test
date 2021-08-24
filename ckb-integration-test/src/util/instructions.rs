@@ -53,9 +53,7 @@ pub fn instructions_of_success_to_send_transaction_after_switch(
 ) -> Vec<BuildInstruction> {
     vec![
         BuildInstruction::SendTransaction {
-            // FIXME I am debugging
-            template_number: fork_switch_height - 3,
-            // template_number: fork_switch_height - 2,
+            template_number: fork_switch_height - 2,
             transaction: transaction.clone(),
         },
         BuildInstruction::Propose {

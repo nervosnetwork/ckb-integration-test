@@ -1,3 +1,4 @@
+pub mod deployer;
 pub mod instructions;
 
 use ckb_testkit::Node;
