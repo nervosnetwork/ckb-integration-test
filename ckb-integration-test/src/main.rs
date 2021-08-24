@@ -64,6 +64,10 @@ fn clap_app() -> App<'static, 'static> {
                 .about("Run test cases")
                 .arg(
                     Arg::with_name("ckb2019")
+                        // hide the help information about `--ckb2019`, we use built-in
+                        // ckb2019 binary, located in testdata/bin/
+                        .hidden(true)
+                        .required(false)
                         .long("ckb2019")
                         .takes_value(true)
                         .value_name("PATH")
@@ -78,11 +82,12 @@ fn clap_app() -> App<'static, 'static> {
                 )
                 .arg(
                     Arg::with_name("cases")
+                        .required(false)
                         .long("cases")
                         .takes_value(true)
                         .multiple(true)
                         .value_name("CASE_NAME")
-                        .help("only run specified cases"),
+                        .help("Only run specified cases. Run all cases if this parameter is not setting"),
                 ),
         )
         .subcommand(
@@ -90,6 +95,10 @@ fn clap_app() -> App<'static, 'static> {
                 .about("Run testdata generators")
                 .arg(
                     Arg::with_name("ckb2019")
+                        // hide the help information about `--ckb2019`, we use built-in
+                        // ckb2019 binary, located in testdata/bin/
+                        .hidden(true)
+                        .required(false)
                         .long("ckb2019")
                         .takes_value(true)
                         .value_name("PATH")
@@ -123,7 +132,18 @@ fn init_logger(_clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuar
 }
 
 fn init_ckb_binaries(matches: &ArgMatches) {
-    let ckb2019 = value_t_or_exit!(matches, "ckb2019", PathBuf);
+    let ckb2019 = {
+        if let Some(ckb2019_str) = matches.value_of("ckb2019") {
+            PathBuf::from(ckb2019_str)
+        } else {
+            // Use default ckb_v0.43.2 binary according to the running system
+            match os_info::get().os_type() {
+                os_info::Type::Macos => PathBuf::from("testdata/bin/ckb_v0.43.2-macOS"),
+                os_info::Type::Windows => PathBuf::from("testdata/bin/ckb_v0.43.2-Windows"),
+                _ => PathBuf::from("testdata/bin/ckb_v0.43.2-Linux"),
+            }
+        }
+    };
     let ckb2021 = value_t_or_exit!(matches, "ckb2021", PathBuf);
     if !ckb2019.exists() || !ckb2019.is_file() {
         panic!("--ckb2019 points to non-executable")

@@ -17,3 +17,4 @@ lazy_static = "1.4.0"
 log = "0.4"
 ckb-testkit = { path = "../ckb-testkit" }
 ckb-exec-params = { git = "https://github.com/keroro520/ckb_exec_test_script", rev = "ddf874a1ecbcc4386403eb6658abdaeb6a4a8450", package = "exec_params" }
+os_info = { version = "3.0", default-features = false }
