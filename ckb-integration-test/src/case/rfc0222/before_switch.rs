@@ -127,10 +127,9 @@ impl Case for RFC0222BeforeSwitch {
                 .rpc_client()
                 .send_transaction_result(tx.pack().data().into());
             assert_eq!(
-                actual.as_ref().map_err(|err| err.to_string()),
-                actual2019.as_ref().map_err(|err| err.to_string()),
-                "case-{} expect both node2021 and node2019 return the same",
-                i,
+                actual.is_err(), actual2019.is_err(),
+                "case-{} expect both node2021 and node2019 return the same, but got actual: {:?}, actual2019: {:?}",
+                i, actual, actual2019
             );
             match (expected, actual) {
                 (Ok(()), Ok(_)) => {}
