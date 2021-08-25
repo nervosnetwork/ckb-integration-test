@@ -13,17 +13,11 @@ jobs:
     name: Bootstrap
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v4
+      - uses: LouisBrunner/checks-action@v1.1.1
         with:
-          script: |
-            github.repos.createCommitStatus({
-              state: 'pending',
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              context: '${{ github.workflow }}',
-              sha: '${{ github.event.client_payload.github.sha }}',
-              target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-            })
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Fork Tests Checks
+          status: in_progress
 
   build-ckb:
     name: Build CKB
@@ -147,15 +141,10 @@ jobs:
     steps:
       - if: contains(join(needs.*.result, ';'), 'failure') || contains(join(needs.*.result, ';'), 'cancelled')
         run: exit 1
-      - uses: actions/github-script@v4
+      - uses: LouisBrunner/checks-action@v1.1.1
         if: ${{ always() }}
         with:
-          script: |
-            github.repos.createCommitStatus({
-              state: '${{ job.status }}',
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              context: '${{ github.workflow }}',
-              sha: '${{ github.event.client_payload.github.sha }}',
-              target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
-            })
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: Fork Tests Checks
+          status: completed
+          conclusion: ${{ job.status }}
