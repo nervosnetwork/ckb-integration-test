@@ -7,7 +7,7 @@ mod rfc0224;
 mod rfc0234;
 mod rfc0240;
 
-use case_options::CaseOptions;
+pub use case_options::CaseOptions;
 use ckb_testkit::Node;
 use ckb_testkit::Nodes;
 
