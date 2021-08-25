@@ -60,8 +60,18 @@ impl Node {
         let initial_tip_number = self.get_tip_block_number();
         let mut instructions_map: HashMap<BlockNumber, Vec<BuildInstruction>> = HashMap::new();
         for instruction in instructions {
-            assert!(initial_tip_number < instruction.template_number());
-            assert!(target_height >= instruction.template_number());
+            assert!(
+                initial_tip_number < instruction.template_number(),
+                "initial_tip_number: {}, instruction.template_number: {}",
+                initial_tip_number,
+                instruction.template_number()
+            );
+            assert!(
+                target_height >= instruction.template_number(),
+                "target_height: {}, instruction.template_number: {}",
+                target_height,
+                instruction.template_number(),
+            );
             instructions_map
                 .entry(instruction.template_number())
                 .or_default()
@@ -125,7 +135,15 @@ impl Node {
                     }
                 }
                 let updated_block: packed::Block = {
-                    let dao_field = self.rpc_client().calculate_dao_field(template.clone());
+                    let dao_field = self
+                        .rpc_client()
+                        .calculate_dao_field(template.clone())
+                        .map_err(|err| {
+                            format!(
+                                "failed to calculate dao field, block number: {}, error: {}",
+                                number, err
+                            )
+                        })?;
                     template.dao = dao_field.into();
                     template.into()
                 };
