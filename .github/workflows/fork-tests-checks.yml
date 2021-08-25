@@ -9,9 +9,25 @@ env:
   CKB_GITHUB_SHA: ${{ github.event.client_payload.env.ckb_github_sha }}
 
 jobs:
+  bootstrap:
+    name: Bootstrap
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v4
+        with:
+          script: |
+            github.repos.createCommitStatus({
+              state: 'pending',
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              context: '${{ github.workflow }}',
+              sha: '${{ github.event.client_payload.github.sha }}',
+              target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            })
 
   build-ckb:
     name: Build CKB
+    needs: [ bootstrap ]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -121,3 +137,25 @@ jobs:
       #     chmod +x ./testdata/bin/*
       #     ./testdata/bin/ckb-integration-test.exe run \
       #       --ckb2021 testdata/bin/ckb.exe
+      #
+
+  finally:
+    name: Finally
+    needs: [ fork-tests ]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - if: contains(join(needs.*.result, ';'), 'failure') || contains(join(needs.*.result, ';'), 'cancelled')
+        run: exit 1
+      - uses: actions/github-script@v4
+        if: ${{ always() }}
+        with:
+          script: |
+            github.repos.createCommitStatus({
+              state: '${{ job.status }}',
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              context: '${{ github.workflow }}',
+              sha: '${{ github.event.client_payload.github.sha }}',
+              target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+            })
