@@ -1,4 +1,5 @@
 pub mod case;
+pub mod preclude;
 pub mod testdata;
 pub mod util;
 
