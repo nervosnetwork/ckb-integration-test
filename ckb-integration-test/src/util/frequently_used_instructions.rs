@@ -5,11 +5,11 @@ use ckb_types::core::{BlockNumber, TransactionView};
 /// `fork_switch_height - 4`
 pub fn instructions_to_send_transaction_before_switch(
     fork_switch_height: BlockNumber,
-    transaction: &TransactionView,
+    transaction: TransactionView,
 ) -> Vec<BuildInstruction> {
     vec![BuildInstruction::SendTransaction {
         template_number: fork_switch_height - 4,
-        transaction: transaction.clone(),
+        transaction,
     }]
 }
 
@@ -17,7 +17,7 @@ pub fn instructions_to_send_transaction_before_switch(
 /// `fork_switch_height - 1`
 pub fn instructions_to_commit_transaction_before_switch(
     fork_switch_height: BlockNumber,
-    transaction: &TransactionView,
+    transaction: TransactionView,
 ) -> Vec<BuildInstruction> {
     vec![
         BuildInstruction::Propose {
@@ -26,7 +26,7 @@ pub fn instructions_to_commit_transaction_before_switch(
         },
         BuildInstruction::Commit {
             template_number: fork_switch_height - 1,
-            transaction: transaction.clone(),
+            transaction,
         },
     ]
 }
@@ -35,11 +35,11 @@ pub fn instructions_to_commit_transaction_before_switch(
 /// `fork_switch_height - 2`
 pub fn instructions_to_send_transaction_after_switch(
     fork_switch_height: BlockNumber,
-    transaction: &TransactionView,
+    transaction: TransactionView,
 ) -> Vec<BuildInstruction> {
     vec![BuildInstruction::SendTransaction {
         template_number: fork_switch_height - 2,
-        transaction: transaction.clone(),
+        transaction,
     }]
 }
 
@@ -47,7 +47,7 @@ pub fn instructions_to_send_transaction_after_switch(
 /// `fork_switch_height`
 pub fn instructions_to_commit_transaction_after_switch(
     fork_switch_height: BlockNumber,
-    transaction: &TransactionView,
+    transaction: TransactionView,
 ) -> Vec<BuildInstruction> {
     vec![
         BuildInstruction::Propose {
@@ -56,7 +56,7 @@ pub fn instructions_to_commit_transaction_after_switch(
         },
         BuildInstruction::Commit {
             template_number: fork_switch_height,
-            transaction: transaction.clone(),
+            transaction,
         },
     ]
 }
