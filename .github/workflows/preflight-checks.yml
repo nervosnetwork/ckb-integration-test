@@ -21,6 +21,8 @@ on:
         default: "develop"
   schedule:
     - cron: '0 * * * *'
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 env:
   os_matrix: '[ "ubuntu-latest", "macos-latest", "windows-latest" ]'
@@ -68,9 +70,9 @@ jobs:
             }
 
   trigger-required-checks-cron:
-    name: Trigger Required Checks Cron
+    name: Trigger Required Checks For Schedule And Pull Request
     if: |
-      needs.repo-access-token.outputs.is-set == 'true' && github.event_name == 'schedule'
+      needs.repo-access-token.outputs.is-set == 'true' && github.event_name != 'workflow_dispatch'
     needs: [ repo-access-token ]
     runs-on: ubuntu-latest
     steps:
