@@ -1,5 +1,5 @@
 pub mod deployer;
-pub mod instructions;
+pub mod frequently_used_instructions;
 
 use ckb_testkit::Node;
 use ckb_types::core::{BlockNumber, EpochNumber};
