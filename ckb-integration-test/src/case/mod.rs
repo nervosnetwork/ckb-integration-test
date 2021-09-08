@@ -1,5 +1,6 @@
 mod basic;
 mod case_options;
+mod rfc0028;
 mod rfc0029;
 mod rfc0030;
 mod rfc0031;
@@ -31,6 +32,8 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0234::discovery::RFC0234AfterSwitchDiscovery),
         Box::new(rfc0240::before_switch::RFC0240BeforeSwitch),
         Box::new(rfc0240::after_switch::RFC0240AfterSwitch),
+        Box::new(rfc0028::chained::RFC0028Chained),
+        Box::new(rfc0028::rfc0028::RFC0028),
         Box::new(rfc0029::rfc0029::RFC0029),
         Box::new(rfc0030::rfc0030::RFC0030),
         Box::new(rfc0031::rfc0031::RFC0031),
