@@ -7,12 +7,12 @@ edition = "2018"
 [dependencies]
 ckb-testkit = { path = "../ckb-testkit" }
 
-ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
-ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
-ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
-ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
-ckb-crypto = { git = "https://github.com/nervosnetwork/ckb.git", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
-ckb-hash = { git = "https://github.com/nervosnetwork/ckb.git", rev = "3e56dbc51bc3de6bccef68b48961dba43b70f26b" }
+ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
+ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
+ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
+ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
+ckb-crypto = { git = "https://github.com/nervosnetwork/ckb.git", rev = "603a811" }
+ckb-hash = { git = "https://github.com/nervosnetwork/ckb.git", rev = "603a811" }
 clap = { version = "2" }
 serde = "1.0"
 serde_derive = "1.0"
