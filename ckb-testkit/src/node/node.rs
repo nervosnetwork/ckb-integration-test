@@ -207,8 +207,14 @@ impl Node {
         &self.rpc_client
     }
 
+    /// P2p listen address, without node_id. E.g. "/ip4/0.0.0.0/tcp/9003"
     pub fn p2p_address(&self) -> String {
         self.p2p_address.as_ref().unwrap().clone()
+    }
+
+    /// P2p listen address with node_id. E.g. "/ip4/0.0.0.0/tcp/9003/p2p/QmaPV8Ly4YZe2L8B11b2Rvy8YLsvKo4TtfuqhJQzfPcK5T"
+    pub fn p2p_address_with_node_id(&self) -> String {
+        format!("{}/p2p/{}", self.p2p_address(), self.node_id())
     }
 
     pub fn consensus(&self) -> &Consensus {
