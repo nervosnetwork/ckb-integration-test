@@ -2,6 +2,7 @@ mod always_success;
 mod builder;
 mod genesis_block_info;
 mod get_transaction;
+mod get_transaction_cycles;
 mod indexer;
 mod mining;
 mod node;
