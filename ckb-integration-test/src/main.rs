@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::sync::RwLock;
 
+// TODO Create a shortcut for CKB2019/CKB2021
 lazy_static! {
     pub static ref CKB2019: RwLock<PathBuf> = RwLock::new(PathBuf::new());
     pub static ref CKB2021: RwLock<PathBuf> = RwLock::new(PathBuf::new());
