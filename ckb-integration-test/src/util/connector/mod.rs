@@ -1,3 +1,5 @@
+mod send_message;
+
 use crate::preclude::*;
 use ckb_app_config::NetworkConfig;
 use ckb_async_runtime::new_global_runtime;
@@ -23,16 +25,16 @@ type MessageRxs = HashMap<PeerIndex, Receiver<(ProtocolId, Bytes)>>;
 // * `NetworkService` maintains `ProtocolHandler`. Everytime receiving messages
 //   or establishing protocol connections, `ProtocolHandler` will be involved.
 //
-// * `NetConsole` maintains `NetworkController`. It queries and manages
+// * `Connector` maintains `NetworkController`. It queries and manages
 //   `NetworkService` through `NetworkController`.
 //
-// * `NetConsole` is the only gateway we maintain. We would like to synchronize
+// * `Connector` is the only gateway we maintain. We would like to synchronize
 //   all the `ProtocolHandler` receiving messages and establishing protocol
 //   connections. Therefor we let `ProtocolHandler` send the messages to
-//   `NetConsole` through channel (I don't recommende maintain state data inside
+//   `Connector` through channel (I don't recommende maintain state data inside
 //   `ProtocolHandler` as it is not shared between protocols).
 
-pub struct NetConsole {
+pub struct Connector {
     /// P2p port
     // p2p_port: u16,
 
@@ -56,11 +58,11 @@ pub struct NetConsole {
     _async_runtime_stop: StopHandler<()>,
 }
 
-/// NetConsole starts a CKB network service and maintain the corresponding network
+/// Connector starts a CKB network service and maintain the corresponding network
 /// controller inside. It provides a way to communicate with CKB nodes via
 /// CKB network protocols directly. For example, send self-defined messages to
 /// CKB nodes.
-impl NetConsole {
+impl Connector {
     // TODO fn new_with_config
 
     /// Start network service
