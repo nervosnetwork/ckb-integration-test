@@ -9,17 +9,17 @@ description = "ckb integration tests"
 
 [dependencies]
 clap = { version = "2" }
-ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
+ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
 lazy_static = "1.4.0"
 log = "0.4"
 ckb-testkit = { path = "../ckb-testkit" }
 ckb-exec-params = { git = "https://github.com/keroro520/ckb_exec_test_script", rev = "ddf874a1ecbcc4386403eb6658abdaeb6a4a8450", package = "exec_params" }
-ckb-network = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-stop-handler = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-async-runtime = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-app-config = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-channel = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
+ckb-network = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-stop-handler = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-async-runtime = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-app-config = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-channel = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
 os_info = { version = "3.0", default-features = false }
