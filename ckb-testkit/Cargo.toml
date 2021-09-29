@@ -9,12 +9,12 @@ description = "ckb testkit"
 
 [dependencies]
 ckb2019-jsonrpc-types = { package = "ckb-jsonrpc-types", version = "0.43.2" }
-ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-error = { git = "https://github.com/nervosnetwork/ckb", rev = "603a811" }
-ckb-crypto = { git = "https://github.com/nervosnetwork/ckb.git", rev = "603a811" }
-ckb-hash = { git = "https://github.com/nervosnetwork/ckb.git", rev = "603a811" }
-ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", rev = "f9ce726eacb2dc5cbbfcf9cbd920a8e1d1789257" }
+ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-error = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-crypto = { git = "https://github.com/nervosnetwork/ckb.git", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-hash = { git = "https://github.com/nervosnetwork/ckb.git", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", rev = "f73aeb018dbf4dcab5db721225d510005fb3414a" }
 reqwest = { version = "0.10.9", features = ["blocking", "json"] }
 serde_json = "1.0"
 lazy_static = "1.4.0"
