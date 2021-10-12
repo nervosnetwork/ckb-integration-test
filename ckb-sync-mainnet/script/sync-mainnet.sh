@@ -148,7 +148,7 @@ function markdown_report() {
 # Upload report through GitHub issue comment
 function github_add_comment() {
     report="$1"
-    $SCRIPT_PATH/ok.sh add_comment keroro520/ckb 52 "$report"
+    $SCRIPT_PATH/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
 }
 
 function rust_build() {
