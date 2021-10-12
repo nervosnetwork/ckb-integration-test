@@ -111,13 +111,6 @@ function ansible_wait_ckb_synchronization() {
     ansible-playbook playbook.yml -t wait_ckb_synchronization
 }
 
-function ansible_report_in_brief() {
-    ansible_config
-
-    cd $ANSIBLE_DIRECTORY
-    ansible-playbook playbook.yml -t report_in_brief
-}
-
 function markdown_report() {
     case "$OSTYPE" in
         darwin*)
@@ -172,7 +165,6 @@ function main() {
             terraform_apply
             ansible_deploy_ckb
             ansible_wait_ckb_synchronization
-            ansible_report_in_brief
             github_add_comment "$(markdown_report)"
             ;;
         "setup")
@@ -187,11 +179,9 @@ function main() {
         "ansible")
             ansible_deploy_ckb
             ansible_wait_ckb_synchronization
-            ansible_report_in_brief
             markdown_report
             ;;
         "report")
-            ansible_report_in_brief
             markdown_report
             ;;
         "clean")

@@ -90,3 +90,4 @@
           shell: "echo '{{ entry }}' > {{ inventory_hostname }}.brief.md"
       tags:
         - report_in_brief
+        - wait_ckb_synchronization
