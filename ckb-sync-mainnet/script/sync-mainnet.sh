@@ -40,6 +40,12 @@ function job_clean() {
     rm -rf $JOB_DIRECTORY
 }
 
+function job_target_tip_number() {
+    curl https://api.explorer.nervos.org/api/v1/statistics/tip_block_number \
+        -H 'Accept: application/vnd.api+json' \
+        -H 'Content-Type: application/vnd.api+json' | jq .data.attributes.tip_block_number
+}
+
 function ssh_gen_key() {
     # Pre-check whether "./ssh" existed
     if [ -e "$SSH_PRIVATE_KEY_PATH" ]; then
@@ -108,7 +114,7 @@ function ansible_wait_ckb_synchronization() {
 
     cd $ANSIBLE_DIRECTORY
     ansible-playbook playbook.yml -t ckb_restart
-    ansible-playbook playbook.yml -t wait_ckb_synchronization
+    ansible-playbook playbook.yml -t wait_ckb_synchronization -e "ckb_sync_target_number=$(job_target_tip_number)"
 }
 
 function markdown_report() {

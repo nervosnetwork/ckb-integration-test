@@ -22,20 +22,6 @@
 
     - name: Wait For CKB Synchronization
       block:
-        - name: Query Mainnet Tip Number From api.explorer.nervos.org
-          uri:
-            url: https://api.explorer.nervos.org/api/v1/statistics/tip_block_number
-            headers:
-              Accept: "application/vnd.api+json"
-              Content-Type: "application/vnd.api+json"
-          register: explorer_tip
-          when:
-            - ckb_sync_target_number is not defined or ckb_sync_target_number == ''
-        - name: Use api.explorer.nervos.org Tip Block Number As Synchronization Target Number
-          set_fact:
-            ckb_sync_target_number: "{{ explorer_tip.json.data.attributes.tip_block_number }}"
-          when:
-            - ckb_sync_target_number is not defined or ckb_sync_target_number == ''
         - name: Wait Until CKB Reach Tip Number `{{ ckb_sync_target_number }}`
           wait_for:
             path: "{{ ckb_data_dir }}/logs/run.log"
@@ -76,13 +62,13 @@
           shell: "head -n 1 {{ ckb_data_dir }}/logs/run.log" # | date '+%s' -d '${$1:0:30}')"
           register: node_start_time
         - name: Get node's current time
-          shell: "tail -n 1 {{ ckb_data_dir }}/logs/run.log" # | date '+%s' -d '${$1:0:30}')"
+          shell: "grep 'block: {{ ckb_sync_target_number }},' {{ ckb_data_dir }}/logs/run.log | head 1"
           register: node_current_time
         - name: Append Entry To Report File
           delegate_to: localhost
           vars:
             network: "{{ rpc_get_consensus.json.result.id }}"
-            tip: "{{ rpc_get_tip_block_number.json.result | int(base=16) }}"
+            tip: "{{ ckb_sync_target_number }}"
             version: "{{ rpc_local_node_info.json.result.version }}"
             time: "{{ node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime }}"
             speed: "{{ tip | float / (node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime).total_seconds() }}"
