@@ -1,0 +1,92 @@
+---
+- hosts: all
+  name: sync-mainnet
+  gather_facts: yes
+  tasks:
+    - include_vars: vars/all.yml
+      tags: [ always ]
+    - name: Operate CKB Via Ansible-CKB
+      include_role:
+        name: ansible-ckb
+        public: false
+      tags:
+        - ckb_install
+        - ckb_configure
+        - ckb_restart
+        - ckb_start
+        - ckb_stop
+        - ckb_status
+        - ckb_miner_restart
+        - ckb_miner_start
+        - ckb_miner_stop
+
+    - name: Wait For CKB Synchronization
+      block:
+        - name: Query Mainnet Tip Number From api.explorer.nervos.org
+          uri:
+            url: https://api.explorer.nervos.org/api/v1/statistics/tip_block_number
+            headers:
+              Accept: "application/vnd.api+json"
+              Content-Type: "application/vnd.api+json"
+          register: explorer_tip
+          when:
+            - ckb_sync_target_number is not defined or ckb_sync_target_number == ''
+        - name: Use api.explorer.nervos.org Tip Block Number As Synchronization Target Number
+          set_fact:
+            ckb_sync_target_number: "{{ explorer_tip.json.data.attributes.tip_block_number }}"
+          when:
+            - ckb_sync_target_number is not defined or ckb_sync_target_number == ''
+        - name: Wait Until CKB Reach Tip Number `{{ ckb_sync_target_number }}`
+          wait_for:
+            path: "{{ ckb_data_dir }}/logs/run.log"
+            search_regex: "(?P<line>.* ChainService INFO ckb_chain::chain  block: {{ ckb_sync_target_number }}, .*)"
+            timeout: 36000 # 10 hours
+          register: wait_until_reach_explorer_tip
+        - debug:
+            msg: "{{ wait_until_reach_explorer_tip['match_groupdict']['line'] }}"
+      tags:
+        - wait_ckb_synchronization
+
+    - name: Report In Brief
+      block:
+        - name: RPC local_node_info
+          uri:
+            method: post
+            url: "http://{{ ansible_host }}:{{ ckb_rpc_listen_address.split(':')[1] }}"
+            body_format: json
+            headers:
+              content-type: application/json
+            body: '{"id": 0, "jsonrpc": "2.0", "method": "local_node_info", "params": []}'
+          register: rpc_local_node_info
+        - name: RPC get_consensus
+          uri:
+            method: post
+            url: "http://{{ ansible_host }}:{{ ckb_rpc_listen_address.split(':')[1] }}"
+            body_format: json
+            body: '{"id": 0, "jsonrpc": "2.0", "method": "get_consensus", "params": []}'
+          register: rpc_get_consensus
+        - name: RPC get_tip_block_number
+          uri:
+            method: post
+            url: "http://{{ ansible_host }}:{{ ckb_rpc_listen_address.split(':')[1] }}"
+            body_format: json
+            body: '{"id": 0, "jsonrpc": "2.0", "method": "get_tip_block_number", "params": []}'
+          register: rpc_get_tip_block_number
+        - name: Get node's start time
+          shell: "head -n 1 {{ ckb_data_dir }}/logs/run.log" # | date '+%s' -d '${$1:0:30}')"
+          register: node_start_time
+        - name: Get node's current time
+          shell: "tail -n 1 {{ ckb_data_dir }}/logs/run.log" # | date '+%s' -d '${$1:0:30}')"
+          register: node_current_time
+        - name: Append Entry To Report File
+          delegate_to: localhost
+          vars:
+            network: "{{ rpc_get_consensus.json.result.id }}"
+            tip: "{{ rpc_get_tip_block_number.json.result | int(base=16) }}"
+            version: "{{ rpc_local_node_info.json.result.version }}"
+            time: "{{ node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime }}"
+            speed: "{{ tip | float / (node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime).total_seconds() }}"
+            entry: "| {{ version }} | {{ time }} | {{ speed | int }} | {{ tip }} | {{ inventory_hostname }} | {{ network }} |"
+          shell: "echo '{{ entry }}' > {{ inventory_hostname }}.brief.md"
+      tags:
+        - report_in_brief
