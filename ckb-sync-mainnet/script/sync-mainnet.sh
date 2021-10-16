@@ -139,6 +139,7 @@ function markdown_report() {
     ansible_config
 
     cd $ANSIBLE_DIRECTORY
+    echo "**Sync-Mainnet Report**:"
     echo "| Version | Time(s) | Speed | Tip | Hostname | Network |"
     echo "| :--- | :--- | :--- | :--- | :--- | :--- |"
     cat *.brief.md
@@ -167,8 +168,8 @@ function main() {
     case $1 in
         "run")
             job_setup
-            rust_build
             terraform_apply
+            rust_build
             ansible_deploy_ckb
             ansible_wait_ckb_synchronization
             github_add_comment "$(markdown_report)"

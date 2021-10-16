@@ -62,7 +62,7 @@
           shell: "head -n 1 {{ ckb_data_dir }}/logs/run.log" # | date '+%s' -d '${$1:0:30}')"
           register: node_start_time
         - name: Get node's current time
-          shell: "grep 'block: {{ ckb_sync_target_number }},' {{ ckb_data_dir }}/logs/run.log | head 1"
+          shell: "grep -m 1 'block: {{ ckb_sync_target_number }},' {{ ckb_data_dir }}/logs/run.log"
           register: node_current_time
         - name: Append Entry To Report File
           delegate_to: localhost
