@@ -5,8 +5,6 @@
 #   * AWS_ACCESS_KEY, required, the AWS access key
 #   * AWS_SECRET_KEY, required, the AWS secret key
 #   * AWS_EC2_TYPE, optional, default is c5.xlarge, the AWS EC2 type
-#   * QINIU_ACCESS_KEY, required, the Qiniu access key
-#   * QINIU_SECRET_KEY, required, the Qiniu secret key
 #   * GITHUB_TOKEN, required, GitHub API authentication token
 
 set -euo pipefail
@@ -14,8 +12,6 @@ set -euo pipefail
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
-QINIU_ACCESS_KEY=${QINIU_ACCESS_KEY}
-QINIU_SECRET_KEY=${QINIU_SECRET_KEY}
 GITHUB_TOKEN=${GITHUB_TOKEN}
 
 JOB_ID=$(date +'%Y-%m-%d')
