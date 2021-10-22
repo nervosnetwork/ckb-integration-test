@@ -23,7 +23,7 @@ jobs:
         build: [linux, macos, windows]
         include:
           - build: linux
-            os: ubuntu-latest
+            os: ubuntu-18.04
           - build: macos
             os: macos-latest
           - build: windows
@@ -51,7 +51,7 @@ jobs:
 
     - name: Create archive for Linux
       run: 7z a -ttar -so -an ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }} | 7z a -si ./artifacts/${{ env.PACKAGE }}-linux-x86_64.tar.gz
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-18.04'
 
     - name: Create archive for Windows
       run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-windows-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}.exe
@@ -105,7 +105,7 @@ jobs:
 
     - name: Create archive for Linux
       run: 7z a -ttar -so -an ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }} | 7z a -si ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-linux-x86_64.tar.gz
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-18.04'
 
     - name: Create archive for Windows
       run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-windows-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}.exe
