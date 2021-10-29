@@ -23,9 +23,9 @@ use std::time::Duration;
 /// We want to make sure that v0.100 nodes behave as expected. Let's first think about what factors may affect *RelayTransactions*.
 ///                                                                                                 
 ///   1. Whether the v0.100 activates RFC0035: `tip_number <= 2999` indicates non-activated,
-///      `tip_number >= 3000` indicates activated.
+///      `tip_number >= 2999` indicates activated.
+///      - 2998
 ///      - 2999
-///      - 3000
 ///                                                                                                 
 ///   2. The peer's client version, v0.100 use different logic
 ///      for nodes with different client versions:
@@ -62,33 +62,33 @@ use std::time::Duration;
 /// │ id  │ node │ peer    │ network  │ tx.script │ relayed      │ result                         │
 /// │     │ tip  │ version │ protocol │ hash_type │ cycles       │                                │
 /// └─────┴──────┴─────────┴──────────┴───────────┴──────────────┴────────────────────────────────
-/// │ 1   │ 2999 │ v0.43   │ relay    │ data      │ vm0-cycles   │ Ok(())                         │
-/// │ 2   │ 2999 │ v0.43   │ relay    │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 3   │ 2999 │ v0.43   │ relay    │ type      │ vm0-cycles   │ Ok(())                         │
-/// │ 4   │ 2999 │ v0.43   │ relay    │ type      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 5   │ 2999 │ v0.43   │ relay    │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 6   │ 2999 │ v0.43   │ relay    │ data1     │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 7   │ 2999 │ v0.43   │ relay_v2 │ data      │ vm0-cycles   │ Err(RelayTransactionHashFailed)│
-/// │ 8   │ 2999 │ v0.100  │ relay    │ data      │ vm0-cycles   │ Ok(())                         │
-/// │ 9   │ 2999 │ v0.100  │ relay    │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 10  │ 2999 │ v0.100  │ relay    │ type      │ vm0-cycles   │ Ok(())                         │
-/// │ 11  │ 2999 │ v0.100  │ relay    │ type      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 12  │ 2999 │ v0.100  │ relay    │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 13  │ 2999 │ v0.100  │ relay    │ data1     │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 14  │ 2999 │ v0.100  │ relay_v2 │ data      │ vm0-cycles   │ Err(RelayTransactionHashFailed)│
-/// │ 15  │ 3000 │ v0.43   │ relay_v2 │ data      │ vm0-cycles   │ Ok(())                         │
-/// │ 16  │ 3000 │ v0.43   │ relay_v2 │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 17  │ 3000 │ v0.43   │ relay_v2 │ type      │ vm0-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 18  │ 3000 │ v0.43   │ relay_v2 │ type      │ vm1-cycles   │ Ok(())                         │
-/// │ 19  │ 3000 │ v0.43   │ relay_v2 │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 20  │ 3000 │ v0.43   │ relay_v2 │ data1     │ vm1-cycles   │ Ok(())                         │
-/// │ 21  │ 3000 │ v0.100  │ relay    │ data      │ vm0-cycles   │ Err(RelayTransactionHashFailed)│
-/// │ 22  │ 3000 │ v0.100  │ relay_v2 │ data      │ vm0-cycles   │ Ok(())                         │
-/// │ 23  │ 3000 │ v0.100  │ relay_v2 │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 24  │ 3000 │ v0.100  │ relay_v2 │ type      │ vm0-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 25  │ 3000 │ v0.100  │ relay_v2 │ type      │ vm1-cycles   │ Ok(())                         │
-/// │ 26  │ 3000 │ v0.100  │ relay_v2 │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
-/// │ 27  │ 3000 │ v0.100  │ relay_v2 │ data1     │ vm1-cycles   │ Ok(())                         │
+/// │ 1   │ 2998 │ v0.43   │ relay    │ data      │ vm0-cycles   │ Ok(())                         │
+/// │ 2   │ 2998 │ v0.43   │ relay    │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 3   │ 2998 │ v0.43   │ relay    │ type      │ vm0-cycles   │ Ok(())                         │
+/// │ 4   │ 2998 │ v0.43   │ relay    │ type      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 5   │ 2998 │ v0.43   │ relay    │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 6   │ 2998 │ v0.43   │ relay    │ data1     │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 7   │ 2998 │ v0.43   │ relay_v2 │ data      │ vm0-cycles   │ Err(RelayTransactionHashFailed)│
+/// │ 8   │ 2998 │ v0.100  │ relay    │ data      │ vm0-cycles   │ Ok(())                         │
+/// │ 9   │ 2998 │ v0.100  │ relay    │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 10  │ 2998 │ v0.100  │ relay    │ type      │ vm0-cycles   │ Ok(())                         │
+/// │ 11  │ 2998 │ v0.100  │ relay    │ type      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 12  │ 2998 │ v0.100  │ relay    │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 13  │ 2998 │ v0.100  │ relay    │ data1     │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 14  │ 2998 │ v0.100  │ relay_v2 │ data      │ vm0-cycles   │ Err(RelayTransactionHashFailed)│
+/// │ 15  │ 2999 │ v0.43   │ relay_v2 │ data      │ vm0-cycles   │ Ok(())                         │
+/// │ 16  │ 2999 │ v0.43   │ relay_v2 │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 17  │ 2999 │ v0.43   │ relay_v2 │ type      │ vm0-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 18  │ 2999 │ v0.43   │ relay_v2 │ type      │ vm1-cycles   │ Ok(())                         │
+/// │ 19  │ 2999 │ v0.43   │ relay_v2 │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 20  │ 2999 │ v0.43   │ relay_v2 │ data1     │ vm1-cycles   │ Ok(())                         │
+/// │ 21  │ 2999 │ v0.100  │ relay    │ data      │ vm0-cycles   │ Err(RelayTransactionHashFailed)│
+/// │ 22  │ 2999 │ v0.100  │ relay_v2 │ data      │ vm0-cycles   │ Ok(())                         │
+/// │ 23  │ 2999 │ v0.100  │ relay_v2 │ data      │ vm1-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 24  │ 2999 │ v0.100  │ relay_v2 │ type      │ vm0-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 25  │ 2999 │ v0.100  │ relay_v2 │ type      │ vm1-cycles   │ Ok(())                         │
+/// │ 26  │ 2999 │ v0.100  │ relay_v2 │ data1     │ vm0-cycles   │ Err(RelayTransactionFailed)    │
+/// │ 27  │ 2999 │ v0.100  │ relay_v2 │ data1     │ vm1-cycles   │ Ok(())                         │
 /// └─────┴──────┴─────────┴──────────┴───────────┴──────────────┴────────────────────────────────
 /// ```
 ///                                                                                                 
@@ -454,7 +454,7 @@ impl RFC0035RelayTransaction {
         vec![
             CaseParams {
                 id: 1,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -463,7 +463,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 2,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -472,7 +472,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 3,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -481,7 +481,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 4,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -490,7 +490,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 5,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -499,7 +499,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 6,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -508,7 +508,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 7,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -517,7 +517,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 8,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -526,7 +526,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 9,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -535,7 +535,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 10,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -544,7 +544,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 11,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -553,7 +553,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 12,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -562,7 +562,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 13,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -571,7 +571,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 14,
-                node_tip: fork_switch_height - 1,
+                node_tip: fork_switch_height - 2,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -580,7 +580,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 15,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -589,7 +589,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 16,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -598,7 +598,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 17,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -607,7 +607,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 18,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -616,7 +616,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 19,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -625,7 +625,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 20,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -634,7 +634,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 21,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -643,7 +643,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 22,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -652,7 +652,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 23,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -661,7 +661,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 24,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -670,7 +670,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 25,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -679,7 +679,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 26,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -688,7 +688,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 27,
-                node_tip: fork_switch_height,
+                node_tip: fork_switch_height - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
