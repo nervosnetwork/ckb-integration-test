@@ -16,6 +16,10 @@ use std::process::{self, Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+use crate::subscribe::{
+    Handle as SubscribeHandle,
+};
+
 struct ProcessGuard(pub Child);
 
 impl Drop for ProcessGuard {
@@ -33,6 +37,24 @@ pub struct Node {
 
     pub(super) working_dir: PathBuf,
     pub(super) rpc_client: RpcClient,
+
+    pub(super) new_tip_block_subscriber:
+    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::BlockView>>,
+    pub(super) new_tip_header_subscriber:
+    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::HeaderView>>,
+    pub(super) new_transaction_subscriber:
+    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>>,
+    pub(super) proposed_transaction_subscriber:
+    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>>,
+    pub(super) rejected_transaction_subscriber: Option<
+        SubscribeHandle<
+            tokio::net::TcpStream,
+            (
+                ckb_jsonrpc_types::PoolTransactionEntry,
+                ckb_jsonrpc_types::PoolTransactionReject,
+            ),
+        >,
+    >,
 
     pub(super) p2p_address: Option<String>, // initialize when node start
     pub(super) consensus: Option<Consensus>, // initialize when node start
@@ -54,6 +76,11 @@ impl Clone for Node {
             node_id: self.node_id.clone(),
             indexer: self.indexer.clone(),
             _guard: None,
+            new_tip_block_subscriber: None,
+            new_tip_header_subscriber: None,
+            new_transaction_subscriber: None,
+            proposed_transaction_subscriber: None,
+            rejected_transaction_subscriber: None,
         }
     }
 }
@@ -74,6 +101,11 @@ impl Node {
             node_id: None,
             indexer: None,
             _guard: None,
+            new_tip_block_subscriber: None,
+            new_tip_header_subscriber: None,
+            new_transaction_subscriber: None,
+            proposed_transaction_subscriber: None,
+            rejected_transaction_subscriber: None,
         }
     }
 
@@ -138,6 +170,11 @@ impl Node {
             node_id: Some(node_id),
             indexer,
             _guard: None,
+            new_tip_block_subscriber: None,
+            new_tip_header_subscriber: None,
+            new_transaction_subscriber: None,
+            proposed_transaction_subscriber: None,
+            rejected_transaction_subscriber: None,
         }
     }
 

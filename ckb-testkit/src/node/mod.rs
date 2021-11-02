@@ -9,6 +9,7 @@ mod node;
 mod node_options;
 mod p2p;
 mod rpc;
+mod subscribe;
 
 pub use builder::BuildInstruction;
 pub use node::Node;
