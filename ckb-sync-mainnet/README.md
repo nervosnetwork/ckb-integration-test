@@ -9,5 +9,9 @@ Required environment variables:
 Usage:
 
 ```
-./script/sync-mainnet.sh
+# Start a sync-mainnet test
+./script/sync-mainnet.sh run
+
+# Clean environment
+./script/sync-mainnet.sh clean
 ```
