@@ -16,10 +16,6 @@ use std::process::{self, Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-use crate::subscribe::{
-    Handle as SubscribeHandle,
-};
-
 struct ProcessGuard(pub Child);
 
 impl Drop for ProcessGuard {
@@ -38,16 +34,23 @@ pub struct Node {
     pub(super) working_dir: PathBuf,
     pub(super) rpc_client: RpcClient,
 
+    #[cfg(feature = "with_subscribe")]
     pub(super) new_tip_block_subscriber:
-    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::BlockView>>,
+        Option<crate::subscribe::Handle<tokio::net::TcpStream, ckb_jsonrpc_types::BlockView>>,
+    #[cfg(feature = "with_subscribe")]
     pub(super) new_tip_header_subscriber:
-    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::HeaderView>>,
-    pub(super) new_transaction_subscriber:
-    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>>,
-    pub(super) proposed_transaction_subscriber:
-    Option<SubscribeHandle<tokio::net::TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>>,
+        Option<crate::subscribe::Handle<tokio::net::TcpStream, ckb_jsonrpc_types::HeaderView>>,
+    #[cfg(feature = "with_subscribe")]
+    pub(super) new_transaction_subscriber: Option<
+        crate::subscribe::Handle<tokio::net::TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>,
+    >,
+    #[cfg(feature = "with_subscribe")]
+    pub(super) proposed_transaction_subscriber: Option<
+        crate::subscribe::Handle<tokio::net::TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>,
+    >,
+    #[cfg(feature = "with_subscribe")]
     pub(super) rejected_transaction_subscriber: Option<
-        SubscribeHandle<
+        crate::subscribe::Handle<
             tokio::net::TcpStream,
             (
                 ckb_jsonrpc_types::PoolTransactionEntry,
@@ -76,10 +79,15 @@ impl Clone for Node {
             node_id: self.node_id.clone(),
             indexer: self.indexer.clone(),
             _guard: None,
+            #[cfg(feature = "with_subscribe")]
             new_tip_block_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             new_tip_header_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             new_transaction_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             proposed_transaction_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             rejected_transaction_subscriber: None,
         }
     }
@@ -101,10 +109,15 @@ impl Node {
             node_id: None,
             indexer: None,
             _guard: None,
+            #[cfg(feature = "with_subscribe")]
             new_tip_block_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             new_tip_header_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             new_transaction_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             proposed_transaction_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             rejected_transaction_subscriber: None,
         }
     }
@@ -170,10 +183,15 @@ impl Node {
             node_id: Some(node_id),
             indexer,
             _guard: None,
+            #[cfg(feature = "with_subscribe")]
             new_tip_block_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             new_tip_header_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             new_transaction_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             proposed_transaction_subscriber: None,
+            #[cfg(feature = "with_subscribe")]
             rejected_transaction_subscriber: None,
         }
     }

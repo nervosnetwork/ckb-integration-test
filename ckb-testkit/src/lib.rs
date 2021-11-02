@@ -2,6 +2,7 @@ pub mod logger;
 mod node;
 mod nodes;
 mod rpc;
+#[cfg(feature = "with_subscribe")]
 mod subscribe;
 mod user;
 pub mod util;
@@ -11,9 +12,8 @@ pub use node::{BuildInstruction, Node, NodeOptions};
 pub use nodes::Nodes;
 pub use user::User;
 
-pub use ckb_types;
 pub use ckb_jsonrpc_types;
-pub use tokio;
+pub use ckb_types;
 
 use ckb_types::{h256, H256};
 

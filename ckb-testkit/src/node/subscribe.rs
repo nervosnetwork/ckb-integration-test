@@ -1,17 +1,13 @@
-use crate::Node;
 use crate::subscribe::{
-    Handle as SubscribeHandle,
-    subscribe_new_transaction,
-    subscribe_new_tip_header,
-    subscribe_new_tip_block,
-    subscribe_proposed_transaction,
-    subscribe_rejected_transaction,
+    subscribe_new_tip_block, subscribe_new_tip_header, subscribe_new_transaction,
+    subscribe_proposed_transaction, subscribe_rejected_transaction, Handle as SubscribeHandle,
 };
+use crate::Node;
 use std::net::SocketAddr;
 
 impl Node {
     pub async fn subscribe_new_tip_block(&mut self, subscription_addr: SocketAddr) {
-        let handle = subscribe_new_tip_block(subscription_addr) .await .unwrap();
+        let handle = subscribe_new_tip_block(subscription_addr).await.unwrap();
         self.new_tip_block_subscriber = Some(handle);
     }
 
@@ -22,9 +18,7 @@ impl Node {
     }
 
     pub async fn subscribe_new_tip_header(&mut self, subscription_addr: SocketAddr) {
-        let handle = subscribe_new_tip_header(subscription_addr)
-            .await
-            .unwrap();
+        let handle = subscribe_new_tip_header(subscription_addr).await.unwrap();
         self.new_tip_header_subscriber = Some(handle);
     }
 
@@ -35,9 +29,7 @@ impl Node {
     }
 
     pub async fn subscribe_new_transaction(&mut self, subscription_addr: SocketAddr) {
-        let handle = subscribe_new_transaction(subscription_addr)
-            .await
-            .unwrap();
+        let handle = subscribe_new_transaction(subscription_addr).await.unwrap();
         self.new_transaction_subscriber = Some(handle);
     }
 
