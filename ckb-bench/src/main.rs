@@ -371,6 +371,22 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 t_stat,
                 Some(t_tx_interval),
             );
+            ckb_testkit::info!(
+                "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+                metrics.ckb_version,
+                metrics.transactions_per_second,
+                metrics.n_inout,
+                metrics.n_nodes,
+                metrics.delay_time_ms.expect("bench specify delay_time_ms"),
+                metrics.average_block_time_ms,
+                metrics.average_block_transactions,
+                metrics.average_block_transactions_size,
+                metrics.from_block_number,
+                metrics.to_block_number,
+                metrics.total_transactions,
+                metrics.total_transactions_size,
+                metrics.transactions_size_per_second,
+            );
             ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
         }
         ("stat", Some(arguments)) => {
