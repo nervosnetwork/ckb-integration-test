@@ -2,7 +2,7 @@ use ckb_jsonrpc_types::{
     Alert, BannedAddr, Block, BlockNumber, BlockTemplate, BlockView, Byte32, Capacity,
     CellWithStatus, ChainInfo, Consensus, DryRunResult, EpochNumber, EpochView, HeaderView,
     JsonBytes, LocalNode, OutPoint, RemoteNode, Script, Timestamp, Transaction,
-    TransactionWithStatus, TxPoolInfo, Uint64, Version,
+    TransactionWithStatus, TxPoolInfo, Uint64, Version, RawTxPool
 };
 use ckb_types::H256;
 
@@ -55,6 +55,7 @@ jsonrpc!(pub struct Inner2021 {
     pub fn generate_block(&self, block_assembler_script: Option<Script>, block_assembler_message: Option<JsonBytes>) -> H256;
     pub fn generate_block_with_template(&self, block_template: BlockTemplate) -> H256;
     pub fn calculate_dao_field(&self, block_template: BlockTemplate) -> Byte32;
+    pub fn get_raw_tx_pool(&self, verbose: Option<bool>) -> RawTxPool;
 
     pub fn calculate_dao_maximum_withdraw(&self, _out_point: OutPoint, _hash: H256) -> Capacity;
 });
