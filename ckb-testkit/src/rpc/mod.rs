@@ -10,7 +10,7 @@ use ckb_error::AnyError;
 use ckb_jsonrpc_types::{
     Alert, BannedAddr, Block, BlockTemplate, BlockView, CellWithStatus, ChainInfo, Consensus,
     DryRunResult, EpochView, HeaderView, LocalNode, OutPoint, RemoteNode, Timestamp, Transaction,
-    TransactionWithStatus, TxPoolInfo,
+    TransactionWithStatus, TxPoolInfo, RawTxPool
 };
 use ckb_types::core::{
     BlockNumber as CoreBlockNumber, Capacity as CoreCapacity, EpochNumber as CoreEpochNumber,
@@ -395,5 +395,12 @@ impl RpcClient {
         self.inner2021
             .calculate_dao_field(block_template)
             .map(Into::into)
+    }
+
+    pub fn get_raw_tx_pool(&self, verbose: Option<bool>) -> Result<RawTxPool, AnyError> {
+        assert!(self.ckb2021);
+        self
+        .inner2021
+        .get_raw_tx_pool(verbose)
     }
 }
