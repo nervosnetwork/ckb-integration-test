@@ -66,15 +66,6 @@
       with_items:
         - { src: "/var/lib/ckb-benchmark/data/ckb-bench.json", dest: "ckb-bench.json" }
         - { src: "/var/lib/ckb-benchmark/data/ckb-bench.log", dest: "ckb-bench.log" }
-      tags:
-        - process_result
-
-    - name: Process TPS-Bench Result `metrics.yml`
-      run_once: true
-      delegate_to: localhost
-      environment:
-        INSTANCE_TYPE: "{{ hostvars['instance-0'].instance_type }}"
-        INSTANCE_BASTION_TYPE: "{{ hostvars['bastion-0'].instance_type }}"
-      shell: ./files/process-metrics.py ckb-bench.json > report.yml
+        - { src: "/var/lib/ckb-benchmark/data/ckb-bench.brief.md", dest: "ckb-bench.brief.md" }
       tags:
         - process_result
