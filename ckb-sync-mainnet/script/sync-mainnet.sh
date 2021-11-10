@@ -90,7 +90,7 @@ function ansible_config() {
 # Setup Ansible running environment.
 function ansible_setup() {
     cd $ANSIBLE_DIRECTORY
-    ansible-galaxy install -r requirements.yml
+    ansible-galaxy install -r requirements.yml --force
 }
 
 # Deploy CKB onto target AWS EC2 instances.
