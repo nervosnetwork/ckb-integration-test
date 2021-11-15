@@ -14,7 +14,7 @@ AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
 GITHUB_TOKEN=${GITHUB_TOKEN}
 
-JOB_ID="sync-mainnet-$(date +'%Y-%m-%d')-in-10h"
+JOB_ID=${JOB_ID:-"sync-mainnet-$(date +'%Y-%m-%d')-in-10h"}
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 JOB_DIRECTORY="$(dirname "$SCRIPT_PATH")/job/$JOB_ID"
 ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
@@ -143,6 +143,7 @@ function markdown_report() {
 
 # Upload report through GitHub issue comment
 function github_add_comment() {
+    export GITHUB_TOKEN=${GITHUB_TOKEN}
     report="$1"
     $SCRIPT_PATH/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
 }
