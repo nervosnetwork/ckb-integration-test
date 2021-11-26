@@ -23,6 +23,7 @@ ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 TERRAFORM_DIRECTORY="$JOB_DIRECTORY/terraform"
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
+BENCH_DB_CONN=${BENCH_DB_CONN}
 
 function job_setup() {
     mkdir -p $JOB_DIRECTORY
@@ -80,6 +81,7 @@ function terraform_destroy() {
 function ansible_config() {
     export ANSIBLE_PRIVATE_KEY_FILE=$SSH_PRIVATE_KEY_PATH
     export ANSIBLE_INVENTORY=$ANSIBLE_INVENTORY
+    export BENCH_DB_CONN=$BENCH_DB_CONN
 }
 
 # Setup Ansible running environment.
@@ -110,6 +112,8 @@ function ansible_wait_ckb_benchmark() {
     ansible-playbook playbook.yml -e 'hostname=bastions'  -t ckb_benchmark_prepare
     ansible-playbook playbook.yml -e 'hostname=bastions'  -t ckb_benchmark_start
     ansible-playbook playbook.yml -e 'hostname=bastions'  -t process_result
+    ansible-playbook playbook.yml -e 'hostname=bastions'  -t apt_update
+    ansible-playbook playbook.yml -e 'hostname=bastions'  -t apt_install_python_packages
 }
 
 function markdown_report() {
@@ -138,6 +142,11 @@ function markdown_report() {
     echo "| ckb_version | txs_per_second | n_inout | n_nodes | delay_time_ms | average_block_time_ms | average_block_transactions | average_block_transactions_size | from_block_number | to_block_number | total_transactions | total_transactions_size | transactions_size_per_second |"
     echo "| :---------- | :------------- | :------ | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"
     cat *.brief.md
+}
+
+function save_benchmark_to_db {
+    ansible_config
+    cd $ANSIBLE_DIRECTORY && ./save_bench_to_db.py benchmark.yml
 }
 
 # Upload report through GitHub issue comment
@@ -185,6 +194,7 @@ function main() {
             ansible_deploy_ckb
             ansible_wait_ckb_benchmark
             markdown_report
+            save_benchmark_to_db
             ;;
         "report")
             markdown_report
