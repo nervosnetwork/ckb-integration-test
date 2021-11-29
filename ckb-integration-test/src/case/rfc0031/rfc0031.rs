@@ -1,6 +1,6 @@
 use super::{ERROR_EMPTY_EXT, ERROR_MAX_LIMIT, ERROR_UNKNOWN_FIELDS, RFC0031_EPOCH_NUMBER};
 use crate::preclude::*;
-use crate::util::calc_epoch_start_number;
+use crate::util::estimate_start_number_of_epoch;
 use ckb_testkit::assert_result_eq;
 use ckb_types::{
     core::{BlockNumber, BlockView},
@@ -51,7 +51,7 @@ impl Case for RFC0031 {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0031_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0031_EPOCH_NUMBER);
         node2021.mine_to(fork_switch_height - 6);
 
         let cases = vec![

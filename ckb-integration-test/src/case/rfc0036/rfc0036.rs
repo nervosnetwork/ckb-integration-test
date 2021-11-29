@@ -1,6 +1,6 @@
 use super::{ERROR_IMMATURE_HEADER, RFC0036_EPOCH_NUMBER};
 use crate::preclude::*;
-use crate::util::calc_epoch_start_number;
+use crate::util::estimate_start_number_of_epoch;
 use crate::util::run_case_helper::{run_case_after_switch, run_case_before_switch};
 use ckb_types::core::TransactionView;
 
@@ -42,7 +42,7 @@ impl Case for RFC0036 {
             );
         }
 
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0036_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0036_EPOCH_NUMBER);
         node2021.mine_to(fork_switch_height - 6);
 
         // [(case_id, expected_result_before_switch, expected_result_after_switch)]

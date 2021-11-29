@@ -1,7 +1,7 @@
 use super::{ERROR_IMMATURE, ERROR_INVALID_SINCE, RFC0030_EPOCH_NUMBER};
 use crate::preclude::*;
 use crate::util::{
-    calc_epoch_start_number,
+    estimate_start_number_of_epoch,
     run_case_helper::{run_case_after_switch, run_case_before_switch},
 };
 use ckb_testkit::util::{
@@ -131,13 +131,13 @@ impl Case for RFC0030 {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0030_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0030_EPOCH_NUMBER);
 
         // Construct input out point which
         // `input.tx_info.block.epoch == EpochNumberWithFraction(1, 0, 1000)
         assert!(node2021.get_tip_block().epoch() <= EpochNumberWithFraction::new(1, 0, 1000));
         let input_out_point = {
-            let height = calc_epoch_start_number(node2021, 1);
+            let height = estimate_start_number_of_epoch(node2021, 1);
             assert!(node2021.get_tip_block_number() <= height);
             node2021.mine_to(height);
 
