@@ -9,19 +9,8 @@ env:
   CKB_GITHUB_SHA: "develop"
 
 jobs:
-  bootstrap:
-    name: Bootstrap
-    runs-on: ubuntu-latest
-    steps:
-      - uses: LouisBrunner/checks-action@v1.1.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: Fork Tests Checks
-          status: in_progress
-
   build-ckb:
     name: Build CKB
-    needs: [ bootstrap ]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -132,19 +121,3 @@ jobs:
       #     ./testdata/bin/ckb-integration-test.exe run \
       #       --ckb2021 testdata/bin/ckb.exe
       #
-
-  finally:
-    name: Finally
-    needs: [ fork-tests ]
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - if: contains(join(needs.*.result, ';'), 'failure') || contains(join(needs.*.result, ';'), 'cancelled')
-        run: exit 1
-      - uses: LouisBrunner/checks-action@v1.1.1
-        if: ${{ always() }}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          name: Fork Tests Checks
-          status: completed
-          conclusion: ${{ job.status }}
