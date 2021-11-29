@@ -1,5 +1,6 @@
 mod basic;
 mod case_options;
+mod identify;
 mod rfc0028;
 mod rfc0029;
 mod rfc0030;
@@ -18,6 +19,8 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0030::rfc0030::RFC0030),
         Box::new(rfc0031::rfc0031::RFC0031),
         Box::new(rfc0036::rfc0036::RFC0036),
+        Box::new(identify::connection::IdentifyConnection),
+        Box::new(identify::identical_key_pair::IdentifyIdenticalKeyPair),
     ]
 }
 
