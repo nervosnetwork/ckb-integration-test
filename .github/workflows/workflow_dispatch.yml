@@ -1,12 +1,21 @@
 name: Fork Tests Checks
 
 on:
-  repository_dispatch:
-    types: [ fork-tests-checks ]
+  # Manurally trigger
+  workflow_dispatch:
+    inputs:
+      ckb_github_repository:
+        description: "the repository of ckb. For example, \"nervosnerwork/ckb\"."
+        required: true
+        default: "nervosnetwork/ckb"
+      ckb_github_sha:
+        description: "The commit SHA of ckb repository that triggered the workflow run."
+        required: true
+        default: "develop"
 
 env:
-  CKB_GITHUB_REPOSITORY: ${{ github.event.client_payload.env.ckb_github_repository }}
-  CKB_GITHUB_SHA: ${{ github.event.client_payload.env.ckb_github_sha }}
+  CKB_GITHUB_REPOSITORY: ${{ github.event.inputs.ckb_github_repository }}
+  CKB_GITHUB_SHA: ${{ github.event.inputs.ckb_github_sha }}
 
 jobs:
   bootstrap:
@@ -25,7 +34,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ${{ github.event.client_payload.env.os_matrix }}
+        os: [ "ubuntu-latest", "macos-latest", "windows-latest" ]
       fail-fast: true
       max-parallel: 10
     defaults:
@@ -63,7 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ${{ github.event.client_payload.env.os_matrix }}
+        os: [ "ubuntu-latest", "macos-latest", "windows-latest" ]
       fail-fast: true
       max-parallel: 10
     defaults:
@@ -102,7 +111,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ${{ github.event.client_payload.env.os_matrix }}
+        os: [ "ubuntu-latest", "macos-latest", "windows-latest" ]
       fail-fast: false
       max-parallel: 10
     defaults:
