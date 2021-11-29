@@ -1,6 +1,6 @@
 use super::{ERROR_DUPLICATE_CELL_DEPS, ERROR_MULTIPLE_MATCHES, RFC0029_EPOCH_NUMBER};
 use crate::preclude::*;
-use crate::util::calc_epoch_start_number;
+use crate::util::estimate_start_number_of_epoch;
 use crate::util::deployer::Deployer;
 use crate::util::run_case_helper::{run_case_after_switch, run_case_before_switch};
 use ckb_types::{
@@ -106,7 +106,7 @@ impl Case for RFC0029 {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0029_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0029_EPOCH_NUMBER);
 
         // We use this as type script of our deployed cells,
         // so that we can reference it via `ScriptHashType::Type`

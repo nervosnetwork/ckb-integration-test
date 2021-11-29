@@ -1,6 +1,5 @@
 use ckb_testkit::NodeOptions;
 
-// TODO Too dirty
 #[derive(Debug, Clone)]
 pub struct CaseOptions {
     pub make_all_nodes_connected: bool,

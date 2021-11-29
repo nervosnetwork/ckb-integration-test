@@ -279,7 +279,7 @@ impl Connector {
                     .protocols()
                     .iter()
                     .filter(|(protocol_id, _)| {
-                        // TODO Which protocols are short-running? Filter out short-running protocols
+                        // TODO Filter out short-running protocols. Which protocols are short-running? 
                         protocol_id != &&SupportProtocols::Identify.protocol_id()
                             && protocol_id != &&SupportProtocols::DisconnectMessage.protocol_id()
                     })

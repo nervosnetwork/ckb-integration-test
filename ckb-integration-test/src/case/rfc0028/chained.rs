@@ -1,6 +1,6 @@
 use super::RFC0028_EPOCH_NUMBER;
 use crate::case::{Case, CaseOptions};
-use crate::util::calc_epoch_start_number;
+use crate::util::estimate_start_number_of_epoch;
 use crate::CKB2021;
 use ckb_testkit::util::since_from_relative_block_number;
 use ckb_testkit::NodeOptions;
@@ -38,7 +38,7 @@ impl Case for RFC0028Chained {
         let median_time_block_count = node2021.consensus().median_time_block_count.value();
 
         node2021.mine_to(
-            calc_epoch_start_number(node2021, RFC0028_EPOCH_NUMBER) + median_time_block_count,
+            estimate_start_number_of_epoch(node2021, RFC0028_EPOCH_NUMBER) + median_time_block_count,
         );
 
         let inputs = node2021.get_spendable_always_success_cells();
