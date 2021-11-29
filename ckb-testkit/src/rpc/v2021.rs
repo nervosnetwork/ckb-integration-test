@@ -1,8 +1,8 @@
 use ckb_jsonrpc_types::{
     Alert, BannedAddr, Block, BlockNumber, BlockTemplate, BlockView, Byte32, Capacity,
     CellWithStatus, ChainInfo, Consensus, DryRunResult, EpochNumber, EpochView, HeaderView,
-    JsonBytes, LocalNode, OutPoint, RemoteNode, Script, Timestamp, Transaction,
-    TransactionWithStatus, TxPoolInfo, Uint64, Version, RawTxPool
+    JsonBytes, LocalNode, OutPoint, RawTxPool, RemoteNode, Script, Timestamp, Transaction,
+    TransactionWithStatus, TxPoolInfo, Uint64, Version,
 };
 use ckb_types::H256;
 
