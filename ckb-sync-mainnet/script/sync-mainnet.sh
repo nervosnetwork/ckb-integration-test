@@ -146,6 +146,9 @@ function github_add_comment() {
     export GITHUB_TOKEN=${GITHUB_TOKEN}
     report="$1"
     $SCRIPT_PATH/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
+
+    CKB_HEAD_REF=$(cd $JOB_DIRECTORY/ckb && git log --pretty=format:'%h' -n 1)
+    $SCRIPT_PATH/ok.sh add_commit_comment nervosnetwork/ckb $CKB_HEAD_REF "$report"
 }
 
 function rust_build() {
