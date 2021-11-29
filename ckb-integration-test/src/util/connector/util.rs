@@ -1,3 +1,5 @@
+/// Util functions attached to `Connector`.
+///
 use super::Connector;
 use crate::preclude::*;
 use ckb_network::SupportProtocols;
@@ -14,7 +16,6 @@ impl Connector {
         transaction: &TransactionView,
         cycles: Cycle,
     ) -> Result<(), String> {
-        let protocol_id = SupportProtocols::Relay.protocol_id();
         let relay_tx = packed::RelayTransaction::new_builder()
             .transaction(transaction.data())
             .cycles(cycles.pack())
@@ -26,7 +27,7 @@ impl Connector {
             .transactions(relay_tx_vec)
             .build();
         let relay_message = packed::RelayMessage::new_builder().set(relay_txs).build();
-        self.send(&node, protocol_id, relay_message.as_bytes())?;
+        self.send(&node, SupportProtocols::Relay, relay_message.as_bytes())?;
         Ok(())
     }
 
@@ -36,7 +37,6 @@ impl Connector {
         transaction: &TransactionView,
         cycles: Cycle,
     ) -> Result<(), String> {
-        let protocol_id = SupportProtocols::RelayV2.protocol_id();
         let relay_tx = packed::RelayTransaction::new_builder()
             .transaction(transaction.data())
             .cycles(cycles.pack())
@@ -48,7 +48,7 @@ impl Connector {
             .transactions(relay_tx_vec)
             .build();
         let relay_message = packed::RelayMessage::new_builder().set(relay_txs).build();
-        self.send(&node, protocol_id, relay_message.as_bytes())?;
+        self.send(&node, SupportProtocols::RelayV2, relay_message.as_bytes())?;
         Ok(())
     }
 }

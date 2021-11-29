@@ -1,248 +1,357 @@
-mod send_message;
+mod discovery_protocol;
+mod identify_protocol;
+mod shared;
+mod sync_protocol;
+mod util;
+
+pub use discovery_protocol::DiscoveryProtocolHandler;
+pub use identify_protocol::IdentifyProtocolHandler;
+pub use shared::SharedState;
+pub use sync_protocol::SyncProtocolHandler;
 
 use crate::preclude::*;
-use ckb_app_config::NetworkConfig;
-use ckb_async_runtime::new_global_runtime;
-use ckb_channel::{unbounded, Receiver, Sender};
-use ckb_jsonrpc_types::Consensus;
-use ckb_network::{
-    bytes::Bytes, extract_peer_id, CKBProtocol, CKBProtocolContext, CKBProtocolHandler,
-    DefaultExitHandler, NetworkController, NetworkService, NetworkState, PeerIndex, ProtocolId,
-    SupportProtocols,
+use ckb_async_runtime::tokio;
+use ckb_network::SupportProtocols;
+use ckb_stop_handler::{SignalSender, StopHandler};
+use futures::prelude::*;
+use p2p::{
+    builder::ServiceBuilder, bytes::Bytes, context::ServiceContext as P2PServiceContext,
+    context::SessionContext, multiaddr::Multiaddr, secio::SecioKeyPair,
+    service::Service as P2PService, service::ServiceControl as P2PServiceControl,
+    service::ServiceError as P2PServiceError, service::ServiceEvent as P2PServiceEvent,
+    service::TargetProtocol as P2PTargetProtocol, traits::ServiceHandle as P2PServiceHandle,
+    ProtocolId,
 };
-use ckb_stop_handler::StopHandler;
-use ckb_testkit::util::{find_available_port, temp_path};
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
-type MessageTxs = HashMap<PeerIndex, Sender<(ProtocolId, Bytes)>>;
-type MessageRxs = HashMap<PeerIndex, Receiver<(ProtocolId, Bytes)>>;
-
-// ## Note of CKB Network Workflow
-//
-// * `NetworkService` maintains `ProtocolHandler`. Everytime receiving messages
-//   or establishing protocol connections, `ProtocolHandler` will be involved.
-//
-// * `Connector` maintains `NetworkController`. It queries and manages
-//   `NetworkService` through `NetworkController`.
-//
-// * `Connector` is the only gateway we maintain. We would like to synchronize
-//   all the `ProtocolHandler` receiving messages and establishing protocol
-//   connections. Therefor we let `ProtocolHandler` send the messages to
-//   `Connector` through channel (I don't recommende maintain state data inside
-//   `ProtocolHandler` as it is not shared between protocols).
-
-pub struct Connector {
-    /// P2p port
-    // p2p_port: u16,
-
-    /// Network data directory
-    // working_dir: PathBuf,
-
-    /// The started CKB network protocols
-    network_protocols: Vec<SupportProtocols>,
-
-    /// The outside controller of network service. It is using for querying
-    /// information inside the network service, managing connections and peers,
-    /// broadcasting transactions.
-    network_controller: NetworkController,
-
-    /// #{ node_id => peer_index }
-    peer_indexs: HashMap<String, PeerIndex>,
-
-    /// Messages streams from `ProtocolHandler`
-    message_rxs: MessageRxs,
-
-    _async_runtime_stop: StopHandler<()>,
+/// TestServiceHandler is an implementation of `P2PServiceHandle` which handle service-wise
+/// events and errors.
+struct TestServiceHandler {
+    shared: Arc<RwLock<SharedState>>,
 }
 
-/// Connector starts a CKB network service and maintain the corresponding network
-/// controller inside. It provides a way to communicate with CKB nodes via
-/// CKB network protocols directly. For example, send self-defined messages to
-/// CKB nodes.
-impl Connector {
-    // TODO fn new_with_config
+impl P2PServiceHandle for TestServiceHandler {
+    /// Handling runtime errors
+    fn handle_error(&mut self, _control: &mut P2PServiceContext, error: P2PServiceError) {
+        ckb_testkit::error!("TestServiceHandler detect error: {:?}", error);
+    }
 
-    /// Start network service
-    pub fn start(
-        case_name: &str,
-        consensus: &Consensus,
-        node_version: &str,
-        network_protocols: Vec<SupportProtocols>,
-    ) -> Self {
-        assert!(!network_protocols.is_empty());
-        let working_dir = temp_path(case_name, "net-console");
-        let p2p_port = find_available_port();
-        let network_identify = {
+    /// Handling session establishment and disconnection events
+    fn handle_event(&mut self, _control: &mut P2PServiceContext, event: P2PServiceEvent) {
+        match event {
+            P2PServiceEvent::SessionOpen {
+                session_context: session,
+            } => {
+                let _ = self.shared.write().map(|mut shared| {
+                    shared.add_session(session.id.clone(), session.as_ref().to_owned())
+                });
+            }
+            P2PServiceEvent::SessionClose {
+                session_context: session,
+            } => {
+                let _ = self
+                    .shared
+                    .write()
+                    .map(|mut shared| shared.remove_session(&session.id));
+            }
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
+}
+
+/// Connector Builder
+pub struct ConnectorBuilder {
+    key_pair: SecioKeyPair,
+    // supported protocols
+    protocols: Vec<SupportProtocols>,
+    // blockchain network identifier, the genesis hash of blockchain, used by Identify protocol
+    network_identifier: Option<String>,
+    // node version, used by Identify protocol
+    client_version: Option<String>,
+    // listening addresses
+    listening_addresses: Vec<Multiaddr>,
+}
+
+impl Default for ConnectorBuilder {
+    fn default() -> Self {
+        Self {
+            key_pair: SecioKeyPair::secp256k1_generated(),
+            protocols: Vec::new(),
+            network_identifier: None,
+            client_version: None,
+            listening_addresses: Vec::new(),
+        }
+    }
+}
+
+impl ConnectorBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn new_v2(node: &Node) -> Self {
+        // https://github.com/nervosnetwork/ckb/blob/540b3168f3/spec/src/consensus.rs#L897-L900
+        let network_identifier = {
+            let consensus = node.consensus();
             let genesis_hash = format!("{:x}", consensus.genesis_hash);
             format!("/{}/{}", consensus.id, &genesis_hash[..8])
         };
+        let client_version = node.rpc_client().local_node_info().version;
+        Self::new()
+            .network_identifier(network_identifier)
+            .client_version(client_version)
+    }
 
-        let (message_txs, message_rxs) = batch_unbounded();
-        let (async_handle, async_runtime_stop) = new_global_runtime();
-        let network_service = {
-            let network_state = {
-                let p2p_listen = format!("/ip4/127.0.0.1/tcp/{}", p2p_port).parse().unwrap();
-                Arc::new(
-                    NetworkState::from_config(NetworkConfig {
-                        listen_addresses: vec![p2p_listen],
-                        path: (&working_dir).into(),
-                        max_peers: 128,
-                        max_outbound_peers: 128,
-                        discovery_local_address: true,
-                        ping_interval_secs: 15,
-                        ping_timeout_secs: 20,
-                        ..Default::default()
-                    })
-                    .unwrap(),
-                )
-            };
-            let ckb_protocols = network_protocols
-                .clone()
-                .into_iter()
-                .map(|protocol| {
-                    CKBProtocol::new_with_support_protocol(
-                        protocol,
-                        Box::new(ProtocolHandler::new(message_txs.clone())),
-                        Arc::clone(&network_state),
-                    )
-                })
-                .collect();
-            NetworkService::new(
-                network_state,
-                ckb_protocols,
-                vec![],
-                network_identify.to_string(),
-                node_version.to_string(),
-                DefaultExitHandler::default(),
-            )
-        };
-        let network_controller = network_service.start(&async_handle).unwrap();
-        Self {
-            // p2p_port,
-            // working_dir,
-            network_protocols,
-            network_controller,
-            message_rxs,
-            peer_indexs: Default::default(),
-            _async_runtime_stop: async_runtime_stop,
+    pub fn key_pair(mut self, key_pair: SecioKeyPair) -> Self {
+        self.key_pair = key_pair;
+        self
+    }
+
+    pub fn protocols(mut self, protocols: Vec<SupportProtocols>) -> Self {
+        self.protocols = protocols;
+        self
+    }
+
+    pub fn network_identifier(mut self, network_identifier: String) -> Self {
+        self.network_identifier = Some(network_identifier);
+        self
+    }
+
+    pub fn client_version(mut self, client_version: String) -> Self {
+        self.client_version = Some(client_version);
+        self
+    }
+
+    /// ```rust
+    /// use ckb_testkit::util::find_available_port;
+    ///
+    /// let p2p_port = find_available_port();
+    /// let p2p_listening_address = format!("/ip4/127.0.0.1/tcp/{}", p2p_port).parse().unwrap();
+    /// ```
+    pub fn listening_addresses(mut self, listening_addresses: Vec<Multiaddr>) -> Self {
+        self.listening_addresses = listening_addresses;
+        self
+    }
+
+    pub fn build(self) -> Connector {
+        assert_eq!(
+            self.protocols.len(),
+            self.protocols
+                .iter()
+                .map(|protocol| protocol.name())
+                .collect::<HashSet<_>>()
+                .len(),
+            "Duplicate protocols detected"
+        );
+        // Read more from https://github.com/nervosnetwork/ckb/blob/a25112f1032ac6796dc68fcf3922d316ae74db65/network/src/services/protocol_type_checker.rs#L1-L10
+        assert!(
+            self.protocols.iter().any(|protocol| matches!(protocol, SupportProtocols::Sync)),
+            "Sync protocol is the most underlying protocol to establish connection and must be contained in protocols",
+        );
+        assert!(self.client_version.is_some());
+        assert!(self.network_identifier.is_some());
+
+        // Start P2P Service and maintain the controller
+        let shared = Arc::new(RwLock::new(SharedState::new()));
+        let mut p2p_service = self.build_p2p_service(Arc::clone(&shared));
+
+        let p2p_service_controller = p2p_service.control().to_owned();
+        let (stopped_signal_sender, mut stopped_signal_receiver) = tokio::sync::oneshot::channel();
+        let listening_addresses = self.listening_addresses.clone();
+        ::std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async move {
+                if !listening_addresses.is_empty() {
+                    for listening_address in listening_addresses {
+                        let actual_listening_address =
+                            p2p_service.listen(listening_address.clone()).await.unwrap();
+                        assert_eq!(listening_address, actual_listening_address);
+                    }
+                }
+
+                let p2p_service_controller = p2p_service.control().to_owned();
+                loop {
+                    tokio::select! {
+                        Some(_) = p2p_service.next() => {},
+                        _ = &mut stopped_signal_receiver => {
+                            let _ = p2p_service_controller.shutdown();
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        Connector {
+            key_pair: self.key_pair,
+            shared: Arc::clone(&shared),
+            p2p_service_controller,
+            _stop_handler: StopHandler::new(
+                SignalSender::Tokio(stopped_signal_sender),
+                None,
+                "connector".to_string(),
+            ),
         }
     }
 
-    /// Return the internal `NetworkController`
-    pub fn network_controller(&self) -> &NetworkController {
-        &self.network_controller
-    }
+    // Create a p2p service with `TestServiceHandler` as service handler.
+    fn build_p2p_service(
+        &self,
+        shared: Arc<RwLock<SharedState>>,
+    ) -> P2PService<TestServiceHandler> {
+        let mut p2p_service_builder = ServiceBuilder::new();
 
-    /// Try to establish connection to `node`.
-    pub fn connect(&mut self, node: &Node) -> Result<PeerIndex, String> {
-        self.network_controller()
-            .add_node(node.p2p_address_with_node_id().parse().unwrap());
+        // Build protocols handler
+        for protocol in self.protocols.iter() {
+            match protocol {
+                SupportProtocols::Identify => {
+                    let client_version = self.client_version.as_ref().expect("checked above");
+                    let network_identifier =
+                        self.network_identifier.as_ref().expect("checked above");
+                    let identify_protocol_meta = IdentifyProtocolHandler::new(
+                        Arc::clone(&shared),
+                        network_identifier.clone(),
+                        client_version.clone(),
+                    )
+                    .build();
+                    p2p_service_builder =
+                        p2p_service_builder.insert_protocol(identify_protocol_meta);
+                }
+                SupportProtocols::Sync => {
+                    let sync_protocol_meta = SyncProtocolHandler::new(Arc::clone(&shared)).build();
+                    p2p_service_builder = p2p_service_builder.insert_protocol(sync_protocol_meta);
+                }
+                SupportProtocols::Discovery => {
+                    let discovery_protocol_meta =
+                        DiscoveryProtocolHandler::new(Arc::clone(&shared)).build();
+                    p2p_service_builder =
+                        p2p_service_builder.insert_protocol(discovery_protocol_meta);
+                }
+                _ => {
+                    panic!("Unsupported protocol \"{}\"", protocol.name());
+                }
+            }
+        }
+
+        p2p_service_builder
+            .forever(true)
+            .key_pair(self.key_pair.clone())
+            .build(TestServiceHandler {
+                shared: Arc::clone(&shared),
+            })
+    }
+}
+
+/// Connector is a fake node
+pub struct Connector {
+    #[allow(dead_code)]
+    key_pair: SecioKeyPair,
+    shared: Arc<RwLock<SharedState>>,
+    p2p_service_controller: P2PServiceControl,
+    _stop_handler: StopHandler<tokio::sync::oneshot::Sender<()>>,
+}
+
+impl Connector {
+    /// Try to establish connection with `node`. This function blocks until all protocols opened.
+    pub fn connect(&mut self, node: &Node) -> Result<(), String> {
+        // Open all protocols connection to target node
+        let node_addr = node.p2p_address_with_node_id().parse().unwrap();
+        ckb_testkit::info!(
+            "Connector try to make session establishment and open protocols to node \"{}\", protocols: {:?}",
+            node_addr, self.p2p_service_controller.protocols(),
+        );
+        self.p2p_service_controller
+            .dial(node_addr, P2PTargetProtocol::All)
+            .map_err(|err| format!("Connector dial error: {:?}", err))?;
 
         // Wait for all protocols connections establishment
         let start_time = Instant::now();
-        while start_time.elapsed() <= Duration::from_secs(60) {
-            for (peer_index, peer) in self.network_controller().connected_peers() {
-                let peer_id = extract_peer_id(&peer.connected_addr).expect("extract_peer_id");
-                let node_id = peer_id.to_base58();
-                if node_id != node.node_id() {
-                    continue;
-                }
-
-                let all_protocols_connected = self
-                    .network_protocols
+        let mut last_logging_time = Instant::now();
+        while start_time.elapsed() <= Duration::from_secs(5) {
+            if let Some(opened_protocol_ids) = self.get_opened_protocol_ids(node) {
+                let expected_opened = self
+                    .p2p_service_controller
+                    .protocols()
                     .iter()
-                    .all(|p| peer.protocols.contains_key(&p.protocol_id()));
-                if all_protocols_connected {
-                    self.peer_indexs.insert(node_id, peer_index);
-                    return Ok(peer_index);
+                    .filter(|(protocol_id, _)| {
+                        // TODO Which protocols are short-running? Filter out short-running protocols
+                        protocol_id != &&SupportProtocols::Identify.protocol_id()
+                            && protocol_id != &&SupportProtocols::DisconnectMessage.protocol_id()
+                    })
+                    .count();
+                assert!(opened_protocol_ids.len() <= expected_opened);
+                if opened_protocol_ids.len() == expected_opened {
+                    return Ok(());
                 }
+
+                if last_logging_time.elapsed() > Duration::from_secs(1) {
+                    last_logging_time = Instant::now();
+                    ckb_testkit::debug!(
+                        "Connector is waiting protocols establishment to node \"{}\", trying protocols: {:?}, opened protocols: {:?}",
+                        node.node_name(), self.p2p_service_controller.protocols(), opened_protocol_ids,
+                    );
+                }
+                sleep(Duration::from_millis(100));
+            } else {
+                if last_logging_time.elapsed() > Duration::from_secs(1) {
+                    last_logging_time = Instant::now();
+                    ckb_testkit::debug!(
+                        "Connector is waiting session establishment to node \"{}\"",
+                        node.node_name()
+                    );
+                }
+                sleep(Duration::from_millis(100));
             }
-            sleep(Duration::from_millis(100));
         }
 
-        Err(format!("timeout to connect to {}", node.node_name()))
+        Err(format!(
+            "Connector is timeout to connect to {}",
+            node.node_name()
+        ))
     }
 
-    /// Send `data` to peer through `protocol_id`.
-    pub fn send(&self, node: &Node, protocol_id: ProtocolId, data: Bytes) -> Result<(), String> {
-        let node_id = node.node_id();
-        let peer_index = self.peer_indexs.get(node_id).expect("non connected peer");
-        self.network_controller()
-            .send_message_to(*peer_index, protocol_id, data)
-            .map_err(|err| format!("{:?}", err))
+    /// Send `data` through the protocol of the session
+    pub fn send(&self, node: &Node, protocol: SupportProtocols, data: Bytes) -> Result<(), String> {
+        let session = self.get_session(node).ok_or_else(|| {
+            format!(
+                "The connection was disconnected to \"{}\"",
+                node.node_name()
+            )
+        })?;
+        self.p2p_service_controller
+            .send_message_to(session.id, protocol.protocol_id(), data)
+            .map_err(|err| {
+                format!(
+                    "Connector send message under protocol \"{}\" to \"{}\", error: {:?}",
+                    protocol.name(),
+                    node.node_name(),
+                    err
+                )
+            })
     }
 
-    pub fn receive_timeout(
-        &self,
-        node: &Node,
-        timeout: Duration,
-    ) -> Result<(ProtocolId, Bytes), String> {
-        let node_id = node.node_id();
-        let peer_index = self
-            .peer_indexs
-            .get(node_id)
-            .unwrap_or_else(|| panic!("non connected peer {}", node.p2p_address()));
-        let message_rx = self
-            .message_rxs
-            .get(&peer_index)
-            .expect("batch_unbounded should alloc enough channels");
-        message_rx
-            .recv_timeout(timeout)
-            .map_err(|err| format!("{:?}", err))
-    }
-}
-
-// ProtocolHandler is not shared between protocols.
-struct ProtocolHandler {
-    message_txs: MessageTxs,
-}
-
-impl ProtocolHandler {
-    pub fn new(message_txs: MessageTxs) -> Self {
-        Self { message_txs }
-    }
-}
-
-// `CKBProtocolHandler` is similar to `p2p::ServiceProtocol`.
-impl CKBProtocolHandler for ProtocolHandler {
-    fn init(&mut self, _nc: Arc<dyn CKBProtocolContext + Sync>) {}
-
-    fn connected(
-        &mut self,
-        _nc: Arc<dyn CKBProtocolContext + Sync>,
-        _peer_index: PeerIndex,
-        _version: &str,
-    ) {
-    }
-
-    fn disconnected(&mut self, _nc: Arc<dyn CKBProtocolContext + Sync>, _peer_index: PeerIndex) {}
-
-    fn received(
-        &mut self,
-        nc: Arc<dyn CKBProtocolContext + Sync>,
-        peer_index: PeerIndex,
-        data: Bytes,
-    ) {
-        let message_tx = self
-            .message_txs
-            .get(&peer_index)
-            .expect("batch_unbounded should alloc enough channels");
-        if let Err(err) = message_tx.send((nc.protocol_id(), data)) {
-            ckb_testkit::error!("failed to message_tx.send, error: {:?}", err);
+    /// Return the session corresponding to the `node` if connected.
+    pub fn get_session(&self, node: &Node) -> Option<SessionContext> {
+        if let Ok(shared) = self.shared.read() {
+            let node_connected_addr = node.p2p_address_with_node_id().parse().unwrap();
+            return shared.get_session(&node_connected_addr);
         }
+        unreachable!()
     }
-}
 
-fn batch_unbounded() -> (MessageTxs, MessageRxs) {
-    let mut message_txs = MessageTxs::new();
-    let mut message_rxs = MessageRxs::new();
-    for peer_index in 0..100 {
-        let (message_tx, message_rx) = unbounded();
-        message_txs.insert(PeerIndex::new(peer_index), message_tx);
-        message_rxs.insert(PeerIndex::new(peer_index), message_rx);
+    /// Return the opened protocols of the session corresponding to the `node` if connected
+    pub fn get_opened_protocol_ids(&self, node: &Node) -> Option<Vec<ProtocolId>> {
+        if let Ok(shared) = self.shared.read() {
+            let node_connected_addr = node.p2p_address_with_node_id().parse().unwrap();
+            return shared
+                .get_session(&node_connected_addr)
+                .and_then(|session| shared.get_opened_protocol_ids(&session.id));
+        }
+        unreachable!()
     }
-    (message_txs, message_rxs)
 }
