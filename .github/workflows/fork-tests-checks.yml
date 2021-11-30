@@ -3,6 +3,8 @@ name: Fork Tests Checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 * * * *'
 
 env:
   CKB_GITHUB_REPOSITORY: "nervosnetwork/ckb"
