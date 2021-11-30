@@ -10,8 +10,7 @@ pub use shortcuts::{v0_100, v0_43};
 use ckb_testkit::Node;
 use ckb_types::core::{BlockNumber, EpochNumber};
 
-// TODO rename to estimate_start_number_of_epoch
-pub fn calc_epoch_start_number(node: &Node, epoch_number: EpochNumber) -> BlockNumber {
+pub fn estimate_start_number_of_epoch(node: &Node, epoch_number: EpochNumber) -> BlockNumber {
     assert!(node.consensus().permanent_difficulty_in_dummy);
     let genesis_epoch = node
         .rpc_client()

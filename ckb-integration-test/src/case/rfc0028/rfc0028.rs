@@ -1,6 +1,6 @@
 use super::{ERROR_IMMATURE, RFC0028_EPOCH_NUMBER};
 use crate::preclude::*;
-use crate::util::calc_epoch_start_number;
+use crate::util::estimate_start_number_of_epoch;
 use ckb_testkit::util::since_from_relative_timestamp;
 use ckb_testkit::{assert_result_eq, BuildInstruction};
 use ckb_types::{
@@ -76,7 +76,7 @@ impl Case for RFC0028 {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0028_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0028_EPOCH_NUMBER);
 
         let relative_secs = 1;
         let since = since_from_relative_timestamp(relative_secs);
