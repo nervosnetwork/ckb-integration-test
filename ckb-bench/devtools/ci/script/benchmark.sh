@@ -23,6 +23,7 @@ ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 TERRAFORM_DIRECTORY="$JOB_DIRECTORY/terraform"
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
+BENCH_DB_CONN=${BENCH_DB_CONN}
 
 function job_setup() {
     mkdir -p $JOB_DIRECTORY
@@ -80,6 +81,7 @@ function terraform_destroy() {
 function ansible_config() {
     export ANSIBLE_PRIVATE_KEY_FILE=$SSH_PRIVATE_KEY_PATH
     export ANSIBLE_INVENTORY=$ANSIBLE_INVENTORY
+    export BENCH_DB_CONN=$BENCH_DB_CONN
 }
 
 # Setup Ansible running environment.
@@ -162,6 +164,13 @@ function rust_build() {
     tar czf ckb.$JOB_ID.tar.gz ckb
 }
 
+function save_benchmark_to_db {
+    ansible_config
+    # install python Postgres packages
+    sudo apt update -y && sudo apt install -y libpq-dev python3-psycopg2
+    cd "$ANSIBLE_DIRECTORY" && ./save_bench_to_db.py benchmark.yml
+}
+
 function main() {
     case $1 in
         "run")
@@ -185,6 +194,7 @@ function main() {
             ansible_deploy_ckb
             ansible_wait_ckb_benchmark
             markdown_report
+            save_benchmark_to_db
             ;;
         "report")
             markdown_report
