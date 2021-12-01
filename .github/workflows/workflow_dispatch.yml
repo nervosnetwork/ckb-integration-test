@@ -1,14 +1,21 @@
 name: Fork Tests Checks
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-  schedule:
-    - cron: '0 * * * *'
+  # Manurally trigger
+  workflow_dispatch:
+    inputs:
+      ckb_github_repository:
+        description: "the repository of ckb. For example, \"nervosnerwork/ckb\"."
+        required: true
+        default: "nervosnetwork/ckb"
+      ckb_github_sha:
+        description: "The commit SHA of ckb repository that triggered the workflow run."
+        required: true
+        default: "develop"
 
 env:
-  CKB_GITHUB_REPOSITORY: "nervosnetwork/ckb"
-  CKB_GITHUB_SHA: "develop"
+  CKB_GITHUB_REPOSITORY: ${{ github.event.inputs.ckb_github_repository }}
+  CKB_GITHUB_SHA: ${{ github.event.inputs.ckb_github_sha }}
 
 jobs:
   build-ckb:
@@ -122,4 +129,3 @@ jobs:
       #     chmod +x ./testdata/bin/*
       #     ./testdata/bin/ckb-integration-test.exe run \
       #       --ckb2021 testdata/bin/ckb.exe
-      #

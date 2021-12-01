@@ -9,8 +9,8 @@ use ckb_error::AnyError;
 // TODO replace json types with core types
 use ckb_jsonrpc_types::{
     Alert, BannedAddr, Block, BlockTemplate, BlockView, CellWithStatus, ChainInfo, Consensus,
-    DryRunResult, EpochView, HeaderView, LocalNode, OutPoint, RemoteNode, Timestamp, Transaction,
-    TransactionWithStatus, TxPoolInfo, RawTxPool
+    DryRunResult, EpochView, HeaderView, LocalNode, OutPoint, RawTxPool, RemoteNode, Timestamp,
+    Transaction, TransactionWithStatus, TxPoolInfo,
 };
 use ckb_types::core::{
     BlockNumber as CoreBlockNumber, Capacity as CoreCapacity, EpochNumber as CoreEpochNumber,
@@ -399,8 +399,6 @@ impl RpcClient {
 
     pub fn get_raw_tx_pool(&self, verbose: Option<bool>) -> Result<RawTxPool, AnyError> {
         assert!(self.ckb2021);
-        self
-        .inner2021
-        .get_raw_tx_pool(verbose)
+        self.inner2021.get_raw_tx_pool(verbose)
     }
 }

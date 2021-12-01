@@ -3,23 +3,26 @@ name = "ckb-integration-test"
 version = "0.0.1"
 authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
-homepage = "https://github.com/nervosnetwork/ckb"
-repository = "https://github.com/nervosnetwork/ckb"
+homepage = "https://github.com/keroro520/ckb"
+repository = "https://github.com/keroro520/ckb"
 description = "ckb integration tests"
 
 [dependencies]
+ckb-testkit = { path = "../ckb-testkit" }
+ckb-jsonrpc-types = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-types = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-logger-config = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-logger-service = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-network = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-stop-handler = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-async-runtime = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-app-config = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-channel = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+
+ckb-exec-params = { git = "https://github.com/keroro520/ckb_exec_test_script", rev = "ddf874a1ecbcc4386403eb6658abdaeb6a4a8450", package = "exec_params" }
 clap = { version = "2" }
-ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-types = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-logger-config = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-logger-service = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
+os_info = { version = "3.0", default-features = false }
 lazy_static = "1.4.0"
 log = "0.4"
-ckb-testkit = { path = "../ckb-testkit" }
-ckb-exec-params = { git = "https://github.com/keroro520/ckb_exec_test_script", rev = "ddf874a1ecbcc4386403eb6658abdaeb6a4a8450", package = "exec_params" }
-ckb-network = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-stop-handler = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-async-runtime = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-app-config = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-ckb-channel = { git = "https://github.com/nervosnetwork/ckb", rev = "bba9f083c42c2df8c87f2e7cea2caadc84afe74f" }
-os_info = { version = "3.0", default-features = false }
+p2p = { version="0.4.0-alpha.2", package="tentacle", features = ["upnp", "parking_lot"] }
+futures = { version = "0.3" }

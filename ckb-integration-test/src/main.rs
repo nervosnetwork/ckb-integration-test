@@ -60,6 +60,24 @@ fn main() {
 
 fn clap_app() -> App<'static, 'static> {
     App::new("ckb-integration-test")
+        .arg(
+            Arg::with_name("trace")
+                .long("trace")
+                .required(false)
+                .takes_value(false)
+                .conflicts_with("info")
+                .conflicts_with("debug")
+                .help("Set log.filter=trace")
+        )
+        .arg(
+            Arg::with_name("debug")
+                .long("debug")
+                .required(false)
+                .takes_value(false)
+                .conflicts_with("trace")
+                .conflicts_with("info")
+                .help("Set log.filter=debug")
+        )
         .subcommand(
             SubCommand::with_name("run")
                 .about("Run test cases")
@@ -89,7 +107,7 @@ fn clap_app() -> App<'static, 'static> {
                         .multiple(true)
                         .value_name("CASE_NAME")
                         .help("Only run specified cases. Run all cases if this parameter is not setting"),
-                ),
+                )
         )
         .subcommand(
             SubCommand::with_name("generate-testdata")
@@ -112,18 +130,20 @@ fn clap_app() -> App<'static, 'static> {
                         .value_name("PATH")
                         .required(false)
                         .help("Path to ckb2021 executable"),
-                ),
+                )
         )
 }
 
-fn init_logger(_clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuard {
-    let filter = match env::var("RUST_LOG") {
-        Ok(filter) if filter.is_empty() => Some("info".to_string()),
-        Ok(filter) => Some(filter.to_string()),
-        Err(_) => Some("info".to_string()),
+fn init_logger(clap_matches: &ArgMatches) -> ckb_logger_service::LoggerInitGuard {
+    let filter = if clap_matches.is_present("debug") {
+        "debug"
+    } else if clap_matches.is_present("trace") {
+        "trace"
+    } else {
+        "info"
     };
     let config = ckb_logger_config::Config {
-        filter,
+        filter: Some(filter.to_string()),
         log_to_file: false,
         log_to_stdout: true,
         ..Default::default()
