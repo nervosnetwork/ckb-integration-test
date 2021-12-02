@@ -2,7 +2,7 @@ use super::{ERROR_EMPTY_EXT, ERROR_MAX_LIMIT, ERROR_UNKNOWN_FIELDS, RFC0031_EPOC
 use crate::preclude::*;
 use crate::util::estimate_start_number_of_epoch;
 use ckb_testkit::assert_result_eq;
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::{BlockNumber, BlockView},
     packed,
     prelude::*,

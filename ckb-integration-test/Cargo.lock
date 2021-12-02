@@ -278,7 +278,7 @@ dependencies = [
  "ckb-chain-spec",
  "ckb-jsonrpc-types 0.102.0-pre",
  "ckb-logger",
- "ckb-logger-config",
+ "ckb-logger-config 0.102.0-pre",
  "ckb-metrics-config",
  "ckb-pow",
  "ckb-resource",
@@ -508,23 +508,14 @@ dependencies = [
 name = "ckb-integration-test"
 version = "0.0.1"
 dependencies = [
- "ckb-app-config",
- "ckb-async-runtime",
- "ckb-channel 0.102.0-pre",
- "ckb-jsonrpc-types 0.102.0-pre",
- "ckb-logger-config",
+ "ckb-logger-config 0.43.2",
  "ckb-logger-service",
- "ckb-network",
- "ckb-stop-handler",
  "ckb-testkit",
- "ckb-types 0.102.0-pre",
  "clap",
  "exec_params",
- "futures 0.3.18",
  "lazy_static",
  "log",
  "os_info",
- "tentacle",
 ]
 
 [[package]]
@@ -572,6 +563,15 @@ dependencies = [
 
 [[package]]
 name = "ckb-logger-config"
+version = "0.43.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c60936fa4ca5247019d90cf1d2d27c35005bcdf5b9b08e7e4da686065b2ee45"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "ckb-logger-config"
 version = "0.102.0-pre"
 source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
 dependencies = [
@@ -580,15 +580,16 @@ dependencies = [
 
 [[package]]
 name = "ckb-logger-service"
-version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+version = "0.43.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b770e6fc236506b93115072441fa856a8f05bf96ee1503ea1b6a4fd1ef35610d"
 dependencies = [
  "ansi_term 0.12.1",
  "backtrace",
  "chrono",
- "ckb-channel 0.102.0-pre",
- "ckb-logger-config",
- "ckb-util",
+ "ckb-channel 0.43.2",
+ "ckb-logger-config 0.43.2",
+ "ckb-util 0.43.2",
  "env_logger 0.6.2",
  "log",
  "once_cell",
@@ -615,7 +616,7 @@ dependencies = [
  "ckb-spawn",
  "ckb-stop-handler",
  "ckb-types 0.102.0-pre",
- "ckb-util",
+ "ckb-util 0.102.0-pre",
  "faketime",
  "futures 0.3.18",
  "ipnetwork",
@@ -775,20 +776,26 @@ dependencies = [
 name = "ckb-testkit"
 version = "0.0.1"
 dependencies = [
+ "ckb-async-runtime",
+ "ckb-channel 0.102.0-pre",
  "ckb-crypto",
  "ckb-error 0.102.0-pre",
  "ckb-hash 0.102.0-pre",
  "ckb-indexer",
  "ckb-jsonrpc-types 0.102.0-pre",
  "ckb-jsonrpc-types 0.43.2",
+ "ckb-network",
+ "ckb-stop-handler",
  "ckb-types 0.102.0-pre",
  "fs_extra",
+ "futures 0.3.18",
  "jsonrpc-core 14.2.0",
  "lazy_static",
  "log",
  "reqwest",
  "serde_json",
  "tempfile",
+ "tentacle",
  "version-compare",
 ]
 
@@ -840,6 +847,17 @@ dependencies = [
  "molecule",
  "numext-fixed-uint",
  "once_cell",
+]
+
+[[package]]
+name = "ckb-util"
+version = "0.43.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b95f28885a37385b9ec42d90b4ac827fa1df59b20d66b8e3d756fcab7a3d0572"
+dependencies = [
+ "linked-hash-map",
+ "parking_lot",
+ "regex",
 ]
 
 [[package]]

@@ -3,7 +3,7 @@ use crate::preclude::*;
 use crate::util::deployer::Deployer;
 use crate::util::estimate_start_number_of_epoch;
 use crate::util::run_case_helper::{run_case_after_switch, run_case_before_switch};
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::{
         cell::CellMeta, Capacity, DepType, ScriptHashType, TransactionBuilder, TransactionView,
     },

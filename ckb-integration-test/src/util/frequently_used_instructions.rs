@@ -1,5 +1,5 @@
+use ckb_testkit::ckb_types::core::{BlockNumber, TransactionView};
 use ckb_testkit::BuildInstruction;
-use ckb_types::core::{BlockNumber, TransactionView};
 
 /// Return instructions that sends the given transaction when template_number equals
 /// `fork_switch_height - 4`

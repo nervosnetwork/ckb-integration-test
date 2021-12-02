@@ -1,12 +1,12 @@
 use super::{ERROR_IMMATURE, RFC0028_EPOCH_NUMBER};
 use crate::preclude::*;
 use crate::util::estimate_start_number_of_epoch;
-use ckb_testkit::util::since_from_relative_timestamp;
-use ckb_testkit::{assert_result_eq, BuildInstruction};
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::TransactionView,
     packed::{CellInput, OutPoint},
 };
+use ckb_testkit::util::since_from_relative_timestamp;
+use ckb_testkit::{assert_result_eq, BuildInstruction};
 
 /// ## Convention
 ///

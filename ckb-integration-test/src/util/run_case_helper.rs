@@ -5,7 +5,7 @@ use crate::util::frequently_used_instructions::{
     instructions_to_send_transaction_after_switch, instructions_to_send_transaction_before_switch,
 };
 use ckb_testkit::assert_result_eq;
-use ckb_types::core::{BlockNumber, TransactionView};
+use ckb_testkit::ckb_types::core::{BlockNumber, TransactionView};
 
 pub fn run_case_before_switch(
     node2021: &Node,

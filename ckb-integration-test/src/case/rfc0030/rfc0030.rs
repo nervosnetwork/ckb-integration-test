@@ -4,15 +4,15 @@ use crate::util::{
     estimate_start_number_of_epoch,
     run_case_helper::{run_case_after_switch, run_case_before_switch},
 };
-use ckb_testkit::util::{
-    since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
-};
-use ckb_testkit::{assert_result_eq, BuildInstruction};
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::{BlockNumber, Capacity, EpochNumberWithFraction, TransactionBuilder, TransactionView},
     packed::{CellInput, CellOutput, OutPoint},
     prelude::*,
 };
+use ckb_testkit::util::{
+    since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
+};
+use ckb_testkit::{assert_result_eq, BuildInstruction};
 
 /// ## Note
 ///
