@@ -13,6 +13,8 @@ AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
 GITHUB_TOKEN=${GITHUB_TOKEN}
+GITHUB_BRANCH=${GITHUB_BRANCH:-"develop"}
+GITHUB_REPO=${GITHUB_REPO:-"nervosnetwork/ckb"}
 
 
 JOB_ID="benchmark-$(date +'%Y-%m-%d')-in-10h"
@@ -149,9 +151,9 @@ function github_add_comment() {
 
 function rust_build() {
     git -C $JOB_DIRECTORY clone \
-        --branch develop \
+        --branch $GITHUB_BRANCH \
         --depth 1 \
-        https://github.com/nervosnetwork/ckb.git
+        https://github.com/$GITHUB_REPO.git
 
     cd $JOB_DIRECTORY/ckb
     sed -i 's/const TWO_IN_TWO_OUT_COUNT: u64 = .*;$/const TWO_IN_TWO_OUT_COUNT: u64 = 8_000;/g'            spec/src/consensus.rs
