@@ -1,3 +1,4 @@
+mod connector;
 pub mod logger;
 mod node;
 mod nodes;
@@ -7,6 +8,7 @@ mod subscribe;
 mod user;
 pub mod util;
 
+pub use connector::{Connector, ConnectorBuilder};
 pub use logger::LOG_TARGET;
 pub use node::{BuildInstruction, Node, NodeOptions};
 pub use nodes::Nodes;

@@ -1,8 +1,8 @@
+use ckb_testkit::ckb_types::core::cell::CellMeta;
+use ckb_testkit::ckb_types::core::TransactionBuilder;
+use ckb_testkit::ckb_types::packed::{Bytes, CellInput, CellOutput, OutPoint};
+use ckb_testkit::ckb_types::prelude::*;
 use ckb_testkit::{BuildInstruction, Node};
-use ckb_types::core::cell::CellMeta;
-use ckb_types::core::TransactionBuilder;
-use ckb_types::packed::{Bytes, CellInput, CellOutput, OutPoint};
-use ckb_types::prelude::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]

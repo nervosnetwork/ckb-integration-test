@@ -9,7 +9,7 @@ pub use identify_protocol::IdentifyProtocolHandler;
 pub use shared::SharedState;
 pub use sync_protocol::SyncProtocolHandler;
 
-use crate::preclude::*;
+use crate::Node;
 use ckb_async_runtime::tokio;
 use ckb_network::SupportProtocols;
 use ckb_stop_handler::{SignalSender, StopHandler};
@@ -36,7 +36,7 @@ struct TestServiceHandler {
 impl P2PServiceHandle for TestServiceHandler {
     /// Handling runtime errors
     fn handle_error(&mut self, _control: &mut P2PServiceContext, error: P2PServiceError) {
-        ckb_testkit::error!("TestServiceHandler detect error: {:?}", error);
+        crate::error!("TestServiceHandler detect error: {:?}", error);
     }
 
     /// Handling session establishment and disconnection events
@@ -128,7 +128,7 @@ impl ConnectorBuilder {
     }
 
     /// ```rust
-    /// use ckb_testkit::util::find_available_port;
+    /// use super::util::find_available_port;
     ///
     /// let p2p_port = find_available_port();
     /// let p2p_listening_address = format!("/ip4/127.0.0.1/tcp/{}", p2p_port).parse().unwrap();
@@ -261,7 +261,7 @@ impl Connector {
     pub fn connect(&mut self, node: &Node) -> Result<(), String> {
         // Open all protocols connection to target node
         let node_addr = node.p2p_address_with_node_id().parse().unwrap();
-        ckb_testkit::info!(
+        crate::info!(
             "Connector try to make session establishment and open protocols to node \"{}\", protocols: {:?}",
             node_addr, self.p2p_service_controller.protocols(),
         );
@@ -291,7 +291,7 @@ impl Connector {
 
                 if last_logging_time.elapsed() > Duration::from_secs(1) {
                     last_logging_time = Instant::now();
-                    ckb_testkit::debug!(
+                    crate::debug!(
                         "Connector is waiting protocols establishment to node \"{}\", trying protocols: {:?}, opened protocols: {:?}",
                         node.node_name(), self.p2p_service_controller.protocols(), opened_protocol_ids,
                     );
@@ -300,7 +300,7 @@ impl Connector {
             } else {
                 if last_logging_time.elapsed() > Duration::from_secs(1) {
                     last_logging_time = Instant::now();
-                    ckb_testkit::debug!(
+                    crate::debug!(
                         "Connector is waiting session establishment to node \"{}\"",
                         node.node_name()
                     );
@@ -353,5 +353,10 @@ impl Connector {
                 .and_then(|session| shared.get_opened_protocol_ids(&session.id));
         }
         unreachable!()
+    }
+
+    /// Return the shared state
+    pub fn shared(&self) -> &Arc<RwLock<SharedState>> {
+        &self.shared
     }
 }

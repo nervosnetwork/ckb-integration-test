@@ -2,16 +2,16 @@ use super::RFC0028_EPOCH_NUMBER;
 use crate::case::{Case, CaseOptions};
 use crate::util::estimate_start_number_of_epoch;
 use crate::CKB2021;
-use ckb_testkit::util::since_from_relative_block_number;
-use ckb_testkit::NodeOptions;
-use ckb_testkit::{BuildInstruction, Nodes};
-use ckb_types::core::Capacity;
-use ckb_types::packed::OutPoint;
-use ckb_types::{
+use ckb_testkit::ckb_types::core::Capacity;
+use ckb_testkit::ckb_types::packed::OutPoint;
+use ckb_testkit::ckb_types::{
     core::TransactionBuilder,
     packed::{CellInput, CellOutput},
     prelude::*,
 };
+use ckb_testkit::util::since_from_relative_block_number;
+use ckb_testkit::NodeOptions;
+use ckb_testkit::{BuildInstruction, Nodes};
 
 pub struct RFC0028Chained;
 

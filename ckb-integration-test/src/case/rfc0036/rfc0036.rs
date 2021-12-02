@@ -2,7 +2,7 @@ use super::{ERROR_IMMATURE_HEADER, RFC0036_EPOCH_NUMBER};
 use crate::preclude::*;
 use crate::util::estimate_start_number_of_epoch;
 use crate::util::run_case_helper::{run_case_after_switch, run_case_before_switch};
-use ckb_types::core::TransactionView;
+use ckb_testkit::ckb_types::core::TransactionView;
 
 /// ```text
 /// ┌──────────────┬───────────┬───────────┐
@@ -36,10 +36,7 @@ impl Case for RFC0036 {
         let node2021 = nodes.get_node("node2021");
 
         for node in nodes.nodes() {
-            assert!(
-                node.consensus().cellbase_maturity
-                    > ckb_jsonrpc_types::EpochNumberWithFraction::from(0)
-            );
+            assert!(node.consensus().cellbase_maturity.value() > 0);
         }
 
         let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0036_EPOCH_NUMBER);
