@@ -107,7 +107,7 @@ impl P2PServiceProtocol for IdentifyProtocolHandler {
     }
 
     fn received(&mut self, context: ProtocolContextMutRef, _data: Bytes) {
-        ckb_testkit::info!(
+        crate::info!(
             "IdentifyProtocol received from session: {:?}",
             context.session
         );

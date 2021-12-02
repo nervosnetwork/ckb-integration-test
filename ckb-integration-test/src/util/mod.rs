@@ -4,7 +4,6 @@ pub mod frequently_used_instructions;
 pub mod run_case_helper;
 pub mod shortcuts;
 
-pub use connector::Connector;
 pub use shortcuts::{v0_100, v0_43};
 
 use ckb_testkit::Node;
