@@ -1,5 +1,5 @@
-mod simple_protocol_handler;
 mod shared;
+mod simple_protocol_handler;
 mod util;
 
 pub use shared::SharedState;
@@ -13,11 +13,10 @@ use futures::prelude::*;
 use p2p::{
     builder::ServiceBuilder, bytes::Bytes, context::ServiceContext as P2PServiceContext,
     context::SessionContext, multiaddr::Multiaddr, secio::SecioKeyPair,
-    service::Service as P2PService, service::ServiceControl as P2PServiceControl,
-    service::ServiceError as P2PServiceError, service::ServiceEvent as P2PServiceEvent,
-    service::TargetProtocol as P2PTargetProtocol, traits::ServiceHandle as P2PServiceHandle,
-    service::ProtocolMeta as P2PProtocolMeta,
-    ProtocolId,
+    service::ProtocolMeta as P2PProtocolMeta, service::Service as P2PService,
+    service::ServiceControl as P2PServiceControl, service::ServiceError as P2PServiceError,
+    service::ServiceEvent as P2PServiceEvent, service::TargetProtocol as P2PTargetProtocol,
+    traits::ServiceHandle as P2PServiceHandle, ProtocolId,
 };
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
@@ -167,13 +166,10 @@ impl ConnectorBuilder {
     }
 
     // Create a p2p service with `TestServiceHandler` as service handler.
-    fn build_p2p_service(
-        self,
-        shared: Arc<RwLock<SharedState>>,
-    ) -> P2PService<TestServiceHandler> {
+    fn build_p2p_service(self, shared: Arc<RwLock<SharedState>>) -> P2PService<TestServiceHandler> {
         let mut p2p_service_builder = ServiceBuilder::new();
         for protocol_meta in self.protocol_metas.into_iter() {
-            p2p_service_builder =p2p_service_builder.insert_protocol(protocol_meta);
+            p2p_service_builder = p2p_service_builder.insert_protocol(protocol_meta);
         }
         p2p_service_builder
             .forever(true)

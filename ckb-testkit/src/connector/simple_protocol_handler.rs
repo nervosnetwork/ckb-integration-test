@@ -20,12 +20,12 @@ pub struct SimpleProtocolHandler {
 
 impl SimpleProtocolHandler {
     pub fn new(shared: Arc<RwLock<SharedState>>, protocol: SupportProtocols) -> Self {
-        Self { shared , protocol}
+        Self { shared, protocol }
     }
 
     pub fn build(self, be_compressed: bool) -> P2PProtocolMeta {
-        let meta_builder: P2PMetaBuilder = self.protocol .clone().into();
-        if  be_compressed {
+        let meta_builder: P2PMetaBuilder = self.protocol.clone().into();
+        if be_compressed {
             meta_builder
                 .before_send(compress)
                 .before_receive(|| Some(Box::new(decompress)))

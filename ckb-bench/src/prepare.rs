@@ -1,14 +1,14 @@
 use crate::utils::maybe_retry_send_transaction;
-use ckb_crypto::secp::Privkey;
-use ckb_jsonrpc_types::Status;
-use ckb_testkit::{Node, User};
-use ckb_types::core::cell::CellMeta;
-use ckb_types::packed::OutPoint;
-use ckb_types::{
+use ckb_testkit::ckb_crypto::secp::Privkey;
+use ckb_testkit::ckb_jsonrpc_types::Status;
+use ckb_testkit::ckb_types::core::cell::CellMeta;
+use ckb_testkit::ckb_types::packed::OutPoint;
+use ckb_testkit::ckb_types::{
     core::{Capacity, TransactionBuilder},
     packed::{Byte32, CellInput, CellOutput},
     prelude::*,
 };
+use ckb_testkit::{Node, User};
 use std::cmp::min;
 use std::collections::VecDeque;
 use std::thread::sleep;

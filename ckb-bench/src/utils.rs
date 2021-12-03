@@ -1,5 +1,5 @@
+use ckb_testkit::ckb_types::core::TransactionView;
 use ckb_testkit::Node;
-use ckb_types::core::TransactionView;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 

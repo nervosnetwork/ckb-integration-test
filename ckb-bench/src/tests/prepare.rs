@@ -1,10 +1,10 @@
 use crate::prepare::derive_privkeys;
 use crate::tests::node_options;
 use crate::{clap_app, entrypoint, init_logger};
+use ckb_testkit::ckb_types::packed::Byte32;
+use ckb_testkit::ckb_types::prelude::*;
+use ckb_testkit::ckb_types::H256;
 use ckb_testkit::{Node, Nodes, User};
-use ckb_types::packed::Byte32;
-use ckb_types::prelude::*;
-use ckb_types::H256;
 use std::env;
 use std::str::FromStr;
 

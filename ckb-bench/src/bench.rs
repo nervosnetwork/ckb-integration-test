@@ -1,12 +1,12 @@
-use ckb_testkit::util::since_from_absolute_epoch_number_with_fraction;
-use ckb_testkit::{Node, User};
-use ckb_types::core::{EpochNumberWithFraction, TransactionBuilder, TransactionView};
-use ckb_types::packed::{CellDep, CellOutput};
-use ckb_types::{
+use ckb_testkit::ckb_types::core::{EpochNumberWithFraction, TransactionBuilder, TransactionView};
+use ckb_testkit::ckb_types::packed::{CellDep, CellOutput};
+use ckb_testkit::ckb_types::{
     core::cell::CellMeta,
     packed::{Byte32, CellInput, OutPoint},
     prelude::*,
 };
+use ckb_testkit::util::since_from_absolute_epoch_number_with_fraction;
+use ckb_testkit::{Node, User};
 use crossbeam_channel::{Receiver, Sender};
 use lru::LruCache;
 use std::collections::HashMap;
