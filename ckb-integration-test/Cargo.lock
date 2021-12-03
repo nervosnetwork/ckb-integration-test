@@ -272,7 +272,7 @@ dependencies = [
 [[package]]
 name = "ckb-app-config"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-build-info",
  "ckb-chain-spec",
@@ -298,7 +298,7 @@ dependencies = [
 [[package]]
 name = "ckb-async-runtime"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-logger",
  "ckb-spawn",
@@ -309,12 +309,12 @@ dependencies = [
 [[package]]
 name = "ckb-build-info"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 
 [[package]]
 name = "ckb-chain-spec"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-constant",
  "ckb-crypto",
@@ -343,7 +343,7 @@ dependencies = [
 [[package]]
 name = "ckb-channel"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "crossbeam-channel 0.5.1",
 ]
@@ -351,12 +351,12 @@ dependencies = [
 [[package]]
 name = "ckb-constant"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 
 [[package]]
 name = "ckb-crypto"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-fixed-hash 0.102.0-pre",
  "faster-hex",
@@ -369,7 +369,7 @@ dependencies = [
 [[package]]
 name = "ckb-dao-utils"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "byteorder",
  "ckb-error 0.102.0-pre",
@@ -391,7 +391,7 @@ dependencies = [
 [[package]]
 name = "ckb-error"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "anyhow",
  "ckb-occupied-capacity 0.102.0-pre",
@@ -412,7 +412,7 @@ dependencies = [
 [[package]]
 name = "ckb-fixed-hash"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-fixed-hash-core 0.102.0-pre",
  "ckb-fixed-hash-macros 0.102.0-pre",
@@ -432,7 +432,7 @@ dependencies = [
 [[package]]
 name = "ckb-fixed-hash-core"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "faster-hex",
  "serde",
@@ -454,7 +454,7 @@ dependencies = [
 [[package]]
 name = "ckb-fixed-hash-macros"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-fixed-hash-core 0.102.0-pre",
  "proc-macro2",
@@ -475,7 +475,7 @@ dependencies = [
 [[package]]
 name = "ckb-hash"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "blake2b-ref",
  "blake2b-rs 0.2.0",
@@ -484,7 +484,7 @@ dependencies = [
 [[package]]
 name = "ckb-indexer"
 version = "0.2.0"
-source = "git+https://github.com/keroro520/ckb-indexer?branch=expose-network-compress-module#f74697d7e167520db0a0a0679aa01dcbad21224f"
+source = "git+https://github.com/keroro520/ckb-indexer?branch=integration-test#1b2408d9989a48985ae98383207b15c559cb6959"
 dependencies = [
  "ckb-jsonrpc-types 0.102.0-pre",
  "ckb-rocksdb",
@@ -534,7 +534,7 @@ dependencies = [
 [[package]]
 name = "ckb-jsonrpc-types"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-types 0.102.0-pre",
  "faster-hex",
@@ -556,7 +556,7 @@ dependencies = [
 [[package]]
 name = "ckb-logger"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "log",
 ]
@@ -573,7 +573,7 @@ dependencies = [
 [[package]]
 name = "ckb-logger-config"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "serde",
 ]
@@ -599,7 +599,7 @@ dependencies = [
 [[package]]
 name = "ckb-metrics-config"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "serde",
 ]
@@ -607,7 +607,7 @@ dependencies = [
 [[package]]
 name = "ckb-network"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "bloom-filters",
  "ckb-app-config",
@@ -642,7 +642,7 @@ dependencies = [
 [[package]]
 name = "ckb-occupied-capacity"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-occupied-capacity-core 0.102.0-pre",
  "ckb-occupied-capacity-macros 0.102.0-pre",
@@ -660,7 +660,7 @@ dependencies = [
 [[package]]
 name = "ckb-occupied-capacity-core"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "serde",
 ]
@@ -679,7 +679,7 @@ dependencies = [
 [[package]]
 name = "ckb-occupied-capacity-macros"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-occupied-capacity-core 0.102.0-pre",
  "quote",
@@ -689,7 +689,7 @@ dependencies = [
 [[package]]
 name = "ckb-pow"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "byteorder",
  "ckb-hash 0.102.0-pre",
@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "ckb-rational"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "numext-fixed-uint",
  "serde",
@@ -721,7 +721,7 @@ dependencies = [
 [[package]]
 name = "ckb-resource"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-system-scripts",
  "ckb-types 0.102.0-pre",
@@ -746,12 +746,12 @@ dependencies = [
 [[package]]
 name = "ckb-spawn"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 
 [[package]]
 name = "ckb-stop-handler"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-channel 0.102.0-pre",
  "ckb-logger",
@@ -802,7 +802,7 @@ dependencies = [
 [[package]]
 name = "ckb-traits"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "ckb-types 0.102.0-pre",
 ]
@@ -831,7 +831,7 @@ dependencies = [
 [[package]]
 name = "ckb-types"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "bit-vec",
  "bitflags",
@@ -863,7 +863,7 @@ dependencies = [
 [[package]]
 name = "ckb-util"
 version = "0.102.0-pre"
-source = "git+https://github.com/keroro520/ckb?branch=expose-network-compress-module#cd5db2d805e31cd847c744e37332799bbbec7a3e"
+source = "git+https://github.com/nervosnetwork/ckb?branch=develop#b6ac0847ddc988a7f79472bb78736c3ee023f826"
 dependencies = [
  "linked-hash-map",
  "once_cell",

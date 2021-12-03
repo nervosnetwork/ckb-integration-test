@@ -1,9 +1,11 @@
+mod extension;
 mod shared;
 mod simple_protocol_handler;
-mod util;
+mod simple_service_handler;
 
 pub use shared::SharedState;
 pub use simple_protocol_handler::SimpleProtocolHandler;
+pub use simple_service_handler::SimpleServiceHandler;
 
 use crate::Node;
 use ckb_async_runtime::tokio;
@@ -11,54 +13,15 @@ use ckb_network::SupportProtocols;
 use ckb_stop_handler::{SignalSender, StopHandler};
 use futures::prelude::*;
 use p2p::{
-    builder::ServiceBuilder, bytes::Bytes, context::ServiceContext as P2PServiceContext,
-    context::SessionContext, multiaddr::Multiaddr, secio::SecioKeyPair,
-    service::ProtocolMeta as P2PProtocolMeta, service::Service as P2PService,
-    service::ServiceControl as P2PServiceControl, service::ServiceError as P2PServiceError,
-    service::ServiceEvent as P2PServiceEvent, service::TargetProtocol as P2PTargetProtocol,
+    builder::ServiceBuilder, bytes::Bytes, context::SessionContext, multiaddr::Multiaddr,
+    secio::SecioKeyPair, service::ProtocolMeta as P2PProtocolMeta, service::Service as P2PService,
+    service::ServiceControl as P2PServiceControl, service::TargetProtocol as P2PTargetProtocol,
     traits::ServiceHandle as P2PServiceHandle, ProtocolId,
 };
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-
-/// TestServiceHandler is an implementation of `P2PServiceHandle` which handle service-wise
-/// events and errors.
-struct TestServiceHandler {
-    shared: Arc<RwLock<SharedState>>,
-}
-
-impl P2PServiceHandle for TestServiceHandler {
-    /// Handling runtime errors
-    fn handle_error(&mut self, _control: &mut P2PServiceContext, error: P2PServiceError) {
-        crate::error!("TestServiceHandler detect error: {:?}", error);
-    }
-
-    /// Handling session establishment and disconnection events
-    fn handle_event(&mut self, _control: &mut P2PServiceContext, event: P2PServiceEvent) {
-        match event {
-            P2PServiceEvent::SessionOpen {
-                session_context: session,
-            } => {
-                let _ = self.shared.write().map(|mut shared| {
-                    shared.add_session(session.id.clone(), session.as_ref().to_owned())
-                });
-            }
-            P2PServiceEvent::SessionClose {
-                session_context: session,
-            } => {
-                let _ = self
-                    .shared
-                    .write()
-                    .map(|mut shared| shared.remove_session(&session.id));
-            }
-            _ => {
-                unimplemented!()
-            }
-        }
-    }
-}
 
 /// Connector Builder
 pub struct ConnectorBuilder {
@@ -89,8 +52,13 @@ impl ConnectorBuilder {
         self
     }
 
+    pub fn protocol_meta(mut self, protocol_meta: P2PProtocolMeta) -> Self {
+        self.protocol_metas.push(protocol_meta);
+        self
+    }
+
     pub fn protocol_metas(mut self, protocol_metas: Vec<P2PProtocolMeta>) -> Self {
-        self.protocol_metas = protocol_metas;
+        self.protocol_metas.extend(protocol_metas);
         self
     }
 
@@ -105,7 +73,10 @@ impl ConnectorBuilder {
         self
     }
 
-    pub fn build(self) -> Connector {
+    pub fn build<T>(self, service_handle: T) -> Connector
+    where
+        T: P2PServiceHandle + Unpin + Send + 'static,
+    {
         assert_eq!(
             self.protocol_metas.len(),
             self.protocol_metas
@@ -125,7 +96,7 @@ impl ConnectorBuilder {
 
         // Start P2P Service and maintain the controller
         let shared = Arc::new(RwLock::new(SharedState::new()));
-        let mut p2p_service = self.build_p2p_service(Arc::clone(&shared));
+        let mut p2p_service = self.build_p2p_service(service_handle);
 
         let p2p_service_controller = p2p_service.control().to_owned();
         let (stopped_signal_sender, mut stopped_signal_receiver) = tokio::sync::oneshot::channel();
@@ -165,8 +136,11 @@ impl ConnectorBuilder {
         }
     }
 
-    // Create a p2p service with `TestServiceHandler` as service handler.
-    fn build_p2p_service(self, shared: Arc<RwLock<SharedState>>) -> P2PService<TestServiceHandler> {
+    // Create a p2p service instance
+    fn build_p2p_service<T>(self, service_handle: T) -> P2PService<T>
+    where
+        T: P2PServiceHandle + Unpin,
+    {
         let mut p2p_service_builder = ServiceBuilder::new();
         for protocol_meta in self.protocol_metas.into_iter() {
             p2p_service_builder = p2p_service_builder.insert_protocol(protocol_meta);
@@ -174,9 +148,7 @@ impl ConnectorBuilder {
         p2p_service_builder
             .forever(true)
             .key_pair(self.key_pair.clone())
-            .build(TestServiceHandler {
-                shared: Arc::clone(&shared),
-            })
+            .build(service_handle)
     }
 }
 

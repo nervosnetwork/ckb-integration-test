@@ -3,23 +3,23 @@ name = "ckb-testkit"
 version = "0.0.1"
 authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
-homepage = "https://github.com/keroro520/ckb"
-repository = "https://github.com/keroro520/ckb"
+homepage = "https://github.com/nervosnetwork/ckb"
+repository = "https://github.com/nervosnetwork/ckb"
 description = "ckb testkit"
 
 [dependencies]
 ckb2019-jsonrpc-types = { package = "ckb-jsonrpc-types", version = "0.43.2" }
-ckb-jsonrpc-types = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
-ckb-types = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
-ckb-error = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
-ckb-crypto = { git = "https://github.com/keroro520/ckb.git", branch = "expose-network-compress-module" }
-ckb-hash = { git = "https://github.com/keroro520/ckb.git", branch = "expose-network-compress-module" }
-ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", branch = "expose-network-compress-module" }
-ckb-network = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
-ckb-channel = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
-ckb-async-runtime = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
-ckb-stop-handler = { git = "https://github.com/keroro520/ckb", branch = "expose-network-compress-module" }
+ckb-jsonrpc-types = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
+ckb-types = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
+ckb-error = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
+ckb-crypto = { git = "https://github.com/nervosnetwork/ckb.git", branch = "develop" }
+ckb-hash = { git = "https://github.com/nervosnetwork/ckb.git", branch = "develop" }
+ckb-network = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
+ckb-channel = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
+ckb-async-runtime = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
+ckb-stop-handler = { git = "https://github.com/nervosnetwork/ckb", branch = "develop" }
 
+ckb-indexer = { git = "https://github.com/keroro520/ckb-indexer", branch = "integration-test" }
 reqwest = { version = "0.10.9", features = ["blocking", "json"] }
 serde_json = "1.0"
 lazy_static = "1.4.0"
