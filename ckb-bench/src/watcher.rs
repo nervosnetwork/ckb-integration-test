@@ -1,5 +1,5 @@
+use ckb_testkit::ckb_types::core::HeaderView;
 use ckb_testkit::Nodes;
-use ckb_types::core::HeaderView;
 
 /// Watcher watches the CKB node, it
 /// - Judge whether the CKB is zero-load.

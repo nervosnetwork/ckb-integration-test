@@ -1,5 +1,5 @@
+use ckb_testkit::ckb_types::core::BlockNumber;
 use ckb_testkit::Node;
-use ckb_types::core::BlockNumber;
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 
