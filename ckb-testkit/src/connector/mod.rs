@@ -1,13 +1,9 @@
-mod discovery_protocol;
-mod identify_protocol;
+mod simple_protocol_handler;
 mod shared;
-mod sync_protocol;
 mod util;
 
-pub use discovery_protocol::DiscoveryProtocolHandler;
-pub use identify_protocol::IdentifyProtocolHandler;
 pub use shared::SharedState;
-pub use sync_protocol::SyncProtocolHandler;
+pub use simple_protocol_handler::SimpleProtocolHandler;
 
 use crate::Node;
 use ckb_async_runtime::tokio;
@@ -20,6 +16,7 @@ use p2p::{
     service::Service as P2PService, service::ServiceControl as P2PServiceControl,
     service::ServiceError as P2PServiceError, service::ServiceEvent as P2PServiceEvent,
     service::TargetProtocol as P2PTargetProtocol, traits::ServiceHandle as P2PServiceHandle,
+    service::ProtocolMeta as P2PProtocolMeta,
     ProtocolId,
 };
 use std::collections::HashSet;
@@ -67,24 +64,18 @@ impl P2PServiceHandle for TestServiceHandler {
 /// Connector Builder
 pub struct ConnectorBuilder {
     key_pair: SecioKeyPair,
-    // supported protocols
-    protocols: Vec<SupportProtocols>,
-    // blockchain network identifier, the genesis hash of blockchain, used by Identify protocol
-    network_identifier: Option<String>,
-    // node version, used by Identify protocol
-    client_version: Option<String>,
     // listening addresses
     listening_addresses: Vec<Multiaddr>,
+    // protocol metas
+    protocol_metas: Vec<P2PProtocolMeta>,
 }
 
 impl Default for ConnectorBuilder {
     fn default() -> Self {
         Self {
             key_pair: SecioKeyPair::secp256k1_generated(),
-            protocols: Vec::new(),
-            network_identifier: None,
-            client_version: None,
             listening_addresses: Vec::new(),
+            protocol_metas: Vec::new(),
         }
     }
 }
@@ -94,36 +85,13 @@ impl ConnectorBuilder {
         Self::default()
     }
 
-    pub fn new_v2(node: &Node) -> Self {
-        // https://github.com/nervosnetwork/ckb/blob/540b3168f3/spec/src/consensus.rs#L897-L900
-        let network_identifier = {
-            let consensus = node.consensus();
-            let genesis_hash = format!("{:x}", consensus.genesis_hash);
-            format!("/{}/{}", consensus.id, &genesis_hash[..8])
-        };
-        let client_version = node.rpc_client().local_node_info().version;
-        Self::new()
-            .network_identifier(network_identifier)
-            .client_version(client_version)
-    }
-
     pub fn key_pair(mut self, key_pair: SecioKeyPair) -> Self {
         self.key_pair = key_pair;
         self
     }
 
-    pub fn protocols(mut self, protocols: Vec<SupportProtocols>) -> Self {
-        self.protocols = protocols;
-        self
-    }
-
-    pub fn network_identifier(mut self, network_identifier: String) -> Self {
-        self.network_identifier = Some(network_identifier);
-        self
-    }
-
-    pub fn client_version(mut self, client_version: String) -> Self {
-        self.client_version = Some(client_version);
+    pub fn protocol_metas(mut self, protocol_metas: Vec<P2PProtocolMeta>) -> Self {
+        self.protocol_metas = protocol_metas;
         self
     }
 
@@ -140,8 +108,8 @@ impl ConnectorBuilder {
 
     pub fn build(self) -> Connector {
         assert_eq!(
-            self.protocols.len(),
-            self.protocols
+            self.protocol_metas.len(),
+            self.protocol_metas
                 .iter()
                 .map(|protocol| protocol.name())
                 .collect::<HashSet<_>>()
@@ -150,11 +118,11 @@ impl ConnectorBuilder {
         );
         // Read more from https://github.com/nervosnetwork/ckb/blob/a25112f1032ac6796dc68fcf3922d316ae74db65/network/src/services/protocol_type_checker.rs#L1-L10
         assert!(
-            self.protocols.iter().any(|protocol| matches!(protocol, SupportProtocols::Sync)),
+            self.protocol_metas.iter().any(|protocol| protocol.id() == SupportProtocols::Sync.protocol_id() ),
             "Sync protocol is the most underlying protocol to establish connection and must be contained in protocols",
         );
-        assert!(self.client_version.is_some());
-        assert!(self.network_identifier.is_some());
+        let listening_addresses = self.listening_addresses.clone();
+        let key_pair = self.key_pair.clone();
 
         // Start P2P Service and maintain the controller
         let shared = Arc::new(RwLock::new(SharedState::new()));
@@ -162,7 +130,6 @@ impl ConnectorBuilder {
 
         let p2p_service_controller = p2p_service.control().to_owned();
         let (stopped_signal_sender, mut stopped_signal_receiver) = tokio::sync::oneshot::channel();
-        let listening_addresses = self.listening_addresses.clone();
         ::std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async move {
@@ -188,7 +155,7 @@ impl ConnectorBuilder {
         });
 
         Connector {
-            key_pair: self.key_pair,
+            key_pair,
             shared: Arc::clone(&shared),
             p2p_service_controller,
             _stop_handler: StopHandler::new(
@@ -201,43 +168,13 @@ impl ConnectorBuilder {
 
     // Create a p2p service with `TestServiceHandler` as service handler.
     fn build_p2p_service(
-        &self,
+        self,
         shared: Arc<RwLock<SharedState>>,
     ) -> P2PService<TestServiceHandler> {
         let mut p2p_service_builder = ServiceBuilder::new();
-
-        // Build protocols handler
-        for protocol in self.protocols.iter() {
-            match protocol {
-                SupportProtocols::Identify => {
-                    let client_version = self.client_version.as_ref().expect("checked above");
-                    let network_identifier =
-                        self.network_identifier.as_ref().expect("checked above");
-                    let identify_protocol_meta = IdentifyProtocolHandler::new(
-                        Arc::clone(&shared),
-                        network_identifier.clone(),
-                        client_version.clone(),
-                    )
-                    .build();
-                    p2p_service_builder =
-                        p2p_service_builder.insert_protocol(identify_protocol_meta);
-                }
-                SupportProtocols::Sync => {
-                    let sync_protocol_meta = SyncProtocolHandler::new(Arc::clone(&shared)).build();
-                    p2p_service_builder = p2p_service_builder.insert_protocol(sync_protocol_meta);
-                }
-                SupportProtocols::Discovery => {
-                    let discovery_protocol_meta =
-                        DiscoveryProtocolHandler::new(Arc::clone(&shared)).build();
-                    p2p_service_builder =
-                        p2p_service_builder.insert_protocol(discovery_protocol_meta);
-                }
-                _ => {
-                    panic!("Unsupported protocol \"{}\"", protocol.name());
-                }
-            }
+        for protocol_meta in self.protocol_metas.into_iter() {
+            p2p_service_builder =p2p_service_builder.insert_protocol(protocol_meta);
         }
-
         p2p_service_builder
             .forever(true)
             .key_pair(self.key_pair.clone())
@@ -310,7 +247,7 @@ impl Connector {
         }
 
         Err(format!(
-            "Connector is timeout to connect to {}",
+            "Connector is timeout when connecting to {}",
             node.node_name()
         ))
     }

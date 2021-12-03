@@ -1,4 +1,4 @@
-mod connector;
+pub mod connector;
 pub mod logger;
 mod node;
 mod nodes;
