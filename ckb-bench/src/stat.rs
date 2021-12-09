@@ -3,21 +3,39 @@ use ckb_testkit::Node;
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// On-chain report
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct Metrics {
-    pub from_block_number: BlockNumber,
-    pub to_block_number: BlockNumber,
-    pub total_transactions: usize,
-    pub total_transactions_size: usize,
-    pub transactions_per_second: u64,
-    pub transactions_size_per_second: u64,
-    pub average_block_transactions: usize,
-    pub average_block_transactions_size: usize,
-    pub average_block_time_ms: u64,
+pub struct Report {
+    /// Number of running CKB nodes
     pub n_nodes: usize,
+    /// Number of transaction inputs and outputs
     pub n_inout: usize,
+    /// Client version of the running CKB nodes
     pub ckb_version: String,
+    /// Delay time between sending continuous transactions, equal to `--tx-interval-ms`
     pub delay_time_ms: Option<u64>,
+
+    /// The chain height when starting benchmark
+    pub from_block_number: BlockNumber,
+    /// The chain height when ending benchmark
+    pub to_block_number: BlockNumber,
+
+    /// On-chain transactions per seconds
+    pub transactions_per_second: u64,
+    /// On-chain transaction size per seconds
+    pub transactions_size_per_second: u64,
+
+    /// Average block transactions
+    pub average_block_transactions: usize,
+    /// Average block transactions size
+    pub average_block_transactions_size: usize,
+    /// Average block interval in milliseconds
+    pub average_block_time_ms: u64,
+
+    /// Total transactions
+    pub total_transactions: usize,
+    /// Total transactions size
+    pub total_transactions_size: usize,
 }
 
 pub fn stat(
@@ -26,7 +44,7 @@ pub fn stat(
     to_number: BlockNumber,
     stat_time: Duration,
     delay_time: Option<Duration>,
-) -> Metrics {
+) -> Report {
     assert_ne!(from_number, 0);
     assert!(from_number < to_number);
     let mut i = from_number;
@@ -34,7 +52,7 @@ pub fn stat(
     let mut total_transactions = 0;
     let mut total_transactions_size = 0;
     let mut n_inout = 0;
-    let mut best_metrics = Metrics::default();
+    let mut best_report = Report::default();
     loop {
         let block_i = node.get_block_by_number(i);
         let mut block_j_timestamp = 0;
@@ -67,8 +85,8 @@ pub fn stat(
         let sps = (total_transactions_size as f64 * 1000.0
             / (block_j_timestamp.saturating_sub(block_i.timestamp())) as f64)
             as u64;
-        if tps > best_metrics.transactions_per_second {
-            best_metrics = Metrics {
+        if tps > best_report.transactions_per_second {
+            best_report = Report {
                 from_block_number: block_i.number(),
                 to_block_number: header_j.number(),
                 total_transactions,
@@ -93,9 +111,9 @@ pub fn stat(
     }
 
     let local_node_info = node.rpc_client().local_node_info();
-    best_metrics.ckb_version = local_node_info.version;
-    best_metrics.n_nodes = local_node_info.connections.value() as usize + 1;
-    best_metrics.n_inout = n_inout;
-    best_metrics.delay_time_ms = delay_time.map(|t| t.as_millis() as u64);
-    best_metrics
+    best_report.ckb_version = local_node_info.version;
+    best_report.n_nodes = local_node_info.connections.value() as usize + 1;
+    best_report.n_inout = n_inout;
+    best_report.delay_time_ms = delay_time.map(|t| t.as_millis() as u64);
+    best_report
 }
