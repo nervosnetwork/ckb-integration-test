@@ -364,7 +364,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
             let t_stat = t_bench.div(2);
             let fixed_tip_number = watcher.get_fixed_header().number();
-            let metrics = stat::stat(
+            let report = stat::stat(
                 &nodes[0],
                 zero_load_number + 1,
                 fixed_tip_number,
@@ -373,21 +373,21 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             );
             ckb_testkit::info!(
                 "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
-                metrics.ckb_version,
-                metrics.transactions_per_second,
-                metrics.n_inout,
-                metrics.n_nodes,
-                metrics.delay_time_ms.expect("bench specify delay_time_ms"),
-                metrics.average_block_time_ms,
-                metrics.average_block_transactions,
-                metrics.average_block_transactions_size,
-                metrics.from_block_number,
-                metrics.to_block_number,
-                metrics.total_transactions,
-                metrics.total_transactions_size,
-                metrics.transactions_size_per_second,
+                report.ckb_version,
+                report.transactions_per_second,
+                report.n_inout,
+                report.n_nodes,
+                report.delay_time_ms.expect("bench specify delay_time_ms"),
+                report.average_block_time_ms,
+                report.average_block_transactions,
+                report.average_block_transactions_size,
+                report.from_block_number,
+                report.to_block_number,
+                report.total_transactions,
+                report.total_transactions_size,
+                report.transactions_size_per_second,
             );
-            ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
+            ckb_testkit::info!("metrics: {}", serde_json::json!(report));
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
@@ -396,8 +396,8 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let stat_time_ms = value_t_or_exit!(arguments, "stat-period-ms", u64);
             let t_stat = Duration::from_millis(stat_time_ms);
             let node = Node::init_from_url(rpc_urls[0].as_str(), Default::default());
-            let metrics = stat::stat(&node, from_number, to_number, t_stat, None);
-            ckb_testkit::info!("metrics: {}", serde_json::json!(metrics));
+            let report = stat::stat(&node, from_number, to_number, t_stat, None);
+            ckb_testkit::info!("metrics: {}", serde_json::json!(report));
         }
         _ => {
             eprintln!("wrong usage");
