@@ -81,6 +81,8 @@ impl TransactionProducer {
     pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize) -> Self {
         let mut users_map = HashMap::new();
         for user in users {
+            // To support environment `CKB_BENCH_ENABLE_DATA1_SCRIPT`, we have to index 3
+            // kinds of cells
             users_map.insert(
                 user.single_secp256k1_lock_script_via_type()
                     .calc_script_hash(),
@@ -112,6 +114,8 @@ impl TransactionProducer {
         live_cell_receiver: Receiver<CellMeta>,
         transaction_sender: Sender<TransactionView>,
     ) {
+        // Environment variables `CKB_BENCH_ENABLE_DATA1_SCRIPT` and
+        // `CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH` are temporary.
         let enabled_data1_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA1_SCRIPT") {
             Ok(raw) => {
                 raw.parse()
