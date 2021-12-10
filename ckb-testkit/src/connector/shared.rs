@@ -23,10 +23,10 @@ impl SharedState {
         }
     }
 
-    pub fn add_session(&mut self, session_id: SessionId, session: SessionContext) {
-        let _ = self
-            .session_manager
-            .insert(session_id, (session, HashMap::new()));
+    pub fn add_session(&mut self, session: SessionContext) {
+        self.session_manager
+            .entry(session.id)
+            .or_insert_with(|| (session.clone(), HashMap::new()));
     }
 
     pub fn remove_session(&mut self, session_id: &SessionId) -> Option<SessionContext> {
@@ -45,20 +45,16 @@ impl SharedState {
         None
     }
 
-    pub fn add_protocol(&mut self, session_id: SessionId, protocol_id: ProtocolId) {
-        let (_session, mailbox) = self
-            .session_manager
-            .get_mut(&session_id)
-            .expect("session is not found");
-        assert!(
-            !mailbox.contains_key(&protocol_id),
-            "protocol is not opened"
-        );
+    pub fn add_protocol(&mut self, session: &SessionContext, protocol_id: ProtocolId) {
         let (protocol_mailbox_sender, protocol_mailbox_receiver) = unbounded::<Bytes>();
-        mailbox.insert(
-            protocol_id,
-            (protocol_mailbox_sender, protocol_mailbox_receiver),
-        );
+        self.session_manager
+            .entry(session.id)
+            .or_insert_with(|| (session.clone(), HashMap::new()))
+            .1
+            .insert(
+                protocol_id,
+                (protocol_mailbox_sender, protocol_mailbox_receiver),
+            );
     }
 
     pub fn remove_protocol(&mut self, session_id: &SessionId, protocol_id: &ProtocolId) {
@@ -100,5 +96,13 @@ impl SharedState {
         self.session_manager
             .get(session_id)
             .map(|(_session, mailbox)| mailbox.keys().cloned().collect())
+    }
+
+    /// Return all sessions
+    pub fn get_sessions(&self) -> Vec<&SessionContext> {
+        self.session_manager
+            .values()
+            .map(|(session, _)| session)
+            .collect()
     }
 }

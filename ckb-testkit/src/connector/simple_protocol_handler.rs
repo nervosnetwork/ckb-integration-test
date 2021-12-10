@@ -44,7 +44,7 @@ impl P2PServiceProtocol for SimpleProtocolHandler {
 
     fn connected(&mut self, context: ProtocolContextMutRef, _protocol_version: &str) {
         if let Ok(mut shared) = self.shared.write() {
-            shared.add_protocol(context.session.id, context.proto_id);
+            shared.add_protocol(context.session, context.proto_id);
         }
     }
 
