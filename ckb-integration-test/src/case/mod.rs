@@ -1,5 +1,6 @@
 mod basic;
 mod case_options;
+mod discovery;
 mod identify;
 mod rfc0028;
 mod rfc0029;
@@ -21,6 +22,8 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0036::rfc0036::RFC0036),
         Box::new(identify::connection::IdentifyConnection),
         Box::new(identify::identical_key_pair::IdentifyIdenticalKeyPair),
+        Box::new(discovery::flood_attack::DiscoveryFloodAttack),
+        Box::new(discovery::manipulated_addresses::ManipulatedAddresses),
     ]
 }
 
