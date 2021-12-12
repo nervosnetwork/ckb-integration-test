@@ -32,6 +32,15 @@ pub struct ConnectorBuilder {
     protocol_metas: Vec<P2PProtocolMeta>,
 }
 
+/// Connector is a fake node
+pub struct Connector {
+    #[allow(dead_code)]
+    key_pair: SecioKeyPair,
+    shared: Arc<RwLock<SharedState>>,
+    p2p_service_controller: P2PServiceControl,
+    _stop_handler: StopHandler<tokio::sync::oneshot::Sender<()>>,
+}
+
 impl Default for ConnectorBuilder {
     fn default() -> Self {
         Self {
@@ -73,7 +82,7 @@ impl ConnectorBuilder {
         self
     }
 
-    pub fn build<T>(self, service_handle: T) -> Connector
+    pub fn build<T>(self, service_handle: T, shared: Arc<RwLock<SharedState>>) -> Connector
     where
         T: P2PServiceHandle + Unpin + Send + 'static,
     {
@@ -95,7 +104,6 @@ impl ConnectorBuilder {
         let key_pair = self.key_pair.clone();
 
         // Start P2P Service and maintain the controller
-        let shared = Arc::new(RwLock::new(SharedState::new()));
         let mut p2p_service = self.build_p2p_service(service_handle);
 
         let p2p_service_controller = p2p_service.control().to_owned();
@@ -126,7 +134,7 @@ impl ConnectorBuilder {
 
         Connector {
             key_pair,
-            shared: Arc::clone(&shared),
+            shared,
             p2p_service_controller,
             _stop_handler: StopHandler::new(
                 SignalSender::Tokio(stopped_signal_sender),
@@ -150,15 +158,6 @@ impl ConnectorBuilder {
             .key_pair(self.key_pair.clone())
             .build(service_handle)
     }
-}
-
-/// Connector is a fake node
-pub struct Connector {
-    #[allow(dead_code)]
-    key_pair: SecioKeyPair,
-    shared: Arc<RwLock<SharedState>>,
-    p2p_service_controller: P2PServiceControl,
-    _stop_handler: StopHandler<tokio::sync::oneshot::Sender<()>>,
 }
 
 impl Connector {
@@ -189,8 +188,7 @@ impl Connector {
                             && protocol_id != &&SupportProtocols::DisconnectMessage.protocol_id()
                     })
                     .count();
-                assert!(opened_protocol_ids.len() <= expected_opened);
-                if opened_protocol_ids.len() == expected_opened {
+                if opened_protocol_ids.len() >= expected_opened {
                     return Ok(());
                 }
 
