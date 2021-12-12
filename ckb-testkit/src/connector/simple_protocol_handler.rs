@@ -5,6 +5,7 @@ use ckb_network::{
 };
 use p2p::{
     builder::MetaBuilder as P2PMetaBuilder,
+    bytes,
     context::{ProtocolContext, ProtocolContextMutRef},
     service::{ProtocolHandle as P2PProtocolHandle, ProtocolMeta as P2PProtocolMeta},
     traits::ServiceProtocol as P2PServiceProtocol,
@@ -43,14 +44,40 @@ impl P2PServiceProtocol for SimpleProtocolHandler {
     fn init(&mut self, _context: &mut ProtocolContext) {}
 
     fn connected(&mut self, context: ProtocolContextMutRef, _protocol_version: &str) {
+        crate::debug!(
+            "SimpleProtocolHandler connected, protocol: {}, session: {:?}",
+            self.protocol.name(),
+            context.session
+        );
         if let Ok(mut shared) = self.shared.write() {
             shared.add_protocol(context.session, context.proto_id);
         }
     }
 
     fn disconnected(&mut self, context: ProtocolContextMutRef) {
+        crate::debug!(
+            "SimpleProtocolHandler disconnected, protocol: {}, session: {:?}",
+            self.protocol.name(),
+            context.session
+        );
         if let Ok(mut shared) = self.shared.write() {
             shared.remove_protocol(&context.session.id, &context.proto_id());
+        }
+    }
+
+    fn received(&mut self, context: ProtocolContextMutRef, data: bytes::Bytes) {
+        crate::debug!(
+            "SimpleProtocolHandler received, protocol: {}, session: {:?}",
+            self.protocol.name(),
+            context.session
+        );
+        if let Ok(shared) = self.shared.write() {
+            let sender = shared
+                .get_protocol_sender(&context.session.id, &context.proto_id())
+                .unwrap_or_else(|| {
+                    panic!("received message but shared.get_protocol_sender returns None")
+                });
+            let _ = sender.send(data);
         }
     }
 }
