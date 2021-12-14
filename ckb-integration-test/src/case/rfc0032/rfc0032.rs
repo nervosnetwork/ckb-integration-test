@@ -1,10 +1,10 @@
 use crate::preclude::*;
-use ckb_testkit::{assert_result_eq, Node, NodeOptions, Nodes, SYSTEM_CELL_ALWAYS_SUCCESS_INDEX};
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::{BlockNumber, Capacity, Cycle, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{CellInput, CellOutput, OutPoint, Script},
     prelude::*,
 };
+use ckb_testkit::{assert_result_eq, Node, NodeOptions, Nodes, SYSTEM_CELL_ALWAYS_SUCCESS_INDEX};
 
 /// ## Convention
 ///
@@ -19,28 +19,29 @@ use ckb_types::{
 /// ## Cases
 ///
 /// ```text
-/// ┌───┬────────────────┬──────────┬───────────────────┐
-/// │id │ type.hash_type │ node.tip │ selected          │
-/// ├───┼────────────────┼──────────┼───────────────────┤
-/// │0  │ "data"         │  2999    │ Ok(VM0)           │
-/// ├───┼────────────────┼──────────┼───────────────────┤
-/// │1  │ "type"         │  2999    │ Ok(VM0)           │
-/// ├───┼────────────────┼──────────┼───────────────────┤
-/// │2  │ "data1"        │  2999    │ Err(Incompatible) │
-/// ├───┼────────────────┼──────────┼───────────────────┤
-/// │3  │ "data"         │  3000    │ Ok(VM0)           │
-/// ├───┼────────────────┼──────────┼───────────────────┤
-/// │4  │ "type"         │  3000    │ Ok(VM1)           │
-/// ├───┼────────────────┼──────────┼───────────────────┤
-/// │5  │ "data1"        │  3000    │ Ok(VM1)           │
-/// └───┴────────────────┴──────────┴───────────────────┘
+/// ┌───┬────────────────┬────────────────┬───────────────────┐
+/// │id │ type.hash_type │ height         │ selected          │
+/// ├───┼────────────────┼────────────────┼───────────────────┤
+/// │0  │ "data"         │  non-activated │ Ok(VM0)           │
+/// ├───┼────────────────┼────────────────┼───────────────────┤
+/// │1  │ "type"         │  non-activated │ Ok(VM0)           │
+/// ├───┼────────────────┼────────────────┼───────────────────┤
+/// │2  │ "data1"        │  non-activated │ Err(Incompatible) │
+/// ├───┼────────────────┼────────────────┼───────────────────┤
+/// │3  │ "data"         │  activated     │ Ok(VM0)           │
+/// ├───┼────────────────┼────────────────┼───────────────────┤
+/// │4  │ "type"         │  activated     │ Ok(VM1)           │
+/// ├───┼────────────────┼────────────────┼───────────────────┤
+/// │5  │ "data1"        │  activated     │ Ok(VM1)           │
+/// └───┴────────────────┴────────────────┴───────────────────┘
 /// ```
 
 pub struct RFC0032;
 
 const VM0_CYCLES: Cycle = 537 + 537;
 const VM1_CYCLES: Cycle = 537 + 539;
-const FORK_SWITCH_HEIGHT: BlockNumber = 3000;
+const RFC0032_BLOCK_NUMBER: BlockNumber = 3000;
+const HARDFORK_DELAY_WINDOW: u64 = 10;
 const ERROR_INVALID_VM_VERSION: &str = "Invalid VM Version";
 
 impl Case for RFC0032 {
@@ -49,7 +50,7 @@ impl Case for RFC0032 {
     }
 
     fn run(&self, _nodes: Nodes) {
-        for case in self.cases_params(FORK_SWITCH_HEIGHT, VM0_CYCLES, VM1_CYCLES) {
+        for case in self.cases_params(RFC0032_BLOCK_NUMBER, VM0_CYCLES, VM1_CYCLES) {
             let node = self.setup_node(&case);
             let tx = self.build_transaction(&node, &case);
             let actual_result = self.run_case(&node, &tx);
@@ -69,7 +70,7 @@ impl Case for RFC0032 {
 struct CaseParams {
     id: usize,
     type_script_hash_type: ScriptHashType,
-    node_tip: BlockNumber,
+    height: BlockNumber,
     expected_result: Result<Cycle, String>,
 }
 
@@ -96,7 +97,7 @@ impl RFC0032 {
         let mut node = Node::init(self.case_name(), node_options, true);
         node.start();
 
-        node.mine_to(case.node_tip);
+        node.mine_to(case.height);
 
         node
     }
@@ -161,7 +162,7 @@ impl RFC0032 {
 
     fn cases_params(
         &self,
-        fork_switch_height: BlockNumber,
+        rfc0032_block_number: BlockNumber,
         vm0_tx_cycles: Cycle,
         vm1_tx_cycles: Cycle,
     ) -> Vec<CaseParams> {
@@ -169,37 +170,37 @@ impl RFC0032 {
             CaseParams {
                 id: 0,
                 type_script_hash_type: ScriptHashType::Data,
-                node_tip: fork_switch_height - 1,
+                height: rfc0032_block_number - HARDFORK_DELAY_WINDOW - 1,
                 expected_result: Ok(vm0_tx_cycles),
             },
             CaseParams {
                 id: 1,
                 type_script_hash_type: ScriptHashType::Type,
-                node_tip: fork_switch_height - 1,
+                height: rfc0032_block_number - HARDFORK_DELAY_WINDOW - 1,
                 expected_result: Ok(vm0_tx_cycles),
             },
             CaseParams {
                 id: 2,
                 type_script_hash_type: ScriptHashType::Data1,
-                node_tip: fork_switch_height - 1,
+                height: rfc0032_block_number - HARDFORK_DELAY_WINDOW - 1,
                 expected_result: Err(ERROR_INVALID_VM_VERSION.to_string()),
             },
             CaseParams {
                 id: 3,
                 type_script_hash_type: ScriptHashType::Data,
-                node_tip: fork_switch_height,
+                height: rfc0032_block_number + HARDFORK_DELAY_WINDOW + 1,
                 expected_result: Ok(vm0_tx_cycles),
             },
             CaseParams {
                 id: 4,
                 type_script_hash_type: ScriptHashType::Type,
-                node_tip: fork_switch_height,
+                height: rfc0032_block_number + HARDFORK_DELAY_WINDOW + 1,
                 expected_result: Ok(vm1_tx_cycles),
             },
             CaseParams {
                 id: 5,
                 type_script_hash_type: ScriptHashType::Data1,
-                node_tip: fork_switch_height,
+                height: rfc0032_block_number + HARDFORK_DELAY_WINDOW + 1,
                 expected_result: Ok(vm1_tx_cycles),
             },
         ]
