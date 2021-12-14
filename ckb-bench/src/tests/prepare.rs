@@ -30,6 +30,7 @@ fn test_prepare() {
         .join(",");
     let node = nodes.get_node("node2021_1");
     let n_users = 10;
+    let cells_per_user = 1;
     let capacity_per_cell = 7100000000;
     let genesis_block = node.get_block_by_number(0);
     let owner_byte32_privkey = {
@@ -44,10 +45,27 @@ fn test_prepare() {
 
     {
         // Mine some blocks
-        node.mine(20);
+        node.mine(50);
         nodes.p2p_connect();
         nodes.waiting_for_sync().expect("nodes should be synced");
     }
+
+    // Spawn mining blocks at background
+    let _miner_guard = {
+        let matches = clap_app().get_matches_from(vec![
+            "./target/debug/ckb-bench",
+            "miner",
+            "--n-blocks",
+            "0",
+            "--mining-interval-ms",
+            "1000",
+            "--rpc-urls",
+            &raw_nodes_urls,
+        ]);
+        ::std::thread::spawn(move || {
+            entrypoint(matches);
+        })
+    };
 
     {
         // Dispatch capacity to users
@@ -62,6 +80,8 @@ fn test_prepare() {
             &node.working_dir().display().to_string(),
             "--n-users",
             n_users.to_string().as_str(),
+            "--cells-per-user",
+            cells_per_user.to_string().as_str(),
             "--capacity-per-cell",
             capacity_per_cell.to_string().as_str(),
             "--rpc-urls",

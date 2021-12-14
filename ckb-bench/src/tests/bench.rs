@@ -11,7 +11,6 @@ use std::thread::spawn;
 
 #[test]
 fn test_bench() {
-    let _logger = init_logger();
     let n_users = 1000usize;
     let cells_per_user = 2;
     let capacity_per_cell = 7100000000u64;

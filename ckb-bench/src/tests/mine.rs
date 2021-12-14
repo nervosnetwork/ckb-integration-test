@@ -32,7 +32,7 @@ fn test_mine() {
             "miner",
             "--n-blocks",
             "100",
-            "--block-time-ms",
+            "--mining-interval-ms",
             "1",
             "--rpc-urls",
             &raw_nodes_urls,
