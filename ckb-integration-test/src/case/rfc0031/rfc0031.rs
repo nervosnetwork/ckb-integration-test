@@ -8,6 +8,8 @@ use ckb_testkit::ckb_types::{
     prelude::*,
 };
 
+const RFC0031_BLOCK_NUMBER: BlockNumber = 3000;
+
 /// ```text
 /// ┌─────────────────────┬───────────────────────┬───────────────────────┐
 /// │                     │                       │                       │
@@ -54,97 +56,139 @@ impl Case for RFC0031 {
         let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0031_EPOCH_NUMBER);
         node2021.mine_to(fork_switch_height - 6);
 
-        let cases = vec![
-            (0, None, Ok(()), Ok(())),
-            (1, Some(0), Err(ERROR_UNKNOWN_FIELDS), Err(ERROR_EMPTY_EXT)),
-            (2, Some(1), Err(ERROR_UNKNOWN_FIELDS), Ok(())),
-            (3, Some(16), Err(ERROR_UNKNOWN_FIELDS), Ok(())),
-            (4, Some(32), Err(ERROR_UNKNOWN_FIELDS), Ok(())),
-            (5, Some(64), Err(ERROR_UNKNOWN_FIELDS), Ok(())),
-            (6, Some(96), Err(ERROR_UNKNOWN_FIELDS), Ok(())),
-            (7, Some(97), Err(ERROR_UNKNOWN_FIELDS), Err(ERROR_MAX_LIMIT)),
-        ];
-        for (
-            case_id,
-            extension_size,
-            expected_result_before_switch,
-            expected_result_after_switch,
-        ) in cases
-        {
-            run_case_before_switch(
-                node2021,
-                fork_switch_height,
-                case_id,
-                extension_size,
-                expected_result_before_switch,
-            );
-            run_case_after_switch(
-                node2021,
-                fork_switch_height,
-                case_id,
-                extension_size,
-                expected_result_after_switch,
+        for case in self.cases_params() {
+            let node = node2021.clone_node(&format!("case-{}-node", case.id));
+            node.mine_to(case.height - 1);
+            let block = self.build_block(&node, case.extension_size);
+            let actual_result = node
+                .rpc_client()
+                .submit_block("".to_owned(), block.data().into())
+                .map(|_| ());
+            assert_result_eq!(
+                case.expected_result,
+                actual_result,
+                "case.id: {}, node.log: {}",
+                case.id,
+                node.log_path().to_string_lossy()
             );
         }
     }
 }
 
-fn build_block(node: &Node, extension_size: Option<usize>) -> BlockView {
-    let template = node.rpc_client().get_block_template(None, None, None);
-    packed::Block::from(template)
-        .as_advanced_builder()
-        .extension(extension_size.map(|s| vec![0u8; s].pack()))
-        .build()
+struct CaseParams {
+    id: usize,
+    extension_size: Option<usize>,
+    height: BlockNumber,
+    expected_result: Result<(), &'static str>,
 }
 
-fn run_case_before_switch(
-    node2021: &Node,
-    fork_switch_height: BlockNumber,
-    case_id: usize,
-    extension_size: Option<usize>,
-    expected_result_before_switch: Result<(), &str>,
-) {
-    let node = node2021.clone_node(&format!("case-{}-node2021-before-switch", case_id));
+impl RFC0031 {
+    fn build_block(&self, node: &Node, extension_size: Option<usize>) -> BlockView {
+        let template = node.rpc_client().get_block_template(None, None, None);
+        packed::Block::from(template)
+            .as_advanced_builder()
+            .extension(extension_size.map(|s| vec![0u8; s].pack()))
+            .build()
+    }
 
-    node.mine_to(fork_switch_height - 2);
-    let block = build_block(&node, extension_size);
-
-    let actual_result_before_switch = node
-        .rpc_client()
-        .submit_block("".to_owned(), block.data().into())
-        .map(|_| ());
-    assert_result_eq!(
-        expected_result_before_switch,
-        actual_result_before_switch,
-        "case-{} expected_result_before_switch: {:?}, actual_result_before_switch: {:?}",
-        case_id,
-        expected_result_before_switch,
-        actual_result_before_switch,
-    );
-}
-
-fn run_case_after_switch(
-    node2021: &Node,
-    fork_switch_height: BlockNumber,
-    case_id: usize,
-    extension_size: Option<usize>,
-    expected_result_after_switch: Result<(), &str>,
-) {
-    let node = node2021.clone_node(&format!("case-{}-node2021-after-switch", case_id));
-
-    node.mine_to(fork_switch_height - 1);
-    let block = build_block(&node, extension_size);
-
-    let actual_result_after_switch = node
-        .rpc_client()
-        .submit_block("".to_owned(), block.data().into())
-        .map(|_| ());
-    assert_result_eq!(
-        expected_result_after_switch,
-        actual_result_after_switch,
-        "case-{} expected_result_after_switch: {:?}, actual_result_after_switch: {:?}",
-        case_id,
-        expected_result_after_switch,
-        actual_result_after_switch,
-    );
+    fn cases_params(&self) -> Vec<CaseParams> {
+        vec![
+            CaseParams {
+                id: 0,
+                extension_size: None,
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 1,
+                extension_size: Some(0),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 2,
+                extension_size: Some(1),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 3,
+                extension_size: Some(16),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 4,
+                extension_size: Some(32),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 5,
+                extension_size: Some(64),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 6,
+                extension_size: Some(96),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 7,
+                extension_size: Some(97),
+                height: RFC0031_BLOCK_NUMBER - 1,
+                expected_result: Err(ERROR_UNKNOWN_FIELDS),
+            },
+            CaseParams {
+                id: 8,
+                extension_size: None,
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 9,
+                extension_size: Some(0),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Err(ERROR_EMPTY_EXT),
+            },
+            CaseParams {
+                id: 10,
+                extension_size: Some(1),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 11,
+                extension_size: Some(16),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 12,
+                extension_size: Some(32),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 13,
+                extension_size: Some(64),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 14,
+                extension_size: Some(96),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 15,
+                extension_size: Some(97),
+                height: RFC0031_BLOCK_NUMBER,
+                expected_result: Err(ERROR_MAX_LIMIT),
+            },
+        ]
+    }
 }

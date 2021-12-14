@@ -5,14 +5,13 @@
 // Check the connections via RPC `get_peers`
 
 use crate::case::{Case, CaseOptions};
-use crate::util::calc_epoch_start_number;
 use crate::{CKB2019, CKB2021};
+use ckb_testkit::ckb_types::core::BlockNumber;
 use ckb_testkit::util::wait_until;
 use ckb_testkit::Nodes;
 use ckb_testkit::{Node, NodeOptions};
-use ckb_types::core::EpochNumber;
 
-const RFC0035_EPOCH_NUMBER: EpochNumber = 3;
+const RFC0035_BLOCK_NUMBER: BlockNumber = 3000;
 
 pub struct RFC0035V2021Connection;
 
@@ -51,13 +50,6 @@ impl Case for RFC0035V2021Connection {
                     chain_spec: "testdata/spec/ckb2021",
                     app_config: "testdata/config/ckb2021",
                 },
-                // NodeOptions {
-                //     node_name: String::from("node2021_non_hardfork"),
-                //     ckb_binary: CKB2021.read().unwrap().clone(),
-                //     initial_database: "testdata/db/Epoch2V2TestData",
-                //     chain_spec: "testdata/spec/non_hardfork_2021",
-                //     app_config: "testdata/config/ckb2021",
-                // },
             ]
             .into_iter()
             .collect(),
@@ -65,13 +57,16 @@ impl Case for RFC0035V2021Connection {
     }
 
     fn run(&self, nodes: Nodes) {
+        let rfc0035_activated_number = RFC0035_BLOCK_NUMBER - 1;
+        let rfc0035_non_activated_number = rfc0035_activated_number - 1;
+
         let node2021 = nodes.get_node("node2021");
-        node2021.mine_to(calc_epoch_start_number(node2021, RFC0035_EPOCH_NUMBER) - 1);
+        node2021.mine_to(rfc0035_non_activated_number);
         nodes
             .waiting_for_sync()
-            .expect("nodes should be synced before rfc0234.switch");
+            .expect("nodes should be synced before rfc0035 activated");
 
-        node2021.mine_to(calc_epoch_start_number(node2021, RFC0035_EPOCH_NUMBER));
+        node2021.mine_to(rfc0035_activated_number);
         let disconnect_different_version_nodes = wait_until(20, || {
             nodes.nodes().all(|node| {
                 let local_node_info = node.rpc_client().local_node_info();

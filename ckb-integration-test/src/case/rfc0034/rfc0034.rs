@@ -1,10 +1,10 @@
 use super::{ERROR_INVALID_ECALL, RFC0034_EPOCH_NUMBER};
 use crate::preclude::*;
-use crate::util::calc_epoch_start_number;
 use crate::util::deployer::Deployer;
+use crate::util::estimate_start_number_of_epoch;
 use ckb_exec_params::ExecParams;
 use ckb_testkit::assert_result_eq;
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::{Capacity, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{Bytes, CellDep, CellInput, CellOutput, OutPoint, Script},
     prelude::*,
@@ -93,7 +93,7 @@ impl Case for RFC0034 {
         let node2021 = nodes.get_node("node2021");
 
         // Make sure the VM1 is activated
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0034_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0034_EPOCH_NUMBER);
         node2021.mine_to(fork_switch_height + 10);
 
         // Deploy contract cells

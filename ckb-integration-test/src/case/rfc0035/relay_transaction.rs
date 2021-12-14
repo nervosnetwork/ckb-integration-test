@@ -1,13 +1,16 @@
 use super::RFC0035_EPOCH_NUMBER;
 use crate::{
     preclude::*,
-    util::{calc_epoch_start_number, v0_100, v0_43, Connector},
+    util::{estimate_start_number_of_epoch, v0_100, v0_43, },
 };
-use ckb_jsonrpc_types::Consensus;
-use ckb_network::SupportProtocols;
+use ckb_testkit::connector::{
+    ConnectorBuilder,Connector, SimpleServiceHandler, SimpleProtocolHandler, SharedState
+};
+use ckb_testkit::ckb_jsonrpc_types::Consensus;
+use ckb_testkit::ckb_network::SupportProtocols;
 use ckb_testkit::util::wait_until;
 use ckb_testkit::SYSTEM_CELL_ALWAYS_SUCCESS_INDEX;
-use ckb_types::{
+use ckb_testkit::ckb_types::{
     core::{
         cell::CellMeta, BlockNumber, Cycle, ScriptHashType, TransactionBuilder, TransactionView,
     },
@@ -133,7 +136,7 @@ impl Case for RFC0035RelayTransaction {
         let node2021 = nodes.get_node("node2021");
         node2021.mine(13);
 
-        let fork_switch_height = calc_epoch_start_number(node2021, RFC0035_EPOCH_NUMBER);
+        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0035_EPOCH_NUMBER);
 
         // Prepare a cycles-consystency input
         let input = {

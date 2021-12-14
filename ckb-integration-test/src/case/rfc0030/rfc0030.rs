@@ -1,9 +1,6 @@
-use super::{ERROR_IMMATURE, ERROR_INVALID_SINCE, RFC0030_EPOCH_NUMBER};
+use super::{ERROR_IMMATURE, ERROR_INVALID_SINCE};
 use crate::preclude::*;
-use crate::util::{
-    estimate_start_number_of_epoch,
-    run_case_helper::{run_case_after_switch, run_case_before_switch},
-};
+use crate::util::estimate_start_number_of_epoch;
 use ckb_testkit::ckb_types::{
     core::{BlockNumber, Capacity, EpochNumberWithFraction, TransactionBuilder, TransactionView},
     packed::{CellInput, CellOutput, OutPoint},
@@ -13,6 +10,13 @@ use ckb_testkit::util::{
     since_from_absolute_epoch_number_with_fraction, since_from_relative_epoch_number_with_fraction,
 };
 use ckb_testkit::{assert_result_eq, BuildInstruction};
+
+#[derive(Debug)]
+struct CaseParams {
+    id: usize,
+    since: u64,
+    expected_result: Result<EpochNumberWithFraction, &'static str>,
+}
 
 /// ## Note
 ///
@@ -131,8 +135,6 @@ impl Case for RFC0030 {
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
 
-        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0030_EPOCH_NUMBER);
-
         // Construct input out point which
         // `input.tx_info.block.epoch == EpochNumberWithFraction(1, 0, 1000)
         assert!(node2021.get_tip_block().epoch() <= EpochNumberWithFraction::new(1, 0, 1000));
@@ -152,368 +154,428 @@ impl Case for RFC0030 {
             OutPoint::new(tip_cellbase_hash, 0)
         };
 
-        let cases: Vec<(
-            usize,
-            u64,
-            Result<EpochNumberWithFraction, &str>,
-            Result<EpochNumberWithFraction, &str>,
-        )> = vec![
-            (
-                0,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 0, 0),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-            ),
-            (
-                1,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 1, 0),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                2,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 0, 1),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-            ),
-            (
-                3,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(1, 1, 1),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                4,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(1, 2, 1),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                5,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 1, 2),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(
-                    2,
-                    1000 * 1 / 2,
-                    1000,
-                )),
-                Ok(EpochNumberWithFraction::new_unchecked(
-                    2,
-                    1000 * 1 / 2,
-                    1000,
-                )),
-            ),
-            (
-                6,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(1, 0, 0),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-            ),
-            (
-                7,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(1, 1, 0),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                8,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(1, 0, 1),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-            ),
-            (
-                9,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(0, 1, 1),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                10,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(0, 5, 4),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 250, 1000)),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                11,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(0, 1, 2),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(1, 500, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(1, 500, 1000)),
-            ),
-            (
-                12,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 999, 1000),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
-            ),
-            (
-                13,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(3, 0, 1000),
-                ),
-                Err(ERROR_IMMATURE),
-                Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
-            ),
-            (
-                14,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(3, 0, 0),
-                ),
-                Err(ERROR_IMMATURE),
-                Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
-            ),
-            (
-                15,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(3, 0, 1),
-                ),
-                Err(ERROR_IMMATURE),
-                Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
-            ),
-            (
-                16,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(3, 1, 0),
-                ),
-                Err(ERROR_IMMATURE),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                17,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(3, 1, 1),
-                ),
-                Err(ERROR_IMMATURE),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                18,
-                since_from_absolute_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(3, 1001, 1000),
-                ),
-                Err(ERROR_IMMATURE),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                19,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(1, 999, 1000),
-                ),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
-                Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
-            ),
-            (
-                20,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 0, 1000),
-                ),
-                Err(ERROR_IMMATURE),
-                Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
-            ),
-            (
-                21,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 0, 0),
-                ),
-                Err(ERROR_IMMATURE),
-                Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
-            ),
-            (
-                22,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 0, 1),
-                ),
-                Err(ERROR_IMMATURE),
-                Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
-            ),
-            (
-                23,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 1, 0),
-                ),
-                Err(ERROR_IMMATURE),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                24,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 1, 1),
-                ),
-                Err(ERROR_IMMATURE),
-                Err(ERROR_INVALID_SINCE),
-            ),
-            (
-                25,
-                since_from_relative_epoch_number_with_fraction(
-                    EpochNumberWithFraction::new_unchecked(2, 1001, 1000),
-                ),
-                Err(ERROR_IMMATURE),
-                Err(ERROR_INVALID_SINCE),
-            ),
-        ];
+        for case in self.cases_params() {
+            let tx = build_transaction(node2021, &input_out_point, case.since);
+            if let Ok(expected_mature_epoch) = case.expected_result {
+                let node = node2021.clone_node(&format!("case-{}-node2021", case.id));
+                let mature_height = epoch_to_height(&node, expected_mature_epoch);
+                let immature_height = mature_height - 1;
+                let immature_result = node.build_according_to_instructions(
+                    immature_height,
+                    vec![
+                        BuildInstruction::Propose {
+                            proposal_short_id: tx.proposal_short_id(),
+                            template_number: immature_height - 2,
+                        },
+                        BuildInstruction::Commit {
+                            transaction: tx.clone(),
+                            template_number: immature_height,
+                        },
+                    ],
+                );
+                assert_result_eq!(
+                    Result::<(), &str>::Err(ERROR_IMMATURE),
+                    immature_result,
+                    "case.id: {}, node.log: {}",
+                    case.id,
+                    node.log_path().to_string_lossy()
+                );
 
-        for (case_id, since, expected_result_before_fork, expected_result_after_fork) in cases {
-            let tx = build_transaction(node2021, &input_out_point, since);
-
-            // Before fork
-            {
-                if let Ok(expected_mature_epoch) = expected_result_before_fork {
-                    {
-                        let node =
-                            node2021.clone_node(&format!("case-{}-node2021-before-fork", case_id));
-                        let mature_height = epoch_to_height(&node, expected_mature_epoch);
-                        let immature_height = mature_height - 1;
-                        let result = node.build_according_to_instructions(
-                            immature_height,
-                            vec![
-                                BuildInstruction::Propose {
-                                    proposal_short_id: tx.proposal_short_id(),
-                                    template_number: immature_height - 2,
-                                },
-                                BuildInstruction::Commit {
-                                    transaction: tx.clone(),
-                                    template_number: immature_height,
-                                },
-                            ],
-                        );
-                        assert_result_eq!(Result::<(), &str>::Err(ERROR_IMMATURE), result,);
-                    }
-
-                    {
-                        let node =
-                            node2021.clone_node(&format!("case-{}-node2021-before-fork", case_id));
-                        let mature_height = epoch_to_height(&node, expected_mature_epoch);
-                        let result = node.build_according_to_instructions(
-                            mature_height,
-                            vec![
-                                // BuildInstruction::SendTransaction {
-                                //     transaction: tx.clone(),
-                                //     template_number: mature_height - 2,
-                                // },
-                                BuildInstruction::Propose {
-                                    proposal_short_id: tx.proposal_short_id(),
-                                    template_number: mature_height - 2,
-                                },
-                                BuildInstruction::Commit {
-                                    transaction: tx.clone(),
-                                    template_number: mature_height,
-                                },
-                            ],
-                        );
-                        assert_eq!(Result::<(), String>::Ok(()), result,);
-                    }
-                } else {
-                    run_case_before_switch(
-                        node2021,
-                        fork_switch_height,
-                        case_id,
-                        vec![tx.clone()],
-                        expected_result_before_fork.map(|_| ()),
-                    );
-                }
-            }
-
-            // After fork
-            {
-                if expected_result_before_fork.is_ok() && expected_result_after_fork.is_ok() {
-                    let node =
-                        node2021.clone_node(&format!("case-{}-node2021-after-fork", case_id));
-                    let result = node.build_according_to_instructions(
-                        fork_switch_height,
-                        vec![
-                            BuildInstruction::Propose {
-                                proposal_short_id: tx.proposal_short_id(),
-                                template_number: fork_switch_height - 2,
-                            },
-                            BuildInstruction::Commit {
-                                transaction: tx.clone(),
-                                template_number: fork_switch_height,
-                            },
-                        ],
-                    );
-                    assert_result_eq!(Result::<(), &str>::Ok(()), result,);
-                } else {
-                    if let Ok(expected_mature_epoch) = expected_result_after_fork {
-                        {
-                            let node = node2021
-                                .clone_node(&format!("case-{}-node2021-after-fork", case_id));
-                            let mature_height = epoch_to_height(&node, expected_mature_epoch);
-                            let immature_height = mature_height - 1;
-                            let result = node.build_according_to_instructions(
-                                immature_height,
-                                vec![
-                                    BuildInstruction::Propose {
-                                        proposal_short_id: tx.proposal_short_id(),
-                                        template_number: immature_height - 2,
-                                    },
-                                    BuildInstruction::Commit {
-                                        transaction: tx.clone(),
-                                        template_number: immature_height,
-                                    },
-                                ],
-                            );
-                            assert_result_eq!(Result::<(), &str>::Err(ERROR_IMMATURE), result,);
-                        }
-
-                        {
-                            let node = node2021
-                                .clone_node(&format!("case-{}-node2021-after-fork", case_id));
-                            let mature_height = epoch_to_height(&node, expected_mature_epoch);
-                            let result = node.build_according_to_instructions(
-                                mature_height,
-                                vec![
-                                    // BuildInstruction::SendTransaction {
-                                    //     transaction: tx.clone(),
-                                    //     template_number: mature_height - 2,
-                                    // },
-                                    BuildInstruction::Propose {
-                                        proposal_short_id: tx.proposal_short_id(),
-                                        template_number: mature_height - 2,
-                                    },
-                                    BuildInstruction::Commit {
-                                        transaction: tx.clone(),
-                                        template_number: mature_height,
-                                    },
-                                ],
-                            );
-                            assert_eq!(Result::<(), String>::Ok(()), result,);
-                        }
-                    } else {
-                        run_case_after_switch(
-                            node2021,
-                            fork_switch_height,
-                            case_id,
-                            vec![tx.clone()],
-                            expected_result_after_fork.map(|_| ()),
-                        );
-                    }
-                }
+                let mature_result = node.build_according_to_instructions(
+                    mature_height,
+                    vec![BuildInstruction::Commit {
+                        transaction: tx.clone(),
+                        template_number: mature_height,
+                    }],
+                );
+                assert_eq!(
+                    Result::<(), String>::Ok(()),
+                    mature_result,
+                    "case.id: {}, node.log: {}",
+                    case.id,
+                    node.log_path().to_string_lossy()
+                );
             }
         }
+    }
+}
+
+impl RFC0030 {
+    fn cases_params(&self) -> Vec<CaseParams> {
+        vec![
+            CaseParams {
+                id: 0,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 1,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 2,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 3,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 1, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 4,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 2, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 5,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 2),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(
+                    2,
+                    1000 * 1 / 2,
+                    1000,
+                )),
+            },
+            CaseParams {
+                id: 6,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 0, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 7,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 1, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 8,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 0, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 9,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(0, 1, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 10,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(0, 5, 4),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 250, 1000)),
+            },
+            CaseParams {
+                id: 11,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(0, 1, 2),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(1, 500, 1000)),
+            },
+            CaseParams {
+                id: 12,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 999, 1000),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
+            },
+            CaseParams {
+                id: 13,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 0, 1000),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 14,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 0, 0),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 15,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 0, 1),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 16,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 1, 0),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 17,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 1, 1),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 18,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 1001, 1000),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 19,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 999, 1000),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
+            },
+            CaseParams {
+                id: 20,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 1000),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 21,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 0),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 22,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 1),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 23,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 0),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 24,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 1),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 25,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1001, 1000),
+                ),
+                expected_result: Err(ERROR_IMMATURE),
+            },
+            CaseParams {
+                id: 0,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 1,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 0),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 2,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 3,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 1, 1),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 4,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 2, 1),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 5,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 2),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(
+                    2,
+                    1000 * 1 / 2,
+                    1000,
+                )),
+            },
+            CaseParams {
+                id: 6,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 0, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 7,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 1, 0),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 8,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 0, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 0, 1000)),
+            },
+            CaseParams {
+                id: 9,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(0, 1, 1),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 10,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(0, 5, 4),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 11,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(0, 1, 2),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(1, 500, 1000)),
+            },
+            CaseParams {
+                id: 12,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 999, 1000),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
+            },
+            CaseParams {
+                id: 13,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 0, 1000),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
+            },
+            CaseParams {
+                id: 14,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 0, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
+            },
+            CaseParams {
+                id: 15,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 0, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
+            },
+            CaseParams {
+                id: 16,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 1, 0),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 17,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 1, 1),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 18,
+                since: since_from_absolute_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(3, 1001, 1000),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 19,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(1, 999, 1000),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(2, 999, 1000)),
+            },
+            CaseParams {
+                id: 20,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 1000),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
+            },
+            CaseParams {
+                id: 21,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 0),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
+            },
+            CaseParams {
+                id: 22,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 0, 1),
+                ),
+                expected_result: Ok(EpochNumberWithFraction::new_unchecked(3, 0, 1000)),
+            },
+            CaseParams {
+                id: 23,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 0),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 24,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1, 1),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+            CaseParams {
+                id: 25,
+                since: since_from_relative_epoch_number_with_fraction(
+                    EpochNumberWithFraction::new_unchecked(2, 1001, 1000),
+                ),
+                expected_result: Err(ERROR_INVALID_SINCE),
+            },
+        ]
     }
 }
 

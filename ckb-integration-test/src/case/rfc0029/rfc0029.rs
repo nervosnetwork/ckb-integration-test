@@ -1,15 +1,26 @@
-use super::{ERROR_DUPLICATE_CELL_DEPS, ERROR_MULTIPLE_MATCHES, RFC0029_EPOCH_NUMBER};
+use super::{
+    ERROR_DUPLICATE_CELL_DEPS, ERROR_MULTIPLE_MATCHES, RFC0029_BLOCK_NUMBER, RFC0029_EPOCH_NUMBER,
+};
 use crate::preclude::*;
 use crate::util::deployer::Deployer;
-use crate::util::estimate_start_number_of_epoch;
-use crate::util::run_case_helper::{run_case_after_switch, run_case_before_switch};
 use ckb_testkit::ckb_types::{
     core::{
-        cell::CellMeta, Capacity, DepType, ScriptHashType, TransactionBuilder, TransactionView,
+        cell::CellMeta, BlockNumber, Capacity, DepType, ScriptHashType, TransactionBuilder,
+        TransactionView,
     },
     packed::{Byte32, CellDep, CellInput, CellOutput, OutPointVec, Script},
     prelude::*,
 };
+use ckb_testkit::{assert_result_eq, BuildInstruction};
+
+#[derive(Debug)]
+struct CaseParams {
+    id: usize,
+    height: BlockNumber,
+    script_hash_type: ScriptHashType,
+    cell_deps: Vec<&'static str>,
+    expected_result: Result<(), &'static str>,
+}
 
 /// ### Convention
 ///
@@ -29,7 +40,7 @@ use ckb_testkit::ckb_types::{
 /// ```text
 /// ┌────────┬────────────┬────────────────────────────────────┬────────────────────────┬───────────────────────┐
 /// │        │            │                                    │                        │                       │
-/// │    id  │   hash_type│    cell_deps                       │  2019                  │ 2019                  │
+/// │    id  │   hash_type│    cell_deps                       │  2019                  │ 2021                  │
 /// ├────────┼────────────┼────────────────────────────────────┼────────────────────────┼───────────────────────┤
 /// │     0  │    "data"  │    [a1]                            │  Ok                    │ Ok                    │
 /// ├────────┼────────────┼────────────────────────────────────┼────────────────────────┼───────────────────────┤
@@ -85,7 +96,6 @@ use ckb_testkit::ckb_types::{
 /// │        │            │                                    │                        │                       │
 /// └────────┴────────────┴────────────────────────────────────┴────────────────────────┴───────────────────────┘
 /// ```
-
 pub struct RFC0029;
 
 impl Case for RFC0029 {
@@ -106,7 +116,6 @@ impl Case for RFC0029 {
 
     fn run(&self, nodes: Nodes) {
         let node2021 = nodes.get_node("node2021");
-        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0029_EPOCH_NUMBER);
 
         // We use this as type script of our deployed cells,
         // so that we can reference it via `ScriptHashType::Type`
@@ -251,229 +260,467 @@ impl Case for RFC0029 {
         // Assert the current tip is lower than fork switch height
         assert!(node2021.get_tip_block().epoch().number() < RFC0029_EPOCH_NUMBER);
 
-        // [(
-        //    case_id,
-        //    script.hash_type,
-        //    cell_deps,
-        //    expected_result_before_switch,
-        //    expected_result_after_switch
-        // )]
-        let cases = vec![
-            (0, ScriptHashType::Data, vec!["a1"], Ok(()), Ok(())),
-            (
-                1,
-                ScriptHashType::Data,
-                vec!["a1", "a1"],
-                Err(ERROR_DUPLICATE_CELL_DEPS),
-                Err(ERROR_DUPLICATE_CELL_DEPS),
-            ),
-            (2, ScriptHashType::Data, vec!["a1", "a2"], Ok(()), Ok(())),
-            (3, ScriptHashType::Data, vec!["a1", "b1"], Ok(()), Ok(())),
-            (4, ScriptHashType::Data, vec!["group_a1"], Ok(()), Ok(())),
-            (5, ScriptHashType::Data, vec!["group_a1_a1"], Ok(()), Ok(())),
-            (6, ScriptHashType::Data, vec!["group_a1_a2"], Ok(()), Ok(())),
-            (7, ScriptHashType::Data, vec!["group_a1_b1"], Ok(()), Ok(())),
-            (
-                8,
-                ScriptHashType::Data,
-                vec!["group_a1", "a1"],
-                Ok(()),
-                Ok(()),
-            ),
-            (
-                9,
-                ScriptHashType::Data,
-                vec!["group_a1", "a2"],
-                Ok(()),
-                Ok(()),
-            ),
-            (
-                10,
-                ScriptHashType::Data,
-                vec!["group_a1", "b1"],
-                Ok(()),
-                Ok(()),
-            ),
-            (
-                11,
-                ScriptHashType::Data,
-                vec!["group_a1", "group_a2"],
-                Ok(()),
-                Ok(()),
-            ),
-            (
-                12,
-                ScriptHashType::Data,
-                vec!["group_a1", "group_b1"],
-                Ok(()),
-                Ok(()),
-            ),
-            (13, ScriptHashType::Type, vec!["a1"], Ok(()), Ok(())),
-            (
-                14,
-                ScriptHashType::Type,
-                vec!["a1", "a1"],
-                Err(ERROR_DUPLICATE_CELL_DEPS),
-                Err(ERROR_DUPLICATE_CELL_DEPS),
-            ),
-            (
-                15,
-                ScriptHashType::Type,
-                vec!["a1", "a2"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Ok(()),
-            ),
-            (
-                16,
-                ScriptHashType::Type,
-                vec!["a1", "b1"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Err(ERROR_MULTIPLE_MATCHES),
-            ),
-            (17, ScriptHashType::Type, vec!["group_a1"], Ok(()), Ok(())),
-            (
-                18,
-                ScriptHashType::Type,
-                vec!["group_a1_a1"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Ok(()),
-            ),
-            (
-                19,
-                ScriptHashType::Type,
-                vec!["group_a1_a2"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Ok(()),
-            ),
-            (
-                20,
-                ScriptHashType::Type,
-                vec!["group_a1_b1"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Err(ERROR_MULTIPLE_MATCHES),
-            ),
-            (
-                21,
-                ScriptHashType::Type,
-                vec!["group_a1", "a1"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Ok(()),
-            ),
-            (
-                22,
-                ScriptHashType::Type,
-                vec!["group_a1", "a2"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Ok(()),
-            ),
-            (
-                23,
-                ScriptHashType::Type,
-                vec!["group_a1", "b1"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Err(ERROR_MULTIPLE_MATCHES),
-            ),
-            (
-                24,
-                ScriptHashType::Type,
-                vec!["group_a1", "group_a2"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Ok(()),
-            ),
-            (
-                25,
-                ScriptHashType::Type,
-                vec!["group_a1", "group_b1"],
-                Err(ERROR_MULTIPLE_MATCHES),
-                Err(ERROR_MULTIPLE_MATCHES),
-            ),
-        ];
         let input = node2021.get_spendable_always_success_cells()[0].to_owned();
-        for (
-            case_id,
-            script_hash_type,
-            cell_deps,
-            expected_result_before_switch,
-            expected_result_after_switch,
-        ) in cases
-        {
-            let tx = build_transaction(
+        for case in self.cases_params() {
+            let node = {
+                let node = node2021.clone_node(&format!("case-{}-node", case.id));
+                node.pull_node(node2021).unwrap();
+                node
+            };
+            let tx = self.build_transaction(
                 &code_hash_via_data_hash,
                 &code_hash_via_type_hash,
                 node2021,
                 &deployer,
                 &input,
-                script_hash_type,
-                cell_deps,
+                case.script_hash_type,
+                case.cell_deps,
             );
-
-            run_case_before_switch(
-                node2021,
-                fork_switch_height,
-                case_id,
-                vec![tx.clone()],
-                expected_result_before_switch,
+            let actual_result = node.build_according_to_instructions(
+                case.height,
+                vec![
+                    BuildInstruction::Propose {
+                        template_number: case.height - 2,
+                        proposal_short_id: tx.proposal_short_id(),
+                    },
+                    BuildInstruction::Commit {
+                        template_number: case.height,
+                        transaction: tx,
+                    },
+                ],
             );
-            run_case_after_switch(
-                node2021,
-                fork_switch_height,
-                case_id,
-                vec![tx.clone()],
-                expected_result_after_switch,
+            assert_result_eq!(
+                case.expected_result,
+                actual_result,
+                "case.id: {}, node.log: {}",
+                case.id,
+                node.log_path().to_string_lossy()
             );
         }
     }
 }
 
-fn build_transaction(
-    code_hash_via_data_hash: &Byte32,
-    code_hash_via_type_hash: &Byte32,
-    node: &Node,
-    deployer: &Deployer,
-    input: &CellMeta,
-    script_hash_type: ScriptHashType,
-    str_cell_deps: Vec<&str>,
-) -> TransactionView {
-    let type_ = {
-        let code_hash = match script_hash_type {
-            ScriptHashType::Data => code_hash_via_data_hash.clone(),
-            ScriptHashType::Type => code_hash_via_type_hash.clone(),
-            ScriptHashType::Data1 => unreachable!(),
-        };
-        Script::new_builder()
-            .hash_type(script_hash_type.into())
-            .code_hash(code_hash)
-            .build()
-    };
-    let output = CellOutput::new_builder()
-        .lock(node.always_success_script())
-        .type_(Some(type_).pack())
-        .build_exact_capacity(Capacity::zero())
-        .unwrap();
-    let cell_deps = {
-        let mut cell_deps = Vec::new();
-        // cell-deps for output.lock
-        cell_deps.push(node.always_success_cell_dep());
-        // cell-deps for output.type_
-        for cell_name in str_cell_deps {
-            let cell_meta = deployer.get_cell(cell_name);
-            let dep_type = if cell_name.contains("group") {
-                DepType::DepGroup
-            } else {
-                DepType::Code
+impl RFC0029 {
+    fn cases_params(&self) -> Vec<CaseParams> {
+        vec![
+            CaseParams {
+                id: 0,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 1,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1", "a1"],
+                expected_result: Err(ERROR_DUPLICATE_CELL_DEPS),
+            },
+            CaseParams {
+                id: 2,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1", "a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 3,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1", "b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 4,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 5,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 6,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1_a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 7,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1_b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 8,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 9,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 10,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 11,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "group_a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 12,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "group_b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 13,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 14,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1", "a1"],
+                expected_result: Err(ERROR_DUPLICATE_CELL_DEPS),
+            },
+            CaseParams {
+                id: 15,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1", "a2"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 16,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1", "b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 17,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 18,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1_a1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 19,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1_a2"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 20,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1_b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 21,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "a1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 22,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "a2"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 23,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 24,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "group_a2"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 25,
+                height: RFC0029_BLOCK_NUMBER - 1,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "group_b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 26,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 27,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1", "a1"],
+                expected_result: Err(ERROR_DUPLICATE_CELL_DEPS),
+            },
+            CaseParams {
+                id: 28,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1", "a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 29,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["a1", "b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 30,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 31,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 32,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1_a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 33,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1_b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 34,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 35,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 36,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 37,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "group_a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 38,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Data,
+                cell_deps: vec!["group_a1", "group_b1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 39,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 40,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1", "a1"],
+                expected_result: Err(ERROR_DUPLICATE_CELL_DEPS),
+            },
+            CaseParams {
+                id: 41,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1", "a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 42,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["a1", "b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 43,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 44,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1_a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 45,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1_a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 46,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1_b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 47,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "a1"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 48,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 49,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+            CaseParams {
+                id: 50,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "group_a2"],
+                expected_result: Ok(()),
+            },
+            CaseParams {
+                id: 51,
+                height: RFC0029_BLOCK_NUMBER,
+                script_hash_type: ScriptHashType::Type,
+                cell_deps: vec!["group_a1", "group_b1"],
+                expected_result: Err(ERROR_MULTIPLE_MATCHES),
+            },
+        ]
+    }
+
+    fn build_transaction(
+        &self,
+        code_hash_via_data_hash: &Byte32,
+        code_hash_via_type_hash: &Byte32,
+        node: &Node,
+        deployer: &Deployer,
+        input: &CellMeta,
+        script_hash_type: ScriptHashType,
+        str_cell_deps: Vec<&str>,
+    ) -> TransactionView {
+        let type_ = {
+            let code_hash = match script_hash_type {
+                ScriptHashType::Data => code_hash_via_data_hash.clone(),
+                ScriptHashType::Type => code_hash_via_type_hash.clone(),
+                ScriptHashType::Data1 => unreachable!(),
             };
-            let cell_dep = CellDep::new_builder()
-                .dep_type(dep_type.into())
-                .out_point(cell_meta.out_point)
-                .build();
-            cell_deps.push(cell_dep);
-        }
-        cell_deps
-    };
-    TransactionBuilder::default()
-        .input(CellInput::new(input.out_point.clone(), 0))
-        .output(output)
-        .output_data(Default::default())
-        .cell_deps(cell_deps)
-        .build()
+            Script::new_builder()
+                .hash_type(script_hash_type.into())
+                .code_hash(code_hash)
+                .build()
+        };
+        let output = CellOutput::new_builder()
+            .lock(node.always_success_script())
+            .type_(Some(type_).pack())
+            .build_exact_capacity(Capacity::zero())
+            .unwrap();
+        let cell_deps = {
+            let mut cell_deps = Vec::new();
+            // cell-deps for output.lock
+            cell_deps.push(node.always_success_cell_dep());
+            // cell-deps for output.type_
+            for cell_name in str_cell_deps {
+                let cell_meta = deployer.get_cell(cell_name);
+                let dep_type = if cell_name.contains("group") {
+                    DepType::DepGroup
+                } else {
+                    DepType::Code
+                };
+                let cell_dep = CellDep::new_builder()
+                    .dep_type(dep_type.into())
+                    .out_point(cell_meta.out_point)
+                    .build();
+                cell_deps.push(cell_dep);
+            }
+            cell_deps
+        };
+        TransactionBuilder::default()
+            .input(CellInput::new(input.out_point.clone(), 0))
+            .output(output)
+            .output_data(Default::default())
+            .cell_deps(cell_deps)
+            .build()
+    }
 }
