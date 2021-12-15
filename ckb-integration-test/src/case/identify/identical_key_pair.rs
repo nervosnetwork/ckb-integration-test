@@ -1,8 +1,7 @@
 use crate::preclude::*;
 use ckb_testkit::connector::{SharedState, SimpleProtocolHandler, SimpleServiceHandler};
 use ckb_testkit::{
-    assert_result_eq, ckb_network::SupportProtocols, connector::ConnectorBuilder,
-    p2p::secio::SecioKeyPair,
+    assert_result_eq, connector::ConnectorBuilder, p2p::secio::SecioKeyPair, SupportProtocols,
 };
 use std::sync::{Arc, RwLock};
 

@@ -1,4 +1,4 @@
-use ckb_channel::{unbounded, Receiver, Sender};
+use crossbeam::channel::{unbounded, Receiver, Sender};
 use p2p::{bytes::Bytes, context::SessionContext, multiaddr::Multiaddr, ProtocolId, SessionId};
 use std::collections::HashMap;
 

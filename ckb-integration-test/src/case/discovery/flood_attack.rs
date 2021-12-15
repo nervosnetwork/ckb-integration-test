@@ -3,10 +3,10 @@ use crate::preclude::*;
 use ckb_testkit::connector::{SharedState, SimpleProtocolHandler, SimpleServiceHandler};
 use ckb_testkit::{
     assert_result_eq,
-    ckb_network::SupportProtocols,
     ckb_types::{packed, prelude::*},
     connector::ConnectorBuilder,
     util::wait_until,
+    SupportProtocols,
 };
 use std::sync::{Arc, RwLock};
 

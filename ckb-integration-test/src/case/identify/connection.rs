@@ -2,9 +2,9 @@ use crate::preclude::*;
 use crate::util::{v0_100, v0_43};
 use ckb_testkit::{
     assert_result_eq,
-    ckb_network::SupportProtocols,
     ckb_types::{packed, prelude::*},
     connector::{ConnectorBuilder, SharedState, SimpleProtocolHandler, SimpleServiceHandler},
+    SupportProtocols,
 };
 use std::sync::{Arc, RwLock};
 use std::time::Duration;

@@ -1,8 +1,8 @@
 /// Util functions attached to `Connector`.
 ///
 use super::Connector;
+use super::SupportProtocols;
 use crate::Node;
-use ckb_network::SupportProtocols;
 use ckb_types::{
     core::{Cycle, TransactionView},
     packed,

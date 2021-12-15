@@ -1,15 +1,17 @@
+mod compress;
 mod extension;
 mod shared;
 mod simple_protocol_handler;
 mod simple_service_handler;
+mod support_protocols;
 
+pub use compress::{compress, decompress};
 pub use shared::SharedState;
 pub use simple_protocol_handler::SimpleProtocolHandler;
 pub use simple_service_handler::SimpleServiceHandler;
+pub use support_protocols::SupportProtocols;
 
 use crate::Node;
-use ckb_async_runtime::tokio;
-use ckb_network::SupportProtocols;
 use ckb_stop_handler::{SignalSender, StopHandler};
 use futures::prelude::*;
 use p2p::{
