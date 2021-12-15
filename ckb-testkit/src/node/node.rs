@@ -160,7 +160,7 @@ impl Node {
         } else {
             let data_path = working_dir.join("indexer");
             let store = RocksdbStore::new(&data_path.to_string_lossy());
-            Some(Indexer::new(store, 1000000, 60 * 60))
+            Some(Indexer::new(store, 1000000, 60 * 60, None))
         };
         let node_options = NodeOptions {
             node_name: rpc_url.to_string(),
@@ -224,7 +224,7 @@ impl Node {
         let indexer = {
             let data_path = self.working_dir().join("indexer");
             let store = RocksdbStore::new(&data_path.to_string_lossy());
-            Indexer::new(store, 1000000, 60 * 60)
+            Indexer::new(store, 1000000, 60 * 60, None)
         };
 
         self.consensus = Some(consensus);

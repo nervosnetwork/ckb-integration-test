@@ -8,7 +8,7 @@ mod subscribe;
 mod user;
 pub mod util;
 
-pub use connector::{Connector, ConnectorBuilder};
+pub use connector::{compress, decompress, Connector, ConnectorBuilder, SupportProtocols};
 pub use logger::LOG_TARGET;
 pub use node::{BuildInstruction, Node, NodeOptions};
 pub use nodes::Nodes;
@@ -16,7 +16,6 @@ pub use user::User;
 
 pub use ckb_crypto;
 pub use ckb_jsonrpc_types;
-pub use ckb_network;
 pub use ckb_types;
 pub use p2p;
 

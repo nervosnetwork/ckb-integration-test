@@ -1,8 +1,6 @@
+use super::compress::{compress, decompress};
 use super::SharedState;
-use ckb_network::{
-    compress::{compress, decompress},
-    SupportProtocols,
-};
+use super::SupportProtocols;
 use p2p::{
     builder::MetaBuilder as P2PMetaBuilder,
     bytes,

@@ -7,7 +7,7 @@ use ckb_testkit::connector::{
     ConnectorBuilder,Connector, SimpleServiceHandler, SimpleProtocolHandler, SharedState
 };
 use ckb_testkit::ckb_jsonrpc_types::Consensus;
-use ckb_testkit::ckb_network::SupportProtocols;
+use ckb_testkit::SupportProtocols;
 use ckb_testkit::util::wait_until;
 use ckb_testkit::SYSTEM_CELL_ALWAYS_SUCCESS_INDEX;
 use ckb_testkit::ckb_types::{
