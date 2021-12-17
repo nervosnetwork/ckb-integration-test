@@ -6,31 +6,18 @@
 #   * AWS_SECRET_KEY, required, the AWS secret key
 #   * AWS_EC2_TYPE, optional, default is c5.xlarge, the AWS EC2 type
 #   * GITHUB_TOKEN, required, GitHub API authentication token
-#   * PGHOST, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGPORT, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGUSER, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGPASSWORD, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGDATABASE, not required, postgres host to insert benchmark report to postgres in ci
+
 
 set -euo pipefail
 
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
-PGHOST=${PGHOST}
-PGPORT=${PGPORT}
-PGUSER=${PGUSER}
-PGPASSWORD=${PGPASSWORD}
-PGDATABASE=${PGDATABASE}
 GITHUB_TOKEN=${GITHUB_TOKEN}
 GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
 GITHUB_REPO=${GITHUB_REPO:-"nervosnetwork/ckb"}
-BENCHMARK_ID=${GITHUB_RUN_ID:-"$RANDOM"}
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
-STATE=${STATE:-0} #0:success,1:failed
 GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
-CKB_COMMIT_ID=${CKB_COMMIT_ID}
-CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
 
 JOB_ID=${JOB_ID:-"benchmark-$(date +'%Y-%m-%d')-in-10h"}
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -198,46 +185,31 @@ function parse_report_and_inster_to_postgres() {
       total_transactions=$(echo $LINE | awk -F '|' '{print $12}')
       total_transactions_size=$(echo $LINE | awk -F '|' '{print $13}')
       transactions_size_per_second=$(echo $LINE | awk -F '|' '{print $14}')
-
-      sql="insert into benchmark_report values("
-        sql=$sql"'$BENCHMARK_ID'"" ,"
-        sql=$sql"'$time'"" ,"
-        sql=$sql"'$GITHUB_BRANCH'"" ,"
-        sql=$sql"'$GITHUB_EVENT_NAME'"" ,"
-        sql=$sql"'$ckb_version'"" ,"
-        sql=$sql"'$CKB_COMMIT_ID'"" ,"
-        sql=$sql"'$CKB_COMMIT_TIME'"" ,"
-        sql=$sql"'$transactions_per_second'"" "
-        sql=$sql",""'$n_inout'"
-        sql=$sql",""'$n_nodes'"
-        sql=$sql",""'$delay_time_ms'"" "
-        sql=$sql",""'$average_block_time_ms'"
-        sql=$sql",""'$average_block_transactions'"
-        sql=$sql",""'$average_block_transactions_size'"
-        sql=$sql",""'$from_block_number'"" "
-        sql=$sql",""'$to_block_number'"
-        sql=$sql",""'$total_transactions'"" "
-        sql=$sql",""'$total_transactions_size'"
-        sql=$sql",""'$transactions_size_per_second'"
-      psql -c "$sql);"
+      psql -c "INSERT INTO benchmark_report (benchmark_id,time,github_branch,trigger_event,ckb_version,ckb_commit_id,ckb_commit_time, \
+               transactions_per_second,n_inout,n_nodes,delay_time_ms,average_block_time_ms,average_block_transactions,average_block_transactions_size, \
+               from_block_number,to_block_number,total_transactions,total_transactions_size,transactions_size_per_second)  \
+               VALUES ('$BENCHMARK_ID','$time','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME', \
+               '$transactions_per_second','$n_inout','$n_nodes','$delay_time_ms','$average_block_time_ms','$average_block_transactions', \
+               '$average_block_transactions_size','$from_block_number','$to_block_number','$total_transactions','$total_transactions_size','$transactions_size_per_second');"
     done < "$ANSIBLE_DIRECTORY/ckb-bench.brief.md"
   fi
 }
 
 function insert_report_to_postgres() {
+    export PGHOST=${PGHOST}
+    export PGPORT=${PGPORT}
+    export PGUSER=${PGUSER}
+    export PGPASSWORD=${PGPASSWORD}
+    export PGDATABASE=${PGDATABASE}
+    export BENCHMARK_ID=${GITHUB_RUN_ID:-"$RANDOM"}
+    export CKB_COMMIT_ID=${CKB_COMMIT_ID}
+    export CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
+    export STATE=${STATE:-0} #0:success,1:failed
     END_TIME=$(date +%Y-%m-%d' '%H:%M:%S.%6N)
     # dbname="ckbtest"
     BENCHMARK_REPORT="https://github.com/${GITHUB_REPOSITORY}actions/runs/$GITHUB_RUN_ID"
-    sql="insert into benchmark values("
-        sql=$sql"'$BENCHMARK_ID'"" ,"
-        sql=$sql"'$STATE'"" ,"
-        sql=$sql"'$START_TIME'"" "
-        sql=$sql",""'$END_TIME'"
-        sql=$sql",""'$GITHUB_BRANCH'"
-        sql=$sql",""'$GITHUB_EVENT_NAME'"
-        sql=$sql",""'$BENCHMARK_REPORT'"
-    # psql -h ${DB_HOST} -p ${DB_PORT} -U $DB_USER  -d ${dbname}  -c "$sql);"
-     psql -c "$sql);"
+    psql -c "INSERT INTO benchmark (benchmark_id,state,start_time,end_time,github_branch,trigger_event,benchmark_report)  \
+             VALUES ('$BENCHMARK_ID','$STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$BENCHMARK_REPORT');"
     parse_report_and_inster_to_postgres
 }
 

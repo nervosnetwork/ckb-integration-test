@@ -18,11 +18,6 @@ AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
 GITHUB_TOKEN=${GITHUB_TOKEN}
-PGHOST=${PGHOST}
-PGPORT=${PGPORT}
-PGUSER=${PGUSER}
-PGPASSWORD=${PGPASSWORD}
-PGDATABASE=${PGDATABASE}
 
 JOB_ID=${JOB_ID:-"sync-mainnet-$(date +'%Y-%m-%d')-in-10h"}
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
@@ -32,14 +27,10 @@ ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 TERRAFORM_DIRECTORY="$JOB_DIRECTORY/terraform"
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
-SYNC_MAINNET_ID=${GITHUB_RUN_ID:-"$RANDOM"}
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
-STATE=${STATE:-0} #0:success,1:failed
 GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
 GITHUB_REPO=${GITHUB_REPO:-"nervosnetwork/ckb"}
 GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
-CKB_COMMIT_ID=${CKB_COMMIT_ID}
-CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
 function job_setup() {
     mkdir -p $JOB_DIRECTORY
     cp -r "$(dirname "$SCRIPT_PATH")/ansible"   $JOB_DIRECTORY/ansible
@@ -197,36 +188,26 @@ function parse_report_and_inster_to_postgres() {
       speed=$(echo $LINE | awk -F '|' '{print $4}')
       tip=$(echo $LINE | awk -F '|' '{print $5}')
       hostname=$(echo $LINE | awk -F '|' '{print $6}')
-
-      sql="insert into sync_mainnet_report values("
-        sql=$sql"'$SYNC_MAINNET_ID'"" ,"
-        sql=$sql"'$time'"" ,"
-        sql=$sql"'$GITHUB_BRANCH'"" ,"
-        sql=$sql"'$GITHUB_EVENT_NAME'"" ,"
-        sql=$sql"'$ckb_version'"" ,"
-        sql=$sql"'$CKB_COMMIT_ID'"" ,"
-        sql=$sql"'$CKB_COMMIT_TIME'"" ,"
-        sql=$sql"'$time_s'"" "
-        sql=$sql",""'$speed'"
-        sql=$sql",""'$tip'"
-        sql=$sql",""'$hostname'"" "
-      psql -c "$sql);"
+      psql -c "INSERT INTO sync_mainnet_report (sync_mainnet_id,time,github_branch,trigger_event,ckb_version,ckb_commit_id,ckb_commit_time,time_s,speed,tip,hostname)  \
+             VALUES ('$SYNC_MAINNET_ID','$time','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME','$time_s','$speed','$tip','$hostname');"
     done < "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md"
   fi
 }
 
 function insert_report_to_postgres() {
-    end_time=$(date +%Y-%m-%d' '%H:%M:%S.%6N)
-    BENCHMARK_REPORT="https://github.com/${GITHUB_REPOSITORY}actions/runs/$GITHUB_RUN_ID"
-    sql="insert into sync_mainnet values("
-        sql=$sql"'$SYNC_MAINNET_ID'"" ,"
-        sql=$sql"'$STATE'"" ,"
-        sql=$sql"'$START_TIME'"" "
-        sql=$sql",""'$end_time'"
-        sql=$sql",""'$GITHUB_BRANCH'"
-        sql=$sql",""'$GITHUB_EVENT_NAME'"
-        sql=$sql",""'$BENCHMARK_REPORT'"
-    psql -c "$sql);"
+    export PGHOST=${PGHOST}
+    export PGPORT=${PGPORT}
+    export PGUSER=${PGUSER}
+    export PGPASSWORD=${PGPASSWORD}
+    export PGDATABASE=${PGDATABASE}
+    export SYNC_MAINNET_ID=${GITHUB_RUN_ID}
+    export CKB_COMMIT_ID=${CKB_COMMIT_ID}
+    export CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
+    export STATE=${STATE:-0} #0:success,1:failed
+    END_TIME=$(date +%Y-%m-%d' '%H:%M:%S.%6N)
+    SYNC_MAINNET_REPORT="https://github.com/${GITHUB_REPOSITORY}actions/runs/$GITHUB_RUN_ID"
+    psql -c "INSERT INTO sync_mainnet (sync_mainnet_id,state,start_time,end_time,github_branch,trigger_event,sync_mainnet_report)  \
+             VALUES ('$SYNC_MAINNET_ID','$STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$SYNC_MAINNET_REPORT');"
     parse_report_and_inster_to_postgres
 }
 
