@@ -6,11 +6,6 @@
 #   * AWS_SECRET_KEY, required, the AWS secret key
 #   * AWS_EC2_TYPE, optional, default is c5.xlarge, the AWS EC2 type
 #   * GITHUB_TOKEN, required, GitHub API authentication token
-#   * PGHOST, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGPORT, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGUSER, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGPASSWORD, not required, postgres host to insert benchmark report to postgres in ci
-#   * PGDATABASE, not required, postgres host to insert benchmark report to postgres in ci
 
 set -euo pipefail
 
@@ -29,7 +24,7 @@ SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
 START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
-GITHUB_REPO=${GITHUB_REPO:-"nervosnetwork/ckb"}
+GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"nervosnetwork/ckb"}
 GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
 function job_setup() {
     mkdir -p $JOB_DIRECTORY
@@ -163,7 +158,7 @@ function rust_build() {
     git -C $JOB_DIRECTORY clone \
         --branch $GITHUB_BRANCH \
         --depth 1 \
-        https://github.com/$GITHUB_REPO.git
+        https://github.com/$GITHUB_REPOSITORY.git
 
     cd $JOB_DIRECTORY/ckb
     make build
@@ -188,8 +183,8 @@ function parse_report_and_inster_to_postgres() {
       speed=$(echo $LINE | awk -F '|' '{print $4}')
       tip=$(echo $LINE | awk -F '|' '{print $5}')
       hostname=$(echo $LINE | awk -F '|' '{print $6}')
-      psql -c "INSERT INTO sync_mainnet_report (sync_mainnet_id,time,github_branch,trigger_event,ckb_version,ckb_commit_id,ckb_commit_time,time_s,speed,tip,hostname)  \
-             VALUES ('$SYNC_MAINNET_ID','$time','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME','$time_s','$speed','$tip','$hostname');"
+      psql -c "INSERT INTO sync_mainnet_report (github_run_id,time,ckb_version,ckb_commit_id,ckb_commit_time,time_s,speed,tip,hostname)  \
+             VALUES ('$GITHUB_RUN_ID','$time','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME','$time_s','$speed','$tip','$hostname');"
     done < "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md"
   fi
 }
@@ -200,14 +195,15 @@ function insert_report_to_postgres() {
     export PGUSER=${PGUSER}
     export PGPASSWORD=${PGPASSWORD}
     export PGDATABASE=${PGDATABASE}
-    export SYNC_MAINNET_ID=${GITHUB_RUN_ID}
+    export GITHUB_RUN_ID=${GITHUB_RUN_ID}
     export CKB_COMMIT_ID=${CKB_COMMIT_ID}
     export CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
-    export STATE=${STATE:-0} #0:success,1:failed
+    export GITHUB_RUN_STATE=${GITHUB_RUN_STATE:-0} #0:success,1:failed
+    export GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}
     END_TIME=$(date +%Y-%m-%d' '%H:%M:%S.%6N)
-    SYNC_MAINNET_REPORT="https://github.com/${GITHUB_REPOSITORY}actions/runs/$GITHUB_RUN_ID"
-    psql -c "INSERT INTO sync_mainnet (sync_mainnet_id,state,start_time,end_time,github_branch,trigger_event,sync_mainnet_report)  \
-             VALUES ('$SYNC_MAINNET_ID','$STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$SYNC_MAINNET_REPORT');"
+    GITHUB_RUN_LINK="https://github.com/${GITHUB_REPOSITORY}/actions/runs/$GITHUB_RUN_ID"
+    psql -c "INSERT INTO sync_mainnet (github_run_id,github_run_state,start_time,end_time,github_branch,github_trigger_event,github_run_link)  \
+             VALUES ('$GITHUB_RUN_ID','$GITHUB_RUN_STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$GITHUB_RUN_LINK');"
     parse_report_and_inster_to_postgres
 }
 
