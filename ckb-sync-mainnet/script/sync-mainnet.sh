@@ -22,7 +22,10 @@ ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
 TERRAFORM_DIRECTORY="$JOB_DIRECTORY/terraform"
 SSH_PRIVATE_KEY_PATH=$JOB_DIRECTORY/ssh/id
 SSH_PUBLIC_KEY_PATH=$JOB_DIRECTORY/ssh/id.pub
-
+START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
+GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
+GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"nervosnetwork/ckb"}
+GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
 function job_setup() {
     mkdir -p $JOB_DIRECTORY
     cp -r "$(dirname "$SCRIPT_PATH")/ansible"   $JOB_DIRECTORY/ansible
@@ -153,15 +156,55 @@ function github_add_comment() {
 
 function rust_build() {
     git -C $JOB_DIRECTORY clone \
-        --branch develop \
+        --branch $GITHUB_BRANCH \
         --depth 1 \
-        https://github.com/nervosnetwork/ckb.git
+        https://github.com/$GITHUB_REPOSITORY.git
 
     cd $JOB_DIRECTORY/ckb
     make build
 
     cd target/release
     tar czf ckb.$JOB_ID.tar.gz ckb
+}
+
+function parse_report_and_inster_to_postgres() {
+ 
+  time=$START_TIME
+  #cat *.brief.md if it exist
+  if [ [ -n "'ls $ANSIBLE_DIRECTORY/*.brief.md'" ]; then
+    cat $ANSIBLE_DIRECTORY/*.brief.md >$ANSIBLE_DIRECTORY/sync-mainnet.brief.md
+  fi
+  if [ -f "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md" ]; then
+    while read -r LINE;
+    do
+      LINE=$(echo "$LINE" | sed -e 's/\r//g')
+      ckb_version=$(echo $LINE | awk -F '|' '{print $2}')
+      time_s=$(echo $LINE | awk -F '|' '{print $3}')
+      speed=$(echo $LINE | awk -F '|' '{print $4}')
+      tip=$(echo $LINE | awk -F '|' '{print $5}')
+      hostname=$(echo $LINE | awk -F '|' '{print $6}')
+      psql -c "INSERT INTO sync_mainnet_report (github_run_id,time,ckb_version,ckb_commit_id,ckb_commit_time,time_s,speed,tip,hostname)  \
+             VALUES ('$GITHUB_RUN_ID','$time','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME','$time_s','$speed','$tip','$hostname');"
+    done < "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md"
+  fi
+}
+
+function insert_report_to_postgres() {
+    export PGHOST=${PGHOST}
+    export PGPORT=${PGPORT}
+    export PGUSER=${PGUSER}
+    export PGPASSWORD=${PGPASSWORD}
+    export PGDATABASE=${PGDATABASE}
+    export GITHUB_RUN_ID=${GITHUB_RUN_ID}
+    export CKB_COMMIT_ID=${CKB_COMMIT_ID}
+    export CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
+    export GITHUB_RUN_STATE=${GITHUB_RUN_STATE:-0} #0:success,1:failed
+    export GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}
+    END_TIME=$(date +%Y-%m-%d' '%H:%M:%S.%6N)
+    GITHUB_RUN_LINK="https://github.com/${GITHUB_REPOSITORY}/actions/runs/$GITHUB_RUN_ID"
+    psql -c "INSERT INTO sync_mainnet (github_run_id,github_run_state,start_time,end_time,github_branch,github_trigger_event,github_run_link)  \
+             VALUES ('$GITHUB_RUN_ID','$GITHUB_RUN_STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$GITHUB_RUN_LINK');"
+    parse_report_and_inster_to_postgres
 }
 
 function main() {
@@ -195,6 +238,9 @@ function main() {
             terraform_destroy
             job_clean
             ;;
+        "insert_report_to_postgres")
+          insert_report_to_postgres
+          ;;
         esac
 }
 

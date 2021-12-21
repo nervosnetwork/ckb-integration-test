@@ -7,17 +7,19 @@
 #   * AWS_EC2_TYPE, optional, default is c5.xlarge, the AWS EC2 type
 #   * GITHUB_TOKEN, required, GitHub API authentication token
 
+
 set -euo pipefail
 
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
 AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
 GITHUB_TOKEN=${GITHUB_TOKEN}
-GITHUB_BRANCH=${GITHUB_BRANCH:-"develop"}
-GITHUB_REPO=${GITHUB_REPO:-"nervosnetwork/ckb"}
+GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
+GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"nervosnetwork/ckb"}
+START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
+GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
 
-
-JOB_ID="benchmark-$(date +'%Y-%m-%d')-in-10h"
+JOB_ID=${JOB_ID:-"benchmark-$(date +'%Y-%m-%d')-in-10h"}
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 JOB_DIRECTORY="$(dirname "$SCRIPT_PATH")/job/$JOB_ID"
 ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
@@ -153,7 +155,7 @@ function rust_build() {
     git -C $JOB_DIRECTORY clone \
         --branch $GITHUB_BRANCH \
         --depth 1 \
-        https://github.com/$GITHUB_REPO.git
+        https://github.com/$GITHUB_REPOSITORY.git
 
     cd $JOB_DIRECTORY/ckb
     sed -i 's/const TWO_IN_TWO_OUT_COUNT: u64 = .*;$/const TWO_IN_TWO_OUT_COUNT: u64 = 8_000;/g'            spec/src/consensus.rs
@@ -162,6 +164,54 @@ function rust_build() {
 
     cd target/release
     tar czf ckb.$JOB_ID.tar.gz ckb
+}
+
+function parse_report_and_inster_to_postgres() {
+  time=$START_TIME
+  if [ -f "$ANSIBLE_DIRECTORY/ckb-bench.brief.md" ]; then
+    while read -r LINE;
+    do
+      LINE=$(echo "$LINE" | sed -e 's/\r//g')
+      ckb_version=$(echo $LINE | awk -F '|' '{print $2}')
+      transactions_per_second=$(echo $LINE | awk -F '|' '{print $3}')
+      n_inout=$(echo $LINE | awk -F '|' '{print $4}')
+      n_nodes=$(echo $LINE | awk -F '|' '{print $5}')
+      delay_time_ms=$(echo $LINE | awk -F '|' '{print $6}')
+      average_block_time_ms=$(echo $LINE | awk -F '|' '{print $7}')
+      average_block_transactions=$(echo $LINE | awk -F '|' '{print $8}')
+      average_block_transactions_size=$(echo $LINE | awk -F '|' '{print $9}')
+      from_block_number=$(echo $LINE | awk -F '|' '{print $10}')
+      to_block_number=$(echo $LINE | awk -F '|' '{print $11}')
+      total_transactions=$(echo $LINE | awk -F '|' '{print $12}')
+      total_transactions_size=$(echo $LINE | awk -F '|' '{print $13}')
+      transactions_size_per_second=$(echo $LINE | awk -F '|' '{print $14}')
+      psql -c "INSERT INTO benchmark_report (github_run_id,time,ckb_version,ckb_commit_id,ckb_commit_time, \
+               transactions_per_second,n_inout,n_nodes,delay_time_ms,average_block_time_ms,average_block_transactions,average_block_transactions_size, \
+               from_block_number,to_block_number,total_transactions,total_transactions_size,transactions_size_per_second)  \
+               VALUES ('$GITHUB_RUN_ID','$time','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME', \
+               '$transactions_per_second','$n_inout','$n_nodes','$delay_time_ms','$average_block_time_ms','$average_block_transactions', \
+               '$average_block_transactions_size','$from_block_number','$to_block_number','$total_transactions','$total_transactions_size','$transactions_size_per_second');"
+    done < "$ANSIBLE_DIRECTORY/ckb-bench.brief.md"
+  fi
+}
+
+function insert_report_to_postgres() {
+    export PGHOST=${PGHOST}
+    export PGPORT=${PGPORT}
+    export PGUSER=${PGUSER}
+    export PGPASSWORD=${PGPASSWORD}
+    export PGDATABASE=${PGDATABASE}
+    export GITHUB_RUN_ID=${GITHUB_RUN_ID}
+    export CKB_COMMIT_ID=${CKB_COMMIT_ID}
+    export CKB_COMMIT_TIME=${CKB_COMMIT_TIME}
+    export GITHUB_RUN_STATE=${GITHUB_RUN_STATE:-0} #0:success,1:failed
+    export GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}
+    END_TIME=$(date +%Y-%m-%d' '%H:%M:%S.%6N)
+    # dbname="ckbtest"
+    GITHUB_RUN_LINK="https://github.com/${GITHUB_REPOSITORY}/actions/runs/$GITHUB_RUN_ID"
+    psql -c "INSERT INTO benchmark (github_run_id,github_run_state,start_time,end_time,github_branch,github_trigger_event,github_run_link)  \
+             VALUES ('$GITHUB_RUN_ID','$GITHUB_RUN_STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$GITHUB_RUN_LINK');"
+    parse_report_and_inster_to_postgres
 }
 
 function main() {
@@ -195,6 +245,9 @@ function main() {
             terraform_destroy
             job_clean
             ;;
+        "insert_report_to_postgres")
+          insert_report_to_postgres
+          ;;
         esac
 }
 
