@@ -1,5 +1,6 @@
 mod compress;
 mod extension;
+pub mod message;
 mod shared;
 mod simple_protocol_handler;
 mod simple_service_handler;
