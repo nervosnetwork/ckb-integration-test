@@ -1,15 +1,8 @@
-use super::RFC0035_EPOCH_NUMBER;
+use super::{HARDFORK_DELAY_WINDOW, RFC0035_BLOCK_NUMBER};
 use crate::{
     preclude::*,
-    util::{estimate_start_number_of_epoch, v0_100, v0_43, },
+    util::{v0_100, v0_43},
 };
-use ckb_testkit::connector::{
-    ConnectorBuilder,Connector, SimpleServiceHandler, SimpleProtocolHandler, SharedState
-};
-use ckb_testkit::ckb_jsonrpc_types::Consensus;
-use ckb_testkit::SupportProtocols;
-use ckb_testkit::util::wait_until;
-use ckb_testkit::SYSTEM_CELL_ALWAYS_SUCCESS_INDEX;
 use ckb_testkit::ckb_types::{
     core::{
         cell::CellMeta, BlockNumber, Cycle, ScriptHashType, TransactionBuilder, TransactionView,
@@ -17,6 +10,13 @@ use ckb_testkit::ckb_types::{
     packed::{CellInput, CellOutput, OutPoint, RelayMessageReader, Script},
     prelude::*,
 };
+use ckb_testkit::connector::{
+    Connector, ConnectorBuilder, SharedState, SimpleProtocolHandler, SimpleServiceHandler,
+};
+use ckb_testkit::util::wait_until;
+use ckb_testkit::SupportProtocols;
+use ckb_testkit::SYSTEM_CELL_ALWAYS_SUCCESS_INDEX;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 /// ## `RFC0035RelayTransaction`
@@ -136,8 +136,6 @@ impl Case for RFC0035RelayTransaction {
         let node2021 = nodes.get_node("node2021");
         node2021.mine(13);
 
-        let fork_switch_height = estimate_start_number_of_epoch(node2021, RFC0035_EPOCH_NUMBER);
-
         // Prepare a cycles-consystency input
         let input = {
             // Note: do not use `node2021.get_spendable_always_success_cells()`
@@ -158,7 +156,7 @@ impl Case for RFC0035RelayTransaction {
             "Ensure the input's scripts are cycles-consistency",
         );
         assert!(
-            input.transaction_info.as_ref().unwrap().block_number < fork_switch_height - 3,
+            input.transaction_info.as_ref().unwrap().block_number < RFC0035_BLOCK_NUMBER - 20,
             "Ensure the input is valid for all cases scenarioes"
         );
 
@@ -187,7 +185,7 @@ impl Case for RFC0035RelayTransaction {
                 // Let `node_used_to_dry_run_txs` activates fork2021, so that
                 // it allows data1-transactions
                 node.pull_node(node2021).unwrap();
-                node.mine_to(fork_switch_height);
+                node.mine_to(RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1);
                 node
             };
 
@@ -198,8 +196,7 @@ impl Case for RFC0035RelayTransaction {
             vm1_cycles = node_used_to_dry_run_txs.get_transaction_cycles(&data1_tx);
         };
 
-        let cases = Self::filter_cases_params(fork_switch_height);
-        for case in cases {
+        for case in self.cases_params() {
             let tx = match case.tx_script_hash_type {
                 ScriptHashType::Data => data0_tx.clone(),
                 ScriptHashType::Type => type_tx.clone(),
@@ -211,59 +208,13 @@ impl Case for RFC0035RelayTransaction {
                 ScriptHashType::Data1 => vm1_cycles,
             };
             let node = self.setup_node(&case, node2021);
-            let mut connector = self.setup_connector(&case, node.consensus());
+            let mut connector = self.setup_connector(&case);
             let actual_result = self.run(&case, &mut connector, &node, &tx, relayed_cycles);
-
-            // {
-            //     ckb_testkit::info!(
-            //         "case_discription │ {:<3} │ {} │ {:<7} │ {:<8} │ {:<9} │ {:<12} │ {:?}",
-            //         case.id,
-            //         case.node_tip,
-            //         {
-            //             if case.peer_version == v0_100() {
-            //                 "v0.100"
-            //             } else {
-            //                 "v0.43"
-            //             }
-            //         },
-            //         {
-            //             if case.protocol.protocol_id() == SupportProtocols::Relay.protocol_id() {
-            //                 "relay"
-            //             } else {
-            //                 "relay_v2"
-            //             }
-            //         },
-            //         {
-            //             match case.tx_script_hash_type {
-            //                 ScriptHashType::Data => "data",
-            //                 ScriptHashType::Type => "type",
-            //                 ScriptHashType::Data1 => "data1",
-            //             }
-            //         },
-            //         {
-            //             match case.relayed_cycles {
-            //                 ScriptHashType::Data => "vm0-cycles",
-            //                 ScriptHashType::Data1 => "vm1-cycles",
-            //                 ScriptHashType::Type => "",
-            //             }
-            //         },
-            //         actual_result,
-            //     );
-
-            //     ckb_testkit::info!("case_params {:?}", {
-            //         let mut case2 = case.clone();
-            //         case2.expected_result = actual_result.clone();
-            //         case2
-            //     });
-            // }
-
             assert_eq!(
                 case.expected_result,
                 actual_result,
-                "case.id: {}, expected: {:?}, actual: {:?}, node.log_path: {}, tx.hash: {:#x}",
+                "case.id: {}, node.log_path: {}, tx.hash: {:#x}",
                 case.id,
-                case.expected_result,
-                actual_result,
                 node.log_path().to_string_lossy(),
                 tx.hash(),
             );
@@ -309,23 +260,23 @@ impl RFC0035RelayTransaction {
         };
 
         node.pull_node(base_chain_node).unwrap();
-        node.mine_to(case.node_tip);
+        node.mine_to(case.height);
         // TODO FIXME node may need time to switch to fork2021
         ::std::thread::sleep(Duration::from_secs(2));
         node
     }
 
     // Start a connector
-    fn setup_connector(&self, case: &CaseParams, consensus: &Consensus) -> Connector {
-        // `Sync` protocol is required by CKB `ProtocolTypeCheckerService`
-        let protocols = vec![case.protocol.clone(), SupportProtocols::Sync];
-        let version = &case.peer_version;
-        Connector::start(
-            &format!("{}-{}", self.case_name(), case.id),
-            consensus,
-            version,
-            protocols,
-        )
+    fn setup_connector(&self, case: &CaseParams) -> Connector {
+        let shared = Arc::new(RwLock::new(SharedState::new()));
+        ConnectorBuilder::new()
+            .protocol_meta({
+                SimpleProtocolHandler::new(Arc::clone(&shared), case.protocol.clone()).build(true)
+            })
+            .protocol_meta({
+                SimpleProtocolHandler::new(Arc::clone(&shared), SupportProtocols::Sync).build(true)
+            })
+            .build(SimpleServiceHandler::new(Arc::clone(&shared)), shared)
     }
 
     // Run case.
@@ -342,24 +293,21 @@ impl RFC0035RelayTransaction {
         transaction: &TransactionView,
         relayed_cycles: Cycle,
     ) -> Result<(), Error> {
-        let _peer_index = connector
+        let _ = connector
             .connect(&node)
             .map_err(|_| Error::ConnectionTimeout)?;
-
-        connector
-            .send_relay_transaction_hash(&case.protocol, &node, &transaction)
+        let _ = connector
+            .send_relay_transaction_hash(&node, case.protocol.clone(), vec![transaction.hash()])
             .unwrap();
+
         let received_get_relay_txs = wait_until(20, || {
-            if let Ok((protocol_id, data)) =
-                connector.receive_timeout(node, Duration::from_secs(20))
+            if let Ok(data) = connector.recv_timeout(Duration::from_secs(20), node, &case.protocol)
             {
-                if protocol_id == case.protocol.protocol_id() {
-                    return RelayMessageReader::from_compatible_slice(&data)
-                        .unwrap()
-                        .to_enum()
-                        .item_name()
-                        == "GetRelayTransactions";
-                }
+                return RelayMessageReader::from_compatible_slice(&data)
+                    .unwrap()
+                    .to_enum()
+                    .item_name()
+                    == "GetRelayTransactions";
             }
             false
         });
@@ -368,7 +316,7 @@ impl RFC0035RelayTransaction {
         }
 
         connector
-            .send_relay_transaction(&case.protocol, &node, &transaction, relayed_cycles)
+            .send_relay_transaction(&node, case.protocol.clone(), &transaction, relayed_cycles)
             .unwrap();
 
         let tx_relayed = wait_until(5, || node.is_transaction_pending(transaction));
@@ -437,27 +385,11 @@ impl RFC0035RelayTransaction {
         }
     }
 
-    fn filter_cases_params(fork_switch_height: BlockNumber) -> Vec<CaseParams> {
-        let cases = if let Some(c_str) = ::std::env::var_os("DEBUG_CASE_ID") {
-            match c_str.to_string_lossy().parse::<usize>() {
-                Ok(debug_case_id) => Self::cases_params(fork_switch_height)
-                    .into_iter()
-                    .filter(|c| c.id == debug_case_id)
-                    .collect::<Vec<_>>(),
-                Err(_) => Self::cases_params(fork_switch_height),
-            }
-        } else {
-            Self::cases_params(fork_switch_height)
-        };
-        assert!(!cases.is_empty());
-        cases
-    }
-
-    fn cases_params(fork_switch_height: BlockNumber) -> Vec<CaseParams> {
+    fn cases_params(&self) -> Vec<CaseParams> {
         vec![
             CaseParams {
                 id: 1,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -466,7 +398,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 2,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -475,7 +407,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 3,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -484,7 +416,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 4,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -493,7 +425,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 5,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -502,7 +434,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 6,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -511,7 +443,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 7,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -520,7 +452,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 8,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -529,7 +461,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 9,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -538,7 +470,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 10,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -547,7 +479,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 11,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -556,7 +488,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 12,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -565,7 +497,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 13,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -574,7 +506,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 14,
-                node_tip: fork_switch_height - 2,
+                height: RFC0035_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -583,7 +515,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 15,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -592,7 +524,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 16,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -601,7 +533,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 17,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -610,7 +542,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 18,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -619,7 +551,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 19,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -628,7 +560,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 20,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_43(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -637,7 +569,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 21,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::Relay,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -646,7 +578,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 22,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -655,7 +587,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 23,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data,
@@ -664,7 +596,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 24,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -673,7 +605,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 25,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Type,
@@ -682,7 +614,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 26,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -691,7 +623,7 @@ impl RFC0035RelayTransaction {
             },
             CaseParams {
                 id: 27,
-                node_tip: fork_switch_height - 1,
+                height: RFC0035_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
                 peer_version: v0_100(),
                 protocol: SupportProtocols::RelayV2,
                 tx_script_hash_type: ScriptHashType::Data1,
@@ -707,7 +639,7 @@ struct CaseParams {
     id: usize,
 
     // The target node's tip number.
-    node_tip: BlockNumber,
+    height: BlockNumber,
 
     // The peer's client version, CKB2019 or CKB2021.
     peer_version: String,

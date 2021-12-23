@@ -26,7 +26,7 @@ pub fn all_cases() -> Vec<Box<dyn Case>> {
         Box::new(rfc0032::rfc0032::RFC0032),
         Box::new(rfc0034::rfc0034::RFC0034),
         Box::new(rfc0035::v2019::RFC0035V2019),
-        // Box::new(rfc0035::relay_transaction::RFC0035RelayTransaction),
+        Box::new(rfc0035::relay_transaction::RFC0035RelayTransaction),
         Box::new(rfc0035::connection::RFC0035V2021Connection),
         Box::new(rfc0035::discovery::RFC0035V2021Discovery),
         Box::new(identify::connection::IdentifyConnection),
