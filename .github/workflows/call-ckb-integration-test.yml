@@ -20,7 +20,7 @@ on:
         default: "develop"
 
 jobs:
-  call-fork-tests-checks-by-workflow-dispatch:
+  ckb-integration-test-by-workflow-dispatch:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     # NOTE: workflow_call does not support context expression, so
     #       `${{ github.repository }}/.github/workflows/ckb-integration-test.yml@main`
@@ -33,7 +33,7 @@ jobs:
     with:
       CKB_GITHUB_REPOSITORY: ${{ github.event.inputs.CKB_GITHUB_REPOSITORY }}
       CKB_GITHUB_SHA: ${{ github.event.inputs.CKB_GITHUB_SHA }}
-  call-fork-tests-checks-by-push-pr-or-schedule:
+  ckb-integration-test:
     if: ${{ github.event_name != 'workflow_dispatch' }}
     uses: nervosnetwork/ckb-integration-test/.github/workflows/ckb-integration-test.yml@main
     with:
