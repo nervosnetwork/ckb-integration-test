@@ -1,21 +1,14 @@
-name: Fork Tests Checks
+name: CKBIntegrationTest
 
 on:
-  # Manurally trigger
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      ckb_github_repository:
-        description: "the repository of ckb. For example, \"nervosnerwork/ckb\"."
+      CKB_GITHUB_REPOSITORY:
         required: true
-        default: "nervosnetwork/ckb"
-      ckb_github_sha:
-        description: "The commit SHA of ckb repository that triggered the workflow run."
+        type: string
+      CKB_GITHUB_SHA:
         required: true
-        default: "develop"
-
-env:
-  CKB_GITHUB_REPOSITORY: ${{ github.event.inputs.ckb_github_repository }}
-  CKB_GITHUB_SHA: ${{ github.event.inputs.ckb_github_sha }}
+        type: string
 
 jobs:
   build-ckb:
@@ -31,6 +24,8 @@ jobs:
         working-directory: ckb-integration-test
     steps:
       - uses: actions/checkout@v2
+        with:
+          repository: nervosnetwork/ckb-integration-test
       - if: ${{ runner.os == 'Windows' }}
         run: |
           iex (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
@@ -41,19 +36,22 @@ jobs:
           scoop install git
           scoop bucket add extras
           scoop install llvm yasm
-      - name: Build CKB (${{ runner.os }}, ${{ matrix.os }}, ${{ env.CKB_GITHUB_REPOSITORY }}, ${{ env.CKB_GITHUB_SHA }})
+      - name: Build CKB (${{ runner.os }}, ${{ matrix.os }}, ${{ inputs.CKB_GITHUB_REPOSITORY }}, ${{ inputs.CKB_GITHUB_SHA }})
+        env:
+          CKB_GITHUB_REPOSITORY: ${{ inputs.CKB_GITHUB_REPOSITORY }}
+          CKB_GITHUB_SHA: ${{ inputs.CKB_GITHUB_SHA }}
         run: make build-ckb
       - uses: actions/upload-artifact@v2
         if: ${{ runner.os != 'Windows' }}
         with:
           name: Released CKB (${{ runner.os }}, ${{ matrix.os }})
-          path: ckb-integration-test/repo/${{ env.CKB_GITHUB_REPOSITORY }}/target/release/ckb
+          path: ckb-integration-test/repo/${{ inputs.CKB_GITHUB_REPOSITORY }}/target/release/ckb
           if-no-files-found: error
       - uses: actions/upload-artifact@v2
         if: ${{ runner.os == 'Windows' }}
         with:
           name: Released CKB (${{ runner.os }}, ${{ matrix.os }})
-          path: ckb-integration-test/repo/${{ env.CKB_GITHUB_REPOSITORY }}/target/release/ckb.exe
+          path: ckb-integration-test/repo/${{ inputs.CKB_GITHUB_REPOSITORY }}/target/release/ckb.exe
           if-no-files-found: error
 
   build-ckb-integration-test:
@@ -69,6 +67,8 @@ jobs:
         working-directory: ckb-integration-test
     steps:
       - uses: actions/checkout@v2
+        with:
+          repository: nervosnetwork/ckb-integration-test
       - if: ${{ runner.os == 'Windows' }}
         run: |
           iex (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
@@ -108,6 +108,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v2
+        with:
+          repository: nervosnetwork/ckb-integration-test
       - uses: actions/download-artifact@v2
         with:
           name: Released CKB (${{ runner.os }}, ${{ matrix.os }})

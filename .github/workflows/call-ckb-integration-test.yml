@@ -1,0 +1,41 @@
+name: CallCKBIntegrationTest
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      CKB_GITHUB_REPOSITORY:
+        description: "the repository of ckb. For example, \"nervosnerwork/ckb\"."
+        required: true
+        default: "nervosnetwork/ckb"
+      CKB_GITHUB_SHA:
+        description: "The commit SHA of ckb repository that triggered the workflow run."
+        required: true
+        default: "develop"
+
+jobs:
+  call-fork-tests-checks-by-workflow-dispatch:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    # NOTE: workflow_call does not support context expression, so
+    #       `${{ github.repository }}/.github/workflows/ckb-integration-test.yml@main`
+    #       is invalid.
+    # NOTE: workflow_call does not support calling local workflow, so
+    #       `.github/workflows/ckb-integration-test.yml@main` is inalid.
+    # NOTE: workflow_call workflow file must locates at `.github/workflows`, so
+    #       putting it in `.github/actions` is invalid.
+    uses: nervosnetwork/ckb-integration-test/.github/workflows/ckb-integration-test.yml@main
+    with:
+      CKB_GITHUB_REPOSITORY: ${{ github.event.inputs.CKB_GITHUB_REPOSITORY }}
+      CKB_GITHUB_SHA: ${{ github.event.inputs.CKB_GITHUB_SHA }}
+  call-fork-tests-checks-by-push-pr-or-schedule:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    uses: nervosnetwork/ckb-integration-test/.github/workflows/ckb-integration-test.yml@main
+    with:
+      CKB_GITHUB_REPOSITORY: nervosnetwork/ckb
+      CKB_GITHUB_SHA: develop
