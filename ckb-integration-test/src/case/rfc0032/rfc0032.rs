@@ -50,7 +50,7 @@ impl Case for RFC0032 {
     }
 
     fn run(&self, _nodes: Nodes) {
-        for case in self.cases_params(RFC0032_BLOCK_NUMBER, VM0_CYCLES, VM1_CYCLES) {
+        for case in self.cases_params() {
             let node = self.setup_node(&case);
             let tx = self.build_transaction(&node, &case);
             let actual_result = self.run_case(&node, &tx);
@@ -160,48 +160,43 @@ impl RFC0032 {
             .build()
     }
 
-    fn cases_params(
-        &self,
-        rfc0032_block_number: BlockNumber,
-        vm0_tx_cycles: Cycle,
-        vm1_tx_cycles: Cycle,
-    ) -> Vec<CaseParams> {
+    fn cases_params(&self) -> Vec<CaseParams> {
         vec![
             CaseParams {
                 id: 0,
                 type_script_hash_type: ScriptHashType::Data,
-                height: rfc0032_block_number - HARDFORK_DELAY_WINDOW - 1,
-                expected_result: Ok(vm0_tx_cycles),
+                height: RFC0032_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
+                expected_result: Ok(VM0_CYCLES),
             },
             CaseParams {
                 id: 1,
                 type_script_hash_type: ScriptHashType::Type,
-                height: rfc0032_block_number - HARDFORK_DELAY_WINDOW - 1,
-                expected_result: Ok(vm0_tx_cycles),
+                height: RFC0032_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
+                expected_result: Ok(VM0_CYCLES),
             },
             CaseParams {
                 id: 2,
                 type_script_hash_type: ScriptHashType::Data1,
-                height: rfc0032_block_number - HARDFORK_DELAY_WINDOW - 1,
+                height: RFC0032_BLOCK_NUMBER - HARDFORK_DELAY_WINDOW - 1,
                 expected_result: Err(ERROR_INVALID_VM_VERSION.to_string()),
             },
             CaseParams {
                 id: 3,
                 type_script_hash_type: ScriptHashType::Data,
-                height: rfc0032_block_number + HARDFORK_DELAY_WINDOW + 1,
-                expected_result: Ok(vm0_tx_cycles),
+                height: RFC0032_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
+                expected_result: Ok(VM0_CYCLES),
             },
             CaseParams {
                 id: 4,
                 type_script_hash_type: ScriptHashType::Type,
-                height: rfc0032_block_number + HARDFORK_DELAY_WINDOW + 1,
-                expected_result: Ok(vm1_tx_cycles),
+                height: RFC0032_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
+                expected_result: Ok(VM1_CYCLES),
             },
             CaseParams {
                 id: 5,
                 type_script_hash_type: ScriptHashType::Data1,
-                height: rfc0032_block_number + HARDFORK_DELAY_WINDOW + 1,
-                expected_result: Ok(vm1_tx_cycles),
+                height: RFC0032_BLOCK_NUMBER + HARDFORK_DELAY_WINDOW + 1,
+                expected_result: Ok(VM1_CYCLES),
             },
         ]
     }

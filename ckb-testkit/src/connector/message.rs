@@ -70,6 +70,16 @@ pub fn build_relay_transaction(
     packed::RelayMessage::new_builder().set(relay_txs).build()
 }
 
+pub fn build_relay_transaction_hashes(hashes: Vec<packed::Byte32>) -> packed::RelayMessage {
+    let hashes = packed::Byte32Vec::new_builder().set(hashes).build();
+    let relay_txs_hashes = packed::RelayTransactionHashes::new_builder()
+        .tx_hashes(hashes)
+        .build();
+    packed::RelayMessage::new_builder()
+        .set(relay_txs_hashes)
+        .build()
+}
+
 pub fn build_discovery_get_nodes(
     listening_port: Option<u16>,
     max_nodes: u32,
