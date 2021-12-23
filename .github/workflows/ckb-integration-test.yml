@@ -94,8 +94,8 @@ jobs:
           path: ckb-integration-test/target/release/ckb-integration-test.exe
           if-no-files-found: error
 
-  fork-tests:
-    name: Fork Tests
+  run-test:
+    name: Run Test Cases
     needs: [ build-ckb, build-ckb-integration-test ]
     runs-on: ${{ matrix.os }}
     strategy:
