@@ -70,6 +70,6 @@ macro_rules! error {
                 ::std::eprintln!($( $args )*);
                 $crate::logger::log::error!($( $args )*);
             }
-        });
+        })
     }
 }
