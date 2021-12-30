@@ -1,5 +1,5 @@
 use super::{ERROR_INVALID_ECALL, RFC0034_EPOCH_NUMBER};
-use crate::preclude::*;
+use crate::prelude::*;
 use crate::util::deployer::Deployer;
 use crate::util::estimate_start_number_of_epoch;
 use ckb_exec_params::ExecParams;

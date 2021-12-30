@@ -1,5 +1,5 @@
 use super::{ERROR_IMMATURE, ERROR_INVALID_SINCE};
-use crate::preclude::*;
+use crate::prelude::*;
 use crate::util::estimate_start_number_of_epoch;
 use ckb_testkit::ckb_types::{
     core::{BlockNumber, Capacity, EpochNumberWithFraction, TransactionBuilder, TransactionView},
