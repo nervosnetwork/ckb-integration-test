@@ -3,8 +3,9 @@ name = "ckb-testkit"
 version = "0.0.1"
 authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
-homepage = "https://github.com/nervosnetwork/ckb"
-repository = "https://github.com/nervosnetwork/ckb"
+license = "MIT"
+homepage = "https://github.com/nervosnetwork/ckb-testkit"
+repository = "https://github.com/nervosnetwork/ckb-testkit"
 description = "ckb testkit"
 
 [dependencies]
@@ -15,7 +16,7 @@ ckb-error = "0.101.0"
 ckb-crypto = "0.101.0" 
 ckb-hash = "0.101.0"
 ckb-stop-handler = "0.101.0"
-ckb-indexer = { git = "https://github.com/nervosnetwork/ckb-indexer" }
+ckb-indexer = "0.3.2"
 reqwest = { version = "0.10.9", features = ["blocking", "json"] }
 serde_json = "1.0"
 lazy_static = "1.4.0"
