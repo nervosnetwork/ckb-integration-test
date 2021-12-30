@@ -34,6 +34,9 @@ p2p = { version="0.4.0-alpha.2", package="tentacle", features = ["upnp", "parkin
 futures = { version = "0.3" }
 crossbeam = "0.8.1"
 snap = "1"
+tentacle-multiaddr = "0.3.0"
+tentacle-secio = "0.5.0"
+tokio-yamux = "0.3.2"
 
 [features]
 default = []

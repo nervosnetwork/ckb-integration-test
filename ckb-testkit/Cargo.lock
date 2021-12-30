@@ -549,8 +549,11 @@ dependencies = [
  "snap",
  "tempfile",
  "tentacle",
+ "tentacle-multiaddr",
+ "tentacle-secio",
  "tokio 1.14.0",
  "tokio-util 0.6.9",
+ "tokio-yamux",
  "version-compare",
 ]
 
