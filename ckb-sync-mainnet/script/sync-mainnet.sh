@@ -171,7 +171,7 @@ function parse_report_and_inster_to_postgres() {
  
   time=$START_TIME
   #cat *.brief.md if it exist
-  if [ [ -n "'ls $ANSIBLE_DIRECTORY/*.brief.md'" ]; then
+  if [ -n "'ls $ANSIBLE_DIRECTORY/*.brief.md'" ]; then
     cat $ANSIBLE_DIRECTORY/*.brief.md >$ANSIBLE_DIRECTORY/sync-mainnet.brief.md
   fi
   if [ -f "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md" ]; then
