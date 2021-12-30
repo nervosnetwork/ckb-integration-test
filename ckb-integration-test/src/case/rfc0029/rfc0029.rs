@@ -1,7 +1,7 @@
 use super::{
     ERROR_DUPLICATE_CELL_DEPS, ERROR_MULTIPLE_MATCHES, RFC0029_BLOCK_NUMBER, RFC0029_EPOCH_NUMBER,
 };
-use crate::preclude::*;
+use crate::prelude::*;
 use crate::util::deployer::Deployer;
 use ckb_testkit::ckb_types::{
     core::{

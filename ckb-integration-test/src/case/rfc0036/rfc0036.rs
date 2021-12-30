@@ -1,5 +1,5 @@
 use super::{ERROR_IMMATURE_HEADER, RFC0036_EPOCH_NUMBER};
-use crate::preclude::*;
+use crate::prelude::*;
 use crate::util::estimate_start_number_of_epoch;
 use ckb_testkit::ckb_types::core::{BlockNumber, TransactionView};
 use ckb_testkit::{assert_result_eq, BuildInstruction};

@@ -1,4 +1,4 @@
-use crate::preclude::*;
+use crate::prelude::*;
 use ckb_testkit::connector::{SharedState, SimpleProtocolHandler, SimpleServiceHandler};
 use ckb_testkit::{
     assert_result_eq, connector::ConnectorBuilder, p2p::secio::SecioKeyPair, SupportProtocols,

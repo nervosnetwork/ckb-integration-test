@@ -1,4 +1,4 @@
-use crate::preclude::*;
+use crate::prelude::*;
 use crate::util::{v0_100, v0_43};
 use ckb_testkit::{
     assert_result_eq,

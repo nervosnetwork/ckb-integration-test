@@ -1,5 +1,5 @@
 use super::DISCOVERY_FLAG_V1;
-use crate::preclude::*;
+use crate::prelude::*;
 use ckb_testkit::connector::{SharedState, SimpleProtocolHandler, SimpleServiceHandler};
 use ckb_testkit::{
     assert_result_eq,

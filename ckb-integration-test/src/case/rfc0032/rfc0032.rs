@@ -1,4 +1,4 @@
-use crate::preclude::*;
+use crate::prelude::*;
 use ckb_testkit::ckb_types::{
     core::{BlockNumber, Capacity, Cycle, ScriptHashType, TransactionBuilder, TransactionView},
     packed::{CellInput, CellOutput, OutPoint, Script},
