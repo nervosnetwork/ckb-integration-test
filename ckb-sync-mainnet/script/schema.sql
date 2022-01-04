@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS sync_mainnet_report (
     ckb_version VARCHAR (60) NOT NULL,
 	ckb_commit_id VARCHAR (20) NOT NULL,
 	ckb_commit_time TIMESTAMP NOT NULL,
-	time_s TIMESTAMP NOT NULL,
+	time_s TIME NOT NULL,
 	speed BIGINT NOT NULL,
 	tip BIGINT NOT NULL,
-	hostname BIGINT NOT NULL
+	hostname VARCHAR (60) NOT NULL
 );
 
 SELECT create_hypertable('sync_mainnet', 'start_time', migrate_data => true);
