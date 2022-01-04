@@ -265,4 +265,13 @@ impl Connector {
     pub fn shared(&self) -> &Arc<RwLock<SharedState>> {
         &self.shared
     }
+
+    /// Return the P2P service controller
+    pub fn p2p_service_controller(&self) -> &P2PServiceControl {
+        &self.p2p_service_controller
+    }
+
+    pub fn key_pair(&self) -> &SecioKeyPair {
+        &self.key_pair
+    }
 }
