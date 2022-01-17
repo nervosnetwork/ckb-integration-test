@@ -105,4 +105,12 @@ impl SharedState {
             .map(|(session, _)| session)
             .collect()
     }
+
+    /// Return all session ids
+    pub fn get_session_ids(&self) -> Vec<SessionId> {
+        self.session_manager
+            .values()
+            .map(|(session, _)| session.id)
+            .collect()
+    }
 }
