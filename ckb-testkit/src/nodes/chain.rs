@@ -9,13 +9,24 @@ use std::collections::HashSet;
 impl Nodes {
     pub fn waiting_for_sync(&self) -> Result<(), Vec<(&str, BlockNumber, Byte32)>> {
         crate::trace!("Nodes::waiting_for_sync start");
-        let mut tip_blocks = HashSet::new();
+        let highest_hashes: HashSet<_> = {
+            let tip_blocks: HashSet<_> = self.nodes().map(|node| node.get_tip_block()).collect();
+            let tip_numbers = tip_blocks.iter().map(|block| block.number());
+            let highest_number = tip_numbers.max().unwrap();
+            let highest_blocks = tip_blocks
+                .into_iter()
+                .filter(|block| block.number() == highest_number);
+            highest_blocks.map(|block| block.hash()).collect()
+        };
 
         // 60 seconds is a reasonable timeout to sync, even for poor CI server
         let synced = wait_until(60, || {
-            tip_blocks = self.nodes().map(|node| node.get_tip_block()).collect();
-            tip_blocks.len() == 1
+            highest_hashes.iter().all(|hash| {
+                self.nodes()
+                    .all(|node| node.rpc_client().get_header(hash.clone()).is_some())
+            })
         });
+
         if !synced {
             let tips = self
                 .nodes()
