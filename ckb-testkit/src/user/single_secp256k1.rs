@@ -2,7 +2,7 @@ use crate::{
     Node, User, GENESIS_DEP_GROUP_TRANSACTION_INDEX, GENESIS_SIGHASH_ALL_DEP_GROUP_CELL_INDEX,
     SIGHASH_ALL_DATA_HASH, SIGHASH_ALL_TYPE_HASH,
 };
-use ckb_crypto::secp::Pubkey;
+use ckb_crypto::secp::{Message, Pubkey, Signature};
 use ckb_hash::blake2b_256;
 use ckb_types::core::cell::CellMeta;
 use ckb_types::core::EpochNumberWithFraction;
@@ -91,6 +91,14 @@ impl User {
                 .build()
             // .as_bytes()
             // .pack()
+        } else {
+            unreachable!("single_secp256k1 unset")
+        }
+    }
+
+    pub fn sign_recoverable(&self, message: &Message) -> Signature {
+        if let Some(ref privkey) = self.single_secp256k1_privkey {
+            privkey.sign_recoverable(message).expect("sign")
         } else {
             unreachable!("single_secp256k1 unset")
         }

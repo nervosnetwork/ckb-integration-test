@@ -1,16 +1,15 @@
 use crate::utils::maybe_retry_send_transaction;
-use ckb_testkit::ckb_crypto::secp::Privkey;
+use ckb_testkit::ckb_crypto::secp::{Message, Privkey};
 use ckb_testkit::ckb_jsonrpc_types::Status;
-use ckb_testkit::ckb_types::core::cell::CellMeta;
-use ckb_testkit::ckb_types::packed::OutPoint;
 use ckb_testkit::ckb_types::{
-    core::{Capacity, TransactionBuilder},
-    packed::{Byte32, CellInput, CellOutput},
+    bytes::Bytes,
+    core::{cell::CellMeta, Capacity, TransactionBuilder},
+    packed::{Byte32, CellInput, CellOutput, OutPoint, WitnessArgs},
     prelude::*,
 };
 use ckb_testkit::{Node, User};
 use std::cmp::min;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -223,54 +222,151 @@ pub fn dispatch(
 
 pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
     ckb_testkit::info!("collect with params --n-users {}", users.len());
+    let mut users_map = HashMap::new();
+    for user in users {
+        users_map.insert(
+            user.single_secp256k1_lock_script_via_type()
+                .calc_script_hash(),
+            user.clone(),
+        );
+        users_map.insert(
+            user.single_secp256k1_lock_script_via_data()
+                .calc_script_hash(),
+            user.clone(),
+        );
+        users_map.insert(
+            user.single_secp256k1_lock_script_via_data1()
+                .calc_script_hash(),
+            user.clone(),
+        );
+    }
+
     let n_users = users.len();
     let mut last_logging_time = Instant::now();
-    for (i_user, user) in users.iter().enumerate() {
+    let mut i_user = 0;
+    let mut pending_inputs = Vec::new();
+    while let Some(user) = users.get(i_user) {
         let live_cells = user.get_spendable_single_secp256k1_cells(&nodes[0]);
         if live_cells.is_empty() {
+            i_user += 1;
             continue;
         }
-        for chunk in live_cells.chunks(100) {
-            let inputs = chunk;
-            let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
-            // TODO estimate tx fee
-            let fee = inputs.len() as u64 * 1000;
-            let output = CellOutput::new_builder()
-                .capacity((inputs_capacity - fee).pack())
-                .lock(owner.single_secp256k1_lock_script_via_data())
-                .build();
-            let unsigned_tx = TransactionBuilder::default()
-                .inputs(
-                    inputs
-                        .iter()
-                        .map(|cell| CellInput::new(cell.out_point.clone(), 0)),
-                )
-                .output(output)
-                .output_data(Default::default())
-                .cell_dep(owner.single_secp256k1_cell_dep())
-                .build();
-            let witness = user
-                .single_secp256k1_signed_witness(&unsigned_tx)
-                .as_bytes()
-                .pack();
-            let signed_tx = unsigned_tx
-                .as_advanced_builder()
-                .set_witnesses(vec![witness])
-                .build();
-            let result = maybe_retry_send_transaction(&nodes[0], &signed_tx);
-            if last_logging_time.elapsed() > Duration::from_secs(30) {
-                last_logging_time = Instant::now();
-                ckb_testkit::info!("already collected {}/{} users", i_user, n_users)
+
+        let inputs_len_soft_limit = 1000;
+        for chunk in live_cells.chunks(inputs_len_soft_limit) {
+            pending_inputs.extend(chunk.into_iter().cloned());
+
+            if pending_inputs.len() >= inputs_len_soft_limit {
+                collect_inputs(nodes, owner, &pending_inputs, &users_map);
+                pending_inputs = Vec::new();
             }
-            assert!(
-                result.is_ok(),
-                "collect-transaction {:#x} should be ok but got {}",
-                signed_tx.hash(),
-                result.unwrap_err()
-            );
+        }
+
+        i_user += 1;
+        if last_logging_time.elapsed() > Duration::from_secs(30) {
+            last_logging_time = Instant::now();
+            ckb_testkit::info!("already collected {}/{} users", i_user, n_users)
         }
     }
+
+    if !pending_inputs.is_empty() {
+        collect_inputs(nodes, owner, &pending_inputs, &users_map);
+    }
+    ckb_testkit::info!("already collected {}/{} users", i_user, n_users);
     ckb_testkit::info!("finished collecting");
+}
+
+fn collect_inputs(
+    nodes: &[Node],
+    owner: &User,
+    inputs: &[CellMeta],
+    users: &HashMap<Byte32, User>,
+) {
+    let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
+    // TODO estimate tx fee
+    let fee = inputs.len() as u64 * 1000;
+    let output = CellOutput::new_builder()
+        .capacity((inputs_capacity - fee).pack())
+        .lock(owner.single_secp256k1_lock_script_via_data())
+        .build();
+    let unsigned_tx = TransactionBuilder::default()
+        .inputs(
+            inputs
+                .iter()
+                .map(|cell| CellInput::new(cell.out_point.clone(), 0)),
+        )
+        .output(output)
+        .output_data(Default::default())
+        .cell_dep(owner.single_secp256k1_cell_dep())
+        .build();
+
+    let sorted_script_groups = {
+        let mut script_groups = HashMap::new();
+        for input in inputs.iter() {
+            let lock = input.cell_output.lock();
+            script_groups
+                .entry(lock)
+                .and_modify(|cnt| *cnt += 1)
+                .or_insert(1usize);
+        }
+
+        let mut sorted_script_groups = Vec::new();
+        for input in inputs.iter() {
+            if let Some(cnt) = script_groups.remove(&input.cell_output.lock()) {
+                sorted_script_groups.push((input.cell_output.lock(), cnt));
+            }
+        }
+        sorted_script_groups
+    };
+    let witnesses = {
+        let mut witnesses = Vec::new();
+        let tx_hash = unsigned_tx.hash();
+        for (script, cnt) in sorted_script_groups {
+            // 1. hash the tx-hash and first modified witness
+            let mut blake2b = ckb_hash::new_blake2b();
+            blake2b.update(&tx_hash.raw_data());
+
+            let placeholder = WitnessArgs::new_builder()
+                .lock(Some(Bytes::from(vec![0u8; 65])).pack())
+                .build();
+            blake2b.update(&(placeholder.as_bytes().len() as u64).to_le_bytes());
+            blake2b.update(&placeholder.as_bytes());
+
+            // 2. hash the rest witnesses.
+            for _ in 1..cnt {
+                blake2b.update(&(placeholder.as_bytes().len() as u64).to_le_bytes());
+                blake2b.update(&placeholder.as_bytes());
+            }
+
+            // 3. sign the hashed message
+            let mut message = [0u8; 32];
+            blake2b.finalize(&mut message);
+            let sig = users
+                .get(&script.calc_script_hash())
+                .unwrap()
+                .sign_recoverable(&Message::from(message));
+            let first_witness = WitnessArgs::new_builder()
+                .lock(Some(Bytes::from(sig.serialize())).pack())
+                .build();
+
+            witnesses.push(first_witness.as_bytes().pack());
+            witnesses.extend((1..cnt).map(|_| placeholder.as_bytes().pack()));
+        }
+
+        witnesses
+    };
+
+    let signed_tx = unsigned_tx
+        .as_advanced_builder()
+        .witnesses(witnesses)
+        .build();
+    let result = maybe_retry_send_transaction(&nodes[0], &signed_tx);
+    assert!(
+        result.is_ok(),
+        "collect-transaction {:#x} should be ok but got {}",
+        signed_tx.hash(),
+        result.unwrap_err()
+    );
 }
 
 pub fn derive_privkeys(basic_raw_privkey: Byte32, n: usize) -> Vec<Privkey> {
