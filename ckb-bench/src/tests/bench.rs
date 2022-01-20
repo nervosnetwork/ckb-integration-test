@@ -1,6 +1,6 @@
 use crate::prepare::derive_privkeys;
 use crate::tests::node_options;
-use crate::{clap_app, entrypoint, init_logger};
+use crate::{clap_app, entrypoint};
 use ckb_testkit::ckb_types::packed::Byte32;
 use ckb_testkit::ckb_types::prelude::*;
 use ckb_testkit::ckb_types::H256;
