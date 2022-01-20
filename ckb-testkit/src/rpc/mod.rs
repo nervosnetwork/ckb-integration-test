@@ -309,9 +309,24 @@ impl RpcClient {
 
     pub fn send_transaction_result(&self, tx: Transaction) -> Result<Byte32, AnyError> {
         if self.ckb2021 {
-            self.inner2021
-                .send_transaction(tx, Some("passthrough".to_string()))
-                .map(|h256| h256.pack())
+            let ret = self
+                .inner2021
+                .send_transaction(tx, Some("passthrough".to_string()));
+
+            // NOTE: This if-statement is a workaround to tx-pool async excute transaction's scripts
+            // and response RPC request. Even after returning `Ok(hash)`, the transaction's scripts
+            // may not been executed yet.
+            if let Ok(ref hash) = ret {
+                loop {
+                    if let Some(txstatus) = self.inner2021.get_transaction(hash.clone()).unwrap() {
+                        if txstatus.tx_status.status != ckb_jsonrpc_types::Status::Unknown {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            ret.map(|h256| h256.pack())
         } else {
             let tx = item2021_to_item2019!(tx);
             self.inner2019
