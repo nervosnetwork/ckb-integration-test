@@ -19,7 +19,7 @@ use p2p::{
     builder::ServiceBuilder, bytes::Bytes, context::SessionContext, multiaddr::Multiaddr,
     secio::SecioKeyPair, service::ProtocolMeta as P2PProtocolMeta, service::Service as P2PService,
     service::ServiceControl as P2PServiceControl, service::TargetProtocol as P2PTargetProtocol,
-    traits::ServiceHandle as P2PServiceHandle, ProtocolId,
+    traits::ServiceHandle as P2PServiceHandle, yamux::Config as YamuxConfig, ProtocolId,
 };
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
@@ -33,6 +33,7 @@ pub struct ConnectorBuilder {
     listening_addresses: Vec<Multiaddr>,
     // protocol metas
     protocol_metas: Vec<P2PProtocolMeta>,
+    yamux_config: YamuxConfig,
 }
 
 /// Connector is a fake node
@@ -50,6 +51,7 @@ impl Default for ConnectorBuilder {
             key_pair: SecioKeyPair::secp256k1_generated(),
             listening_addresses: Vec::new(),
             protocol_metas: Vec::new(),
+            yamux_config: Default::default(),
         }
     }
 }
@@ -71,6 +73,11 @@ impl ConnectorBuilder {
 
     pub fn protocol_metas(mut self, protocol_metas: Vec<P2PProtocolMeta>) -> Self {
         self.protocol_metas.extend(protocol_metas);
+        self
+    }
+
+    pub fn yamux_config(mut self, yamux_config: YamuxConfig) -> Self {
+        self.yamux_config = yamux_config;
         self
     }
 
@@ -159,6 +166,7 @@ impl ConnectorBuilder {
         p2p_service_builder
             .forever(true)
             .key_pair(self.key_pair.clone())
+            .yamux_config(self.yamux_config.clone())
             .build(service_handle)
     }
 }
