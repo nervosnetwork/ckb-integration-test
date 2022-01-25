@@ -18,6 +18,7 @@ use ckb_types::core::{
 };
 use ckb_types::{packed::Byte32, prelude::*};
 use lazy_static::lazy_static;
+use std::time::{Duration, Instant};
 use v2019::Inner2019;
 use v2021::Inner2021;
 
@@ -309,9 +310,31 @@ impl RpcClient {
 
     pub fn send_transaction_result(&self, tx: Transaction) -> Result<Byte32, AnyError> {
         if self.ckb2021 {
-            self.inner2021
-                .send_transaction(tx, Some("passthrough".to_string()))
-                .map(|h256| h256.pack())
+            let ret = self
+                .inner2021
+                .send_transaction(tx, Some("passthrough".to_string()));
+            // NOTE: The CKB-VM executes large-cycle transaction scripts
+            // asynchronously using pause-resume approach. While the current
+            // implementation has a bug: when sending a transaction embed with
+            // large-cycle scripts via RPC `send_transaction` and getting a
+            // successful response, the scripts may not finish executing. That
+            // means that after a successful `send_transaction` request, a
+            // following corresponding `get_transaction` request may get `None`.
+            //
+            // This if-statement is a workaround to make sure the script
+            // execution finished.
+            if let Ok(ref hash) = ret {
+                let start_time = Instant::now();
+                while start_time.elapsed() <= Duration::from_secs(20) {
+                    if let Some(txstatus) = self.inner2021.get_transaction(hash.clone()).unwrap() {
+                        if txstatus.tx_status.status != ckb_jsonrpc_types::Status::Unknown {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            ret.map(|h256| h256.pack())
         } else {
             let tx = item2021_to_item2019!(tx);
             self.inner2019
