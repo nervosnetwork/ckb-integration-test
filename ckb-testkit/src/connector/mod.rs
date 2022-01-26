@@ -33,7 +33,12 @@ pub struct ConnectorBuilder {
     listening_addresses: Vec<Multiaddr>,
     // protocol metas
     protocol_metas: Vec<P2PProtocolMeta>,
+    // [`SessionConfig::yamux_config`](tentacle::service::config::SessionConfig::yamux_config)
     yamux_config: YamuxConfig,
+    // [`SessionConfig::send_buffer_size`](tentacle::service::config::SessionConfig::send_buffer_size)
+    send_buffer_size: usize,
+    // [`SessionConfig::recv_buffer_size`](tentacle::service::config::SessionConfig::recv_buffer_size)
+    recv_buffer_size: usize,
 }
 
 /// Connector is a fake node
@@ -52,6 +57,8 @@ impl Default for ConnectorBuilder {
             listening_addresses: Vec::new(),
             protocol_metas: Vec::new(),
             yamux_config: Default::default(),
+            send_buffer_size: 24 * 1024 * 1024, // 24mb
+            recv_buffer_size: 24 * 1024 * 1024, // 24mb
         }
     }
 }
@@ -78,6 +85,16 @@ impl ConnectorBuilder {
 
     pub fn yamux_config(mut self, yamux_config: YamuxConfig) -> Self {
         self.yamux_config = yamux_config;
+        self
+    }
+
+    pub fn send_buffer_size(mut self, send_buffer_size: usize) -> Self {
+        self.send_buffer_size = send_buffer_size;
+        self
+    }
+
+    pub fn recv_buffer_size(mut self, recv_buffer_size: usize) -> Self {
+        self.recv_buffer_size = recv_buffer_size;
         self
     }
 
@@ -167,6 +184,8 @@ impl ConnectorBuilder {
             .forever(true)
             .key_pair(self.key_pair.clone())
             .yamux_config(self.yamux_config.clone())
+            .set_send_buffer_size(self.send_buffer_size)
+            .set_recv_buffer_size(self.recv_buffer_size)
             .build(service_handle)
     }
 }
