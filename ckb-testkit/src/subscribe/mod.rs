@@ -51,9 +51,8 @@ use futures::{
 use serde::{Deserialize, Serialize};
 use tokio_util::codec::Framed;
 
-use std::net::SocketAddr;
 use stream_codec::StreamCodec;
-use tokio::net::TcpStream;
+use tokio::net::{TcpStream, ToSocketAddrs};
 
 mod stream_codec {
     /// copy from jsonrpc [service-util](https://github.com/paritytech/jsonrpc/blob/master/server-utils/src/stream_codec.rs)
@@ -453,8 +452,8 @@ async fn subscribe<T: tokio::io::AsyncWrite + tokio::io::AsyncRead + Unpin>(
     }
 }
 
-pub async fn subscribe_new_tip_block(
-    addr: SocketAddr,
+pub async fn subscribe_new_tip_block<A: ToSocketAddrs>(
+    addr: A,
 ) -> Result<Handle<TcpStream, ckb_jsonrpc_types::BlockView>, io::Error> {
     let c = Client::new(TcpStream::connect(addr).await?);
     c
@@ -463,8 +462,8 @@ pub async fn subscribe_new_tip_block(
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "not a subscribe port, please set ckb `tcp_listen_address` to use subscribe rpc feature"))
 }
 
-pub async fn subscribe_new_tip_header(
-    addr: SocketAddr,
+pub async fn subscribe_new_tip_header<A: ToSocketAddrs>(
+    addr: A,
 ) -> Result<Handle<TcpStream, ckb_jsonrpc_types::HeaderView>, io::Error> {
     let c = Client::new(TcpStream::connect(addr).await?);
     c
@@ -473,8 +472,8 @@ pub async fn subscribe_new_tip_header(
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "not a subscribe port, please set ckb `tcp_listen_address` to use subscribe rpc feature"))
 }
 
-pub async fn subscribe_new_transaction(
-    addr: SocketAddr,
+pub async fn subscribe_new_transaction<A: ToSocketAddrs>(
+    addr: A,
 ) -> Result<Handle<TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>, io::Error> {
     let c = Client::new(TcpStream::connect(addr).await?);
     c
@@ -483,8 +482,8 @@ pub async fn subscribe_new_transaction(
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "not a subscribe port, please set ckb `tcp_listen_address` to use subscribe rpc feature"))
 }
 
-pub async fn subscribe_proposed_transaction(
-    addr: SocketAddr,
+pub async fn subscribe_proposed_transaction<A: ToSocketAddrs>(
+    addr: A,
 ) -> Result<Handle<TcpStream, ckb_jsonrpc_types::PoolTransactionEntry>, io::Error> {
     let c = Client::new(TcpStream::connect(addr).await?);
     c
@@ -493,8 +492,8 @@ pub async fn subscribe_proposed_transaction(
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "not a subscribe port, please set ckb `tcp_listen_address` to use subscribe rpc feature"))
 }
 
-pub async fn subscribe_rejected_transaction(
-    addr: SocketAddr,
+pub async fn subscribe_rejected_transaction<A: ToSocketAddrs>(
+    addr: A,
 ) -> Result<
     Handle<
         TcpStream,
