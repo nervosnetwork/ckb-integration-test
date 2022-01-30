@@ -4,9 +4,10 @@ use crate::subscribe::{
 };
 use crate::Node;
 use std::net::SocketAddr;
+use tokio::net::ToSocketAddrs;
 
 impl Node {
-    pub async fn subscribe_new_tip_block(&mut self, subscription_addr: SocketAddr) {
+    pub async fn subscribe_new_tip_block<A: ToSocketAddrs>(&mut self, subscription_addr: A) {
         let handle = subscribe_new_tip_block(subscription_addr).await.unwrap();
         self.new_tip_block_subscriber = Some(handle);
     }
@@ -17,7 +18,7 @@ impl Node {
         self.new_tip_block_subscriber.as_mut().unwrap()
     }
 
-    pub async fn subscribe_new_tip_header(&mut self, subscription_addr: SocketAddr) {
+    pub async fn subscribe_new_tip_header<A: ToSocketAddrs>(&mut self, subscription_addr: A) {
         let handle = subscribe_new_tip_header(subscription_addr).await.unwrap();
         self.new_tip_header_subscriber = Some(handle);
     }
@@ -28,7 +29,7 @@ impl Node {
         self.new_tip_header_subscriber.as_mut().unwrap()
     }
 
-    pub async fn subscribe_new_transaction(&mut self, subscription_addr: SocketAddr) {
+    pub async fn subscribe_new_transaction<A: ToSocketAddrs>(&mut self, subscription_addr: A) {
         let handle = subscribe_new_transaction(subscription_addr).await.unwrap();
         self.new_transaction_subscriber = Some(handle);
     }
@@ -39,7 +40,7 @@ impl Node {
         self.new_transaction_subscriber.as_mut().unwrap()
     }
 
-    pub async fn subscribe_proposed_transaction(&mut self, subscription_addr: SocketAddr) {
+    pub async fn subscribe_proposed_transaction<A: ToSocketAddrs>(&mut self, subscription_addr: A) {
         let handle = subscribe_proposed_transaction(subscription_addr)
             .await
             .unwrap();
@@ -52,7 +53,7 @@ impl Node {
         self.proposed_transaction_subscriber.as_mut().unwrap()
     }
 
-    pub async fn subscribe_rejected_transaction(&mut self, subscription_addr: SocketAddr) {
+    pub async fn subscribe_rejected_transaction<A: ToSocketAddrs>(&mut self, subscription_addr: A) {
         let handle = subscribe_rejected_transaction(subscription_addr)
             .await
             .unwrap();
