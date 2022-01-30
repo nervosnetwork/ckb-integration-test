@@ -61,6 +61,7 @@ fn main() {
 
 fn clap_app() -> App<'static, 'static> {
     App::new("ckb-integration-test")
+        .version(git_version::git_version!())
         .arg(
             Arg::with_name("trace")
                 .long("trace")
