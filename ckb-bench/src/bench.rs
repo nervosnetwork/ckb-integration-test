@@ -210,6 +210,8 @@ impl TransactionProducer {
                     .outputs_data(outputs_data)
                     .cell_deps(self.cell_deps.clone())
                     .build();
+                // NOTE: We know the transaction's inputs and outputs are paired by index, so this
+                // signed way is okay.
                 let witnesses = live_cells.values().map(|cell| {
                     let lock_hash = cell.cell_output.calc_lock_hash();
                     let user = self.users.get(&lock_hash).expect("should be ok");

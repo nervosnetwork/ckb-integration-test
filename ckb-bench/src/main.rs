@@ -92,11 +92,20 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
 
                     if last_print_instant.elapsed() >= Duration::from_secs(10) {
                         last_print_instant = Instant::now();
-                        ckb_testkit::info!(
-                            "mine {} blocks, fixed_tip_number: {}",
-                            mined_n_blocks,
-                            nodes.get_fixed_header().number()
-                        );
+                        if n_blocks == 0 {
+                            ckb_testkit::info!(
+                                "mined {} blocks, fixed_tip_number: {}",
+                                mined_n_blocks,
+                                nodes.get_fixed_header().number()
+                            );
+                        } else {
+                            ckb_testkit::info!(
+                                "mined {}/{} blocks, fixed_tip_number: {}",
+                                mined_n_blocks,
+                                n_blocks,
+                                nodes.get_fixed_header().number()
+                            );
+                        }
                     }
                     if mining_interval_ms != 0 {
                         sleep(Duration::from_millis(mining_interval_ms));
