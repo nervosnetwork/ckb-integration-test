@@ -15,6 +15,7 @@ AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
 GITHUB_TOKEN=${GITHUB_TOKEN}
 
 JOB_ID=${JOB_ID:-"sync-mainnet-$(date +'%Y-%m-%d')-in-10h"}
+TAR_FILENAME="ckb.sync-mainnet-$(date +'%Y-%m-%d')-in-10h.tar.gz"
 SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 JOB_DIRECTORY="$(dirname "$SCRIPT_PATH")/job/$JOB_ID"
 ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
@@ -101,7 +102,7 @@ function ansible_deploy_ckb() {
     ansible_config
 
     cd $ANSIBLE_DIRECTORY
-    ckb_local_source=$JOB_DIRECTORY/ckb/target/release/ckb.$JOB_ID.tar.gz
+    ckb_local_source=$JOB_DIRECTORY/ckb/target/release/"$TAR_FILENAME"
     ansible-playbook playbook.yml \
         -e "ckb_local_source=$ckb_local_source" \
         -t ckb_install,ckb_configure
@@ -164,7 +165,7 @@ function rust_build() {
     make build
 
     cd target/release
-    tar czf ckb.$JOB_ID.tar.gz ckb
+    tar czf "$TAR_FILENAME" ckb
 }
 
 function parse_report_and_inster_to_postgres() {
