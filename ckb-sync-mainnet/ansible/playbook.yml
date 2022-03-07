@@ -33,6 +33,19 @@
       tags:
         - wait_ckb_synchronization
 
+    # run ckb replay from 1 to tip (based on sync db)
+    - name: Run and Wait for CKB replay
+      block:
+        - name: CKB Replay
+          shell: "CKB_LOG=error {{ ckb_workspace }}/ckb replay --tmp-target=/tmp --profile >> {{ ckb_data_dir }}/logs/run.log"
+        - name: Get TPS
+        - shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
+          register: ckb_replay_tps
+        - debug:
+            msg: "{{ ckb_replay_tps.stdout }}"
+      tags:
+        - ckb_replay
+
     - name: Report In Brief
       block:
         - name: RPC local_node_info
@@ -64,6 +77,9 @@
         - name: Get node's current time
           shell: "grep -m 1 'block: {{ ckb_sync_target_number }},' {{ ckb_data_dir }}/logs/run.log"
           register: node_current_time
+        - name: ckb replay tps
+          shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
+          register: ckb_replay_tps
         - name: Append Entry To Report File
           delegate_to: localhost
           vars:
@@ -72,7 +88,8 @@
             version: "{{ rpc_local_node_info.json.result.version }}"
             time: "{{ node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime }}"
             speed: "{{ tip | float / (node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime).total_seconds() }}"
-            entry: "| {{ version }} | {{ time }} | {{ speed | int }} | {{ tip }} | {{ inventory_hostname }} | {{ network }} |"
+            replay_tps: "{{ ckb_replay_tps.stdout }}"
+            entry: "| {{ version }} | {{ time }} | {{ speed | int }} | {{ tip }} | {{ inventory_hostname }} | {{ network }} | {{ replay_tps | int }} |"
           shell: "echo '{{ entry }}' > {{ inventory_hostname }}.brief.md"
       tags:
         - report_in_brief
