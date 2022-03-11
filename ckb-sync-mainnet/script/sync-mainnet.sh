@@ -117,6 +117,13 @@ function ansible_wait_ckb_synchronization() {
     ansible-playbook playbook.yml -t wait_ckb_synchronization -e "ckb_sync_target_number=$(job_target_tip_number)"
 }
 
+function ansible_ckb_replay() {
+  ansible_config
+
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml -t ckb_replay
+}
+
 function markdown_report() {
     case "$OSTYPE" in
         darwin*)
@@ -184,8 +191,9 @@ function parse_report_and_inster_to_postgres() {
       speed=$(echo $LINE | awk -F '|' '{print $4}')
       tip=$(echo $LINE | awk -F '|' '{print $5}')
       hostname=$(echo $LINE | awk -F '|' '{print $6}')
-      psql -c "INSERT INTO sync_mainnet_report (github_run_id,time,ckb_version,ckb_commit_id,ckb_commit_time,time_s,speed,tip,hostname)  \
-             VALUES ('$GITHUB_RUN_ID','$time','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME','$time_s','$speed','$tip','$hostname');"
+      replay_tps=$(echo $LINE | awk -F '|' '{print $8}')
+      psql -c "INSERT INTO sync_mainnet_report (github_run_id,time,ckb_version,ckb_commit_id,ckb_commit_time,time_s,speed,tip,hostname,replay_tps)  \
+             VALUES ('$GITHUB_RUN_ID','$time','$ckb_version','$CKB_COMMIT_ID','$CKB_COMMIT_TIME','$time_s','$speed','$tip','$hostname','$replay_tps');"
     done < "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md"
   fi
 }
@@ -216,6 +224,7 @@ function main() {
             rust_build
             ansible_deploy_ckb
             ansible_wait_ckb_synchronization
+            ansible_ckb_replay
             github_add_comment "$(markdown_report)"
             ;;
         "setup")
