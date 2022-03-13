@@ -37,7 +37,9 @@
     - name: Run and Wait for CKB replay
       block:
         - name: CKB Replay
-          shell: "CKB_LOG=error {{ ckb_workspace }}/ckb replay --tmp-target=/tmp --profile >> {{ ckb_data_dir }}/logs/run.log"
+          shell: "{{ ckb_workspace }}/ckb replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
+          enviroment:
+            CKB_LOG: error
         - name: Get TPS
         - shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
           register: ckb_replay_tps
