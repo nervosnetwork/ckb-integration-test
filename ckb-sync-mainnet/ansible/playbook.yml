@@ -38,10 +38,10 @@
       block:
         - name: CKB Replay
           shell: "{{ ckb_workspace }}/ckb replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
-          enviroment:
+          environment:
             CKB_LOG: error
         - name: Get TPS
-        - shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
+          shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
           register: ckb_replay_tps
         - debug:
             msg: "{{ ckb_replay_tps.stdout }}"
