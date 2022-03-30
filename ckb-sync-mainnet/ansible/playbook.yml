@@ -36,10 +36,21 @@
     # run ckb replay from 1 to tip (based on sync db)
     - name: Run and Wait for CKB replay
       block:
+        - name: Stop CKB
+          become: true
+          service:
+            name: "{{ ckb_service }}"
+            state: stopped
         - name: CKB Replay
+          become: true
           shell: "{{ ckb_workspace }}/ckb replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
           environment:
             CKB_LOG: error
+        - name: Start CKB
+          become: true
+          service:
+            name: "{{ ckb_service }}"
+            state: started
         - name: Get TPS
           shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
           register: ckb_replay_tps
