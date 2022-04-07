@@ -43,7 +43,7 @@
             state: stopped
         - name: CKB Replay
           become: true
-          shell: "{{ ckb_workspace }}/ckb replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
+          shell: "{{ ckb_workspace }}/ckb -C {{ ckb_data_dir }} replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
           environment:
             CKB_LOG: error
         - name: Start CKB
