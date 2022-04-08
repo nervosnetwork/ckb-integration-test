@@ -25,7 +25,7 @@
         - name: Wait Until CKB Reach Tip Number `{{ ckb_sync_target_number }}`
           wait_for:
             path: "{{ ckb_data_dir }}/logs/run.log"
-            search_regex: "(?P<line>.* ChainService INFO ckb_chain::chain  block: {{ ckb_sync_target_number }}, .*)"
+            # search_regex: "(?P<line>.* ChainService INFO ckb_chain::chain  block: {{ ckb_sync_target_number }}, .*)"
             timeout: 900   # in seconds
           register: wait_until_reach_explorer_tip
         - debug:
