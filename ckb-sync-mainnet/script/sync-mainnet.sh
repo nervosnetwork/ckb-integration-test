@@ -42,7 +42,7 @@ function job_clean() {
 
 function job_target_tip_number() {
     # only for test
-    12000
+    return 12000
     #curl https://api.explorer.nervos.org/api/v1/statistics/tip_block_number \
     #    -H 'Accept: application/vnd.api+json' \
     #    -H 'Content-Type: application/vnd.api+json' | jq .data.attributes.tip_block_number
