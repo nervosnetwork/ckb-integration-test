@@ -43,7 +43,7 @@
             state: stopped
         - name: CKB Replay
           become: true
-          shell: "{{ ckb_workspace }}/ckb replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
+          shell: "{{ ckb_workspace }}/ckb -C {{ ckb_workspace }} replay --tmp-target='/tmp' --profile >> {{ ckb_data_dir }}/logs/run.log"
           environment:
             CKB_LOG: error
         - name: Start CKB
@@ -52,7 +52,7 @@
             name: "{{ ckb_service }}"
             state: started
         - name: Get TPS
-          shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
+          shell: "egrep -m 1 'End profiling, duration:.*txs.*tps:[0-9]+' {{ ckb_data_dir }}/logs/run.log | awk -F: '{print $4}'"
           register: ckb_replay_tps
         - debug:
             msg: "{{ ckb_replay_tps.stdout }}"
@@ -91,7 +91,7 @@
           shell: "grep -m 1 'block: {{ ckb_sync_target_number }},' {{ ckb_data_dir }}/logs/run.log"
           register: node_current_time
         - name: ckb replay tps
-          shell: "grep 'End profiling, duration:.*s txs.* tps [0-9]+' {{ ckb_data_dir }}/logs/run.log | awk '{print $8}'"
+          shell: "egrep -m 1 'End profiling, duration:.*txs.*tps:[0-9]+' {{ ckb_data_dir }}/logs/run.log | awk -F: '{print $4}'"
           register: ckb_replay_tps
         - name: Append Entry To Report File
           delegate_to: localhost
