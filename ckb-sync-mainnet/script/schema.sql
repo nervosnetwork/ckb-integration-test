@@ -3,7 +3,7 @@ CREATE DATABASE ckbtest;
 CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 CREATE TABLE IF NOT EXISTS sync_mainnet (
-    github_run_id INT NOT NULL,
+    github_run_id BIGINT NOT NULL,
     github_run_state INT NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS sync_mainnet (
 );
 
 CREATE TABLE IF NOT EXISTS sync_mainnet_report (
-    github_run_id INT NOT NULL,
+    github_run_id BIGINT NOT NULL,
     "time" TIMESTAMP NOT NULL,
     ckb_version VARCHAR (60) NOT NULL,
 	ckb_commit_id VARCHAR (20) NOT NULL,
