@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS sync_mainnet (
 );
 
 CREATE TABLE IF NOT EXISTS sync_mainnet_report (
-    github_run_id INT NOT NULL,
+    github_run_id BIGINT NOT NULL,
     "time" TIMESTAMP NOT NULL,
     ckb_version VARCHAR (60) NOT NULL,
     ckb_commit_id VARCHAR (20) NOT NULL,
