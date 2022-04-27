@@ -222,7 +222,6 @@ function main() {
       rust_build
       ansible_deploy_ckb
       ansible_wait_ckb_synchronization
-      ansible_ckb_replay
       github_add_comment "$(markdown_report)"
       ;;
     "setup")

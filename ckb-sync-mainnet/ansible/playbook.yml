@@ -101,7 +101,7 @@
             version: "{{ rpc_local_node_info.json.result.version }}"
             time: "{{ node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime }}"
             speed: "{{ tip | float / (node_current_time.stdout[0:19] | to_datetime - node_start_time.stdout[0:19] | to_datetime).total_seconds() }}"
-            replay_tps: "{{ ckb_replay_tps.stdout }}"
+            replay_tps: "0"
             entry: "| {{ version }} | {{ time }} | {{ speed | int }} | {{ tip }} | {{ inventory_hostname }} | {{ network }} | {{ replay_tps | int }} |"
           shell: "echo '{{ entry }}' > {{ inventory_hostname }}.brief.md"
       tags:
