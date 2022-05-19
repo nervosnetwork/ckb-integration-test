@@ -20,6 +20,48 @@
         - ckb_miner_start
         - ckb_miner_stop
 
+    - name: Install metrics shellscript
+      block:
+        - name: script for metrics tip head and best header during sync
+          become: true
+          copy:
+            force: true
+            src: "{{ local_source }}"
+            dest: "{{ ckb_workspace }}"
+            mode: 0777
+            group: ckb
+            owner: ckb
+      tags:
+        - metrics_shellscript_install
+
+    - name: background metrics sync process
+      shell: "{{ ckb_workspace }}/metrics_sync.sh {{ ckb_workspace }} "
+      tags:
+        - metrics_sync_process
+
+    - name: rust crate dependencies for sync plot
+      apt:
+        pkg:
+          - pkg-config
+          - libfreetype6-dev
+          - libfontconfig1-dev
+      tags:
+        - install_dependencies_for_sync_chart
+
+    - name: Install sync-chart
+      block:
+        - name: sync-chart
+          become: true
+          copy:
+            force: true
+            src: "{{ local_source }}"
+            dest: "{{ ckb_workspace }}"
+            mode: 0777
+            group: ckb
+            owner: ckb
+      tags:
+        - install_sync_chart
+
     - name: Wait For CKB Synchronization
       block:
         - name: Wait Until CKB Reach Tip Number `{{ ckb_sync_target_number }}`
