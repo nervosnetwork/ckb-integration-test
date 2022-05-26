@@ -16,7 +16,10 @@ GITHUB_TOKEN=${GITHUB_TOKEN}
 
 JOB_ID=${JOB_ID:-"sync-mainnet-$(date +'%Y-%m-%d')-in-10h"}
 TAR_FILENAME="ckb.sync-mainnet-$(date +'%Y-%m-%d')-in-10h.tar.gz"
-SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
+SCRIPT_PATH="$(
+  cd -- "$(dirname "$0")" >/dev/null 2>&1
+  pwd -P
+)"
 JOB_DIRECTORY="$(dirname "$SCRIPT_PATH")/job/$JOB_ID"
 ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
 ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
@@ -27,23 +30,25 @@ START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"nervosnetwork/ckb"}
 GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
+SYNC_CHART_GITHUB_REPOSITORY=${SYNC_CHART_GITHUB_REPOSITORY:-"chanhsu001/ckb-integration-test"}
+SYNC_CHART_GITHUB_BRANCH=${SYNC_CHART_GITHUB_BRANCH:-"metrics_sync_mainnet"}
 function job_setup() {
-  mkdir -p $JOB_DIRECTORY
-  cp -r "$(dirname "$SCRIPT_PATH")/ansible" $JOB_DIRECTORY/ansible
-  cp -r "$(dirname "$SCRIPT_PATH")/terraform" $JOB_DIRECTORY/terraform
+  mkdir -p "$JOB_DIRECTORY"
+  cp -r "$(dirname "$SCRIPT_PATH")/ansible" "$JOB_DIRECTORY"/ansible
+  cp -r "$(dirname "$SCRIPT_PATH")/terraform" "$JOB_DIRECTORY"/terraform
 
   ssh_gen_key
   ansible_setup
 }
 
 function job_clean() {
-  rm -rf $JOB_DIRECTORY
+  rm -rf "$JOB_DIRECTORY"
 }
 
 function job_target_tip_number() {
   curl https://api.explorer.nervos.org/api/v1/statistics/tip_block_number \
-      -H 'Accept: application/vnd.api+json' \
-      -H 'Content-Type: application/vnd.api+json' | jq .data.attributes.tip_block_number
+    -H 'Accept: application/vnd.api+json' \
+    -H 'Content-Type: application/vnd.api+json' | jq .data.attributes.tip_block_number
 }
 
 function ssh_gen_key() {
@@ -53,8 +58,8 @@ function ssh_gen_key() {
     return 0
   fi
 
-  mkdir -p "$(dirname $SSH_PRIVATE_KEY_PATH)"
-  ssh-keygen -t rsa -N "" -f $SSH_PRIVATE_KEY_PATH
+  mkdir -p "$(dirname "$SSH_PRIVATE_KEY_PATH")"
+  ssh-keygen -t rsa -N "" -f "$SSH_PRIVATE_KEY_PATH"
 }
 
 function terraform_config() {
@@ -71,18 +76,18 @@ function terraform_config() {
 function terraform_apply() {
   terraform_config
 
-  cd $TERRAFORM_DIRECTORY
+  cd "$TERRAFORM_DIRECTORY"
   terraform init
   terraform plan
   terraform apply -auto-approve
-  terraform output | grep -v EOT | tee $ANSIBLE_INVENTORY
+  terraform output | grep -v EOT | tee "$ANSIBLE_INVENTORY"
 }
 
 # Destroy AWS resources
 function terraform_destroy() {
   terraform_config
 
-  cd $TERRAFORM_DIRECTORY
+  cd "$TERRAFORM_DIRECTORY"
   terraform destroy -auto-approve
 }
 
@@ -93,7 +98,7 @@ function ansible_config() {
 
 # Setup Ansible running environment.
 function ansible_setup() {
-  cd $ANSIBLE_DIRECTORY
+  cd "$ANSIBLE_DIRECTORY"
   ansible-galaxy install -r requirements.yml --force
 }
 
@@ -101,26 +106,45 @@ function ansible_setup() {
 function ansible_deploy_ckb() {
   ansible_config
 
-  cd $ANSIBLE_DIRECTORY
+  cd "$ANSIBLE_DIRECTORY"
   ckb_local_source=$JOB_DIRECTORY/ckb/target/release/"$TAR_FILENAME"
   ansible-playbook playbook.yml \
     -e "ckb_local_source=$ckb_local_source" \
     -t ckb_install,ckb_configure
 }
 
+# Deploy Metrics shell script to target AWS EC2 instances.
+function ansible_deploy_metrics_shellscript() {
+  ansible_config
+
+  cd "$ANSIBLE_DIRECTORY"
+  metrics_shellscript=$SCRIPT_PATH/metrics_sync.sh
+  ansible-playbook playbook.yml \
+    -e "local_source=$metrics_shellscript" \
+    -t metrics_shellscript_install
+}
+
 # Wait for CKB synchronization completion.
 function ansible_wait_ckb_synchronization() {
   ansible_config
 
-  cd $ANSIBLE_DIRECTORY
+  cd "$ANSIBLE_DIRECTORY"
   ansible-playbook playbook.yml -t ckb_restart
   ansible-playbook playbook.yml -t wait_ckb_synchronization -e "ckb_sync_target_number=$(job_target_tip_number)"
+}
+
+function background_metrics_tip() {
+  ansible_deploy_metrics_shellscript
+  ansible_config
+
+  cd "$ANSIBLE_DIRECTORY"
+  ansible-playbook playbook.yml -t metrics_sync_process
 }
 
 function ansible_ckb_replay() {
   ansible_config
 
-  cd $ANSIBLE_DIRECTORY
+  cd "$ANSIBLE_DIRECTORY"
   ansible-playbook playbook.yml -t ckb_replay
 }
 
@@ -145,41 +169,53 @@ function markdown_report() {
 
   ansible_config
 
-  cd $ANSIBLE_DIRECTORY
+  cd "$ANSIBLE_DIRECTORY"
   echo "**Sync-Mainnet Report**:"
   echo "| Version | Time(s) | Speed | Tip | Hostname | Network |"
   echo "| :--- | :--- | :--- | :--- | :--- | :--- |"
-  cat *.brief.md
+  cat ./*.brief.md
 }
 
-# Upload report through GitHub issue comment
-function github_add_comment() {
-  export GITHUB_TOKEN=${GITHUB_TOKEN}
-  report="$1"
-  $SCRIPT_PATH/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
+function ckb_build() {
+  if [ ! -d "$JOB_DIRECTORY/ckb" ] ; then
+    git -C "$JOB_DIRECTORY" clone \
+      --branch "$GITHUB_BRANCH" \
+      --depth 1 \
+      https://github.com/"$GITHUB_REPOSITORY".git
+  fi
 
-  CKB_HEAD_REF=$(cd $JOB_DIRECTORY/ckb && git log --pretty=format:'%h' -n 1)
-  $SCRIPT_PATH/ok.sh add_commit_comment nervosnetwork/ckb $CKB_HEAD_REF "$report"
-}
-
-function rust_build() {
-  git -C $JOB_DIRECTORY clone \
-    --branch $GITHUB_BRANCH \
-    --depth 1 \
-    https://github.com/$GITHUB_REPOSITORY.git
-
-  cd $JOB_DIRECTORY/ckb
+  cd "$JOB_DIRECTORY"/ckb
   make build
 
   cd target/release
   tar czf "$TAR_FILENAME" ckb
 }
 
-function parse_report_and_inster_to_postgres() {
+function sync_chart_build_install() {
+  if [ ! -d "$JOB_DIRECTORY/ckb-integration-test" ] ; then
+    git -C "$JOB_DIRECTORY" clone \
+      --branch "$SYNC_CHART_GITHUB_BRANCH" \
+      https://github.com/"$SYNC_CHART_GITHUB_REPOSITORY".git
+  fi
+
+  cd "$JOB_DIRECTORY"/ckb-integration-test/sync-chart
+  cargo build --release
+  sync_chart_binary="$JOB_DIRECTORY"/ckb-integration-test/sync-chart/target/release/sync-chart
+  ansible_config
+  cd "$ANSIBLE_DIRECTORY"
+  ansible-playbook playbook.yml -t install_dependencies_for_sync_plot
+
+  ansible-playbook playbook.yml \
+    -e "local_source=$sync_chart_binary" \
+    -t install_sync_chart
+}
+
+function parse_report_and_insert_to_postgres() {
   time=$START_TIME
   #cat *.brief.md if it exist
-  if [ -n "'ls $ANSIBLE_DIRECTORY/*.brief.md'" ]; then
-    cat $ANSIBLE_DIRECTORY/*.brief.md >$ANSIBLE_DIRECTORY/sync-mainnet.brief.md
+  if ls "$ANSIBLE_DIRECTORY"/*.brief.md;
+  then
+    cat "$ANSIBLE_DIRECTORY"/*.brief.md > "$ANSIBLE_DIRECTORY"/sync-mainnet.brief.md
   fi
   if [ -f "$ANSIBLE_DIRECTORY/sync-mainnet.brief.md" ]; then
     while read -r LINE; do
@@ -211,7 +247,16 @@ function insert_report_to_postgres() {
   GITHUB_RUN_LINK="https://github.com/${GITHUB_REPOSITORY}/actions/runs/$GITHUB_RUN_ID"
   psql -c "INSERT INTO sync_mainnet (github_run_id,github_run_state,start_time,end_time,github_branch,github_trigger_event,github_run_link)  \
              VALUES ('$GITHUB_RUN_ID','$GITHUB_RUN_STATE','$START_TIME','$END_TIME','$GITHUB_BRANCH','$GITHUB_EVENT_NAME','$GITHUB_RUN_LINK');"
-  parse_report_and_inster_to_postgres
+  parse_report_and_insert_to_postgres
+}
+
+function github_add_comment() {
+  export GITHUB_TOKEN=$GITHUB_TOKEN
+  report="$1"
+  "$SCRIPT_PATH"/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
+
+  CKB_HEAD_REF=$(cd "$JOB_DIRECTORY"/ckb && git log --pretty=format:'%h' -n 1)
+  "$SCRIPT_PATH"/ok.sh add_commit_comment nervosnetwork/ckb "$CKB_HEAD_REF" "$report"
 }
 
 function main() {
@@ -219,8 +264,10 @@ function main() {
     "run")
       job_setup
       terraform_apply
-      rust_build
+      ckb_build
       ansible_deploy_ckb
+      sync_chart_build_install
+      background_metrics_tip &
       ansible_wait_ckb_synchronization
       github_add_comment "$(markdown_report)"
       ;;
@@ -228,7 +275,7 @@ function main() {
       job_setup
       ;;
     "build")
-      rust_build
+      ckb_build
       ;;
     "terraform")
       terraform_apply
@@ -251,4 +298,4 @@ function main() {
   esac
 }
 
-main $*
+main "$@"
