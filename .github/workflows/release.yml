@@ -68,65 +68,10 @@ jobs:
         name: ${{ runner.os }}
         path: artifacts/
 
-  build-ckb-integration-test:
-    name: Build ckb-integration-test
-    env:
-      PACKAGE: ckb-integration-test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        build: [linux, macos, windows]
-        include:
-          - build: linux
-            os: ubuntu-latest
-          - build: macos
-            os: macos-latest
-          - build: windows
-            os: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: olegtarasov/get-tag@v2.1
-
-    - name: Install windows dependencies (scoop)
-      run: |
-        iwr -useb get.scoop.sh -outfile 'install-scoop.ps1'
-        .\install-scoop.ps1 -RunAsAdmin
-        scoop install llvm
-        echo "LIBCLANG_PATH=$($HOME)/scoop/apps/llvm/current/bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      if: matrix.os == 'windows-latest'
-
-    - name: Cargo build
-      run: cd ${{ env.PACKAGE }} && cargo build --release
-
-    - name: Install p7zip
-      run: brew install p7zip
-      if: matrix.os == 'macos-latest'
-
-    - name: Create artifact directory
-      run: mkdir artifacts
-
-    - name: Create archive for Linux
-      run: 7z a -ttar -so -an ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }} | 7z a -si ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-linux-x86_64.tar.gz
-      if: matrix.os == 'ubuntu-18.04'
-
-    - name: Create archive for Windows
-      run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-windows-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}.exe
-      if: matrix.os == 'windows-latest'
-
-    - name: Create archive for MacOS
-      run: 7z a -tzip ./artifacts/${{ env.PACKAGE }}-${{ env.GIT_TAG_NAME }}-mac-x86_64.zip ./${{ env.PACKAGE }}/target/release/${{ env.PACKAGE }}
-      if: matrix.os == 'macos-latest'
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: ${{ runner.os }}
-        path: artifacts/
-
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [ build-ckb-bench, build-ckb-integration-test ]
+    needs: [ build-ckb-bench ]
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2.1
@@ -145,6 +90,3 @@ jobs:
           ./Linux/ckb-bench-*
           ./Windows/ckb-bench-*
           ./macOS/ckb-bench-*
-          ./Linux/ckb-integration-test-*
-          ./Windows/ckb-integration-test-*
-          ./macOS/ckb-integration-test-*
