@@ -16,7 +16,10 @@ GITHUB_TOKEN=${GITHUB_TOKEN}
 
 JOB_ID=${JOB_ID:-"sync-mainnet-$(date +'%Y-%m-%d')-in-10h"}
 TAR_FILENAME="ckb.sync-mainnet-$(date +'%Y-%m-%d')-in-10h.tar.gz"
-SCRIPT_PATH="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)"
+SCRIPT_PATH="$(
+  cd -- "$(dirname "$0")" >/dev/null 2>&1
+  pwd -P
+)"
 JOB_DIRECTORY="$(dirname "$SCRIPT_PATH")/job/$JOB_ID"
 ANSIBLE_DIRECTORY=$JOB_DIRECTORY/ansible
 ANSIBLE_INVENTORY=$JOB_DIRECTORY/ansible/inventory.yml
@@ -27,7 +30,8 @@ START_TIME=${START_TIME:-"$(date +%Y-%m-%d' '%H:%M:%S.%6N)"}
 GITHUB_REF_NAME=${GITHUB_REF_NAME:-"develop"}
 GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-"nervosnetwork/ckb"}
 GITHUB_BRANCH=${GITHUB_BRANCH:-"$GITHUB_REF_NAME"}
-function job_setup() {
+
+job_setup() {
   mkdir -p $JOB_DIRECTORY
   cp -r "$(dirname "$SCRIPT_PATH")/ansible" $JOB_DIRECTORY/ansible
   cp -r "$(dirname "$SCRIPT_PATH")/terraform" $JOB_DIRECTORY/terraform
@@ -36,17 +40,20 @@ function job_setup() {
   ansible_setup
 }
 
-function job_clean() {
+job_clean() {
   rm -rf $JOB_DIRECTORY
 }
 
-function job_target_tip_number() {
-  curl https://api.explorer.nervos.org/api/v1/statistics/tip_block_number \
-      -H 'Accept: application/vnd.api+json' \
-      -H 'Content-Type: application/vnd.api+json' | jq .data.attributes.tip_block_number
+# fetch and return current mainnet tip_block_number
+job_target_tip_number() {
+  # parse data like: {"jsonrpc":"2.0","result":"0x6f7959","id":42}
+  tip=$(curl -s -X POST -H 'Content-Type: application/json' -d \
+    '{ "jsonrpc": "2.0", "id": 42, "method":"get_tip_block_number", "params":[] }' \
+    http://mainnet.ckb.dev:80 | grep "result" | awk -F '"' '{ print strtonum($8) }')
+  echo "$tip"
 }
 
-function ssh_gen_key() {
+ssh_gen_key() {
   # Pre-check whether "./ssh" existed
   if [ -e "$SSH_PRIVATE_KEY_PATH" ]; then
     echo "Info: $SSH_PRIVATE_KEY_PATH already existed, reuse it"
@@ -57,7 +64,7 @@ function ssh_gen_key() {
   ssh-keygen -t rsa -N "" -f $SSH_PRIVATE_KEY_PATH
 }
 
-function terraform_config() {
+terraform_config() {
   export TF_VAR_access_key=$AWS_ACCESS_KEY
   export TF_VAR_secret_key=$AWS_SECRET_KEY
   export TF_VAR_prefix=$JOB_ID
@@ -68,7 +75,7 @@ function terraform_config() {
 # Allocate AWS resources defined in Terraform.
 #
 # The Terraform directory is "./terraform".
-function terraform_apply() {
+terraform_apply() {
   terraform_config
 
   cd $TERRAFORM_DIRECTORY
@@ -79,26 +86,26 @@ function terraform_apply() {
 }
 
 # Destroy AWS resources
-function terraform_destroy() {
+terraform_destroy() {
   terraform_config
 
   cd $TERRAFORM_DIRECTORY
   terraform destroy -auto-approve
 }
 
-function ansible_config() {
+ansible_config() {
   export ANSIBLE_PRIVATE_KEY_FILE=$SSH_PRIVATE_KEY_PATH
   export ANSIBLE_INVENTORY=$ANSIBLE_INVENTORY
 }
 
 # Setup Ansible running environment.
-function ansible_setup() {
+ansible_setup() {
   cd $ANSIBLE_DIRECTORY
   ansible-galaxy install -r requirements.yml --force
 }
 
 # Deploy CKB onto target AWS EC2 instances.
-function ansible_deploy_ckb() {
+ansible_deploy_ckb() {
   ansible_config
 
   cd $ANSIBLE_DIRECTORY
@@ -109,7 +116,7 @@ function ansible_deploy_ckb() {
 }
 
 # Wait for CKB synchronization completion.
-function ansible_wait_ckb_synchronization() {
+ansible_wait_ckb_synchronization() {
   ansible_config
 
   cd $ANSIBLE_DIRECTORY
@@ -117,14 +124,14 @@ function ansible_wait_ckb_synchronization() {
   ansible-playbook playbook.yml -t wait_ckb_synchronization -e "ckb_sync_target_number=$(job_target_tip_number)"
 }
 
-function ansible_ckb_replay() {
+ansible_ckb_replay() {
   ansible_config
 
   cd $ANSIBLE_DIRECTORY
   ansible-playbook playbook.yml -t ckb_replay
 }
 
-function markdown_report() {
+markdown_report() {
   case "$OSTYPE" in
     darwin*)
       if ! type gsed &>/dev/null || ! type ggrep &>/dev/null; then
@@ -153,7 +160,7 @@ function markdown_report() {
 }
 
 # Upload report through GitHub issue comment
-function github_add_comment() {
+github_add_comment() {
   export GITHUB_TOKEN=${GITHUB_TOKEN}
   report="$1"
   $SCRIPT_PATH/ok.sh add_comment nervosnetwork/ckb 2372 "$report"
@@ -162,7 +169,7 @@ function github_add_comment() {
   $SCRIPT_PATH/ok.sh add_commit_comment nervosnetwork/ckb $CKB_HEAD_REF "$report"
 }
 
-function rust_build() {
+build_ckb() {
   git -C $JOB_DIRECTORY clone \
     --branch $GITHUB_BRANCH \
     --depth 1 \
@@ -175,7 +182,7 @@ function rust_build() {
   tar czf "$TAR_FILENAME" ckb
 }
 
-function parse_report_and_inster_to_postgres() {
+parse_report_and_inster_to_postgres() {
   time=$START_TIME
   #cat *.brief.md if it exist
   if [ -n "'ls $ANSIBLE_DIRECTORY/*.brief.md'" ]; then
@@ -196,7 +203,7 @@ function parse_report_and_inster_to_postgres() {
   fi
 }
 
-function insert_report_to_postgres() {
+insert_report_to_postgres() {
   export PGHOST=${PGHOST}
   export PGPORT=${PGPORT}
   export PGUSER=${PGUSER}
@@ -214,12 +221,12 @@ function insert_report_to_postgres() {
   parse_report_and_inster_to_postgres
 }
 
-function main() {
+main() {
   case $1 in
     "run")
       job_setup
       terraform_apply
-      rust_build
+      build_ckb
       ansible_deploy_ckb
       ansible_wait_ckb_synchronization
       github_add_comment "$(markdown_report)"
@@ -228,7 +235,7 @@ function main() {
       job_setup
       ;;
     "build")
-      rust_build
+      build_ckb
       ;;
     "terraform")
       terraform_apply
