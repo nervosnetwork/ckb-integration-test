@@ -5,6 +5,7 @@ on:
     tags:
       - 'v*.*.*'
       - 'rc-v*'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -24,10 +25,6 @@ jobs:
         include:
           - build: linux
             os: ubuntu-18.04
-          - build: macos
-            os: macos-latest
-          - build: windows
-            os: windows-latest
     steps:
     - uses: actions/checkout@v2
     - uses: olegtarasov/get-tag@v2.1
