@@ -14,7 +14,7 @@
     --n-users 9000
   ```
 
-3. Bench 300 seconds, benched transactions type are 2-in-2-out, sending transaction interval is 10ms
+3. Bench 300 seconds, benched transactions type are 2-in-2-out, sending transaction interval is 10ms ,10 users
 
   ```shell
   CKB_BENCH_OWNER_PRIVKEY=af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94 \
@@ -25,7 +25,8 @@
     --bench-time-ms 300000 \
     --n-users 9000 \
     --n-inout 2 \
-    --tx-interval-ms 10
+    --tx-interval-ms 10 \ 
+    --concurrent-requests 10 
   ```
 
 2. Cleanup. Collect cells back to owner.

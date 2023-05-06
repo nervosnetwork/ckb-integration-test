@@ -50,13 +50,15 @@ CKB-bench provides several options for specifying benchmark scenarios. Here is a
     --n-users 9000 \
     --n-inout 2 \
     --bench-time-ms 300000 \
-    --tx-interval-ms 10
+    --tx-interval-ms 10 \
+    --concurrent-requests 10 
   ```
 
 - `--n-users 9000`: Use the `9000` derived users to bench
 - `--n-inout 2`: Construct 2-in-2-out transactions
 - `--bench-time-ms 300000`: Bench `300000` milliseconds
 - `--tx-interval-ms 10`: Delay 10 milliseconds between sending continuous transactions
+- `--concurrent-requests 10` : 10 users are conducting load testing simultaneously.
 
 Ckb-bench continuously performs these tasks for `bench-time-ms` duration:
   - collects unspent cells of derived users
