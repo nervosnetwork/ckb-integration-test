@@ -6,13 +6,13 @@ use ckb_testkit::Nodes;
 ///   When the node's tx-pool is empty, and recent 20 blocks' transactions are empty, we consider
 ///   the node is zero-load.
 /// - Judge whether the CKB is steady-load.
-///   When the node's tip is 40 blocks far from zero-load-number, we consider the node is
+///   When the node's tip is 5 blocks far from zero-load-number, we consider the node is
 ///   steady-load.
 pub struct Watcher {
     nodes: Nodes,
 }
 
-const N_BLOCKS: usize = 20;
+const N_BLOCKS: usize = 5;
 
 impl Watcher {
     pub fn new(nodes: Nodes) -> Self {
