@@ -29,32 +29,34 @@ impl LiveCellProducer {
     pub fn new(users: Vec<User>, nodes: Vec<Node>) -> Self {
         let n_users = users.len();
 
-        let mut max_count = 1;
+        let mut user_unused_max_cell_count_cache = 1;
+        // step_by: 20 : using a sampling method to find the user who owns the highest number of cells.
+        // seen_out_points lruCache cache size = user_unused_max_cell_count_cache * n_users + 10
+        // seen_out_points lruCache: preventing unused cells on the chain from being reused.
         for i in (0..=users.len()-1).step_by(20) {
-            let cell_count = users.get(i).expect("out of bound").get_spendable_single_secp256k1_cells(&nodes[0]).len();
-            if cell_count > max_count && cell_count <= 10000 {
-                max_count = cell_count;
+            let user_unused_cell_count_cache = users.get(i).expect("out of bound").get_spendable_single_secp256k1_cells(&nodes[0]).len();
+            if user_unused_cell_count_cache > user_unused_max_cell_count_cache && user_unused_cell_count_cache <= 10000 {
+                user_unused_max_cell_count_cache = user_unused_cell_count_cache;
             }
-            ckb_testkit::debug!("idx:{}:cell_size:{}",i,cell_count)
+            ckb_testkit::debug!("idx:{}:user_unused_cell_count_cache:{}",i,user_unused_cell_count_cache)
         }
-        ckb_testkit::debug!("user max count cell:{}",max_count);
+        ckb_testkit::debug!("user max cell count cache:{}",user_unused_max_cell_count_cache);
+        let lrc_cache_size = n_users * user_unused_max_cell_count_cache + 10;
+        ckb_testkit::info!("init unused cache size:{}",lrc_cache_size);
         Self {
             users,
             nodes,
-            seen_out_points: LruCache::new(n_users * max_count + 10),
+            seen_out_points: LruCache::new(lrc_cache_size),
         }
     }
 
-    pub fn run(mut self, live_cell_sender: Sender<CellMeta>, log_time: u64) {
-        ckb_testkit::info!("seen_out_points length:{}",self.seen_out_points.len());
+    pub fn run(mut self, live_cell_sender: Sender<CellMeta>, log_duration: u64) {
         let mut count = 0;
         let mut start_time = Instant::now();
         let mut duration_count = 0;
-        let mut begin = Instant::now();
-        let mut fist_send_finished = false;
+        let mut fist_send_finished = true;
         loop {
-            ckb_testkit::debug!("[LiveCellProducer] delay:{:?}",Instant::now() - begin);
-            begin = Instant::now();
+            // let mut current_loop_start_time = Instant::now();
             let min_tip_number = self
                 .nodes
                 .iter()
@@ -86,18 +88,20 @@ impl LiveCellProducer {
                     let _ignore = live_cell_sender.send(cell);
                     count += 1;
                     duration_count += 1;
-                    if Instant::now().duration_since(start_time) >= Duration::from_secs(log_time) {
-                        ckb_testkit::info!("[LiveCellProducer] producer count: {} ,duration time:{}s, duration tps:{} ", count,log_time,duration_count/log_time);
+                    if Instant::now().duration_since(start_time) >= Duration::from_secs(log_duration) {
+                        let elapsed = start_time.elapsed();
+                        ckb_testkit::info!("[LiveCellProducer] producer count: {} ,duration time:{:?} , duration tps:{}", count,elapsed,duration_count*1000/elapsed.as_millis());
                         duration_count = 0;
                         start_time = Instant::now();
                     }
                 }
 
                 if fist_send_finished {
-                    fist_send_finished = true;
+                    fist_send_finished = false;
                     self.seen_out_points.resize(count + 10)
                 }
             }
+            // ckb_testkit::debug!("[LiveCellProducer] delay:{:?}",current_loop_start_time.elapsed());
         }
     }
 }
@@ -149,7 +153,7 @@ impl TransactionProducer {
         mut self,
         live_cell_receiver: Receiver<CellMeta>,
         transaction_sender: Sender<TransactionView>,
-        log_time: u64,
+        log_duration: u64,
     ) {
         // Environment variables `CKB_BENCH_ENABLE_DATA1_SCRIPT` and
         // `CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH` are temporary.
@@ -277,8 +281,9 @@ impl TransactionProducer {
                 }
                 count += 1;
                 duration_count += 1;
-                if Instant::now().duration_since(start_time) >= Duration::from_secs(log_time) {
-                    ckb_testkit::info!("[TransactionProducer] producer count: {} liveCell producer remaining :{} ,duration time:{}s, duration tps:{} ", count,live_cell_receiver.len(),log_time,duration_count/log_time);
+                if Instant::now().duration_since(start_time) >= Duration::from_secs(log_duration) {
+                    let elapsed = start_time.elapsed();
+                    ckb_testkit::info!("[TransactionProducer] producer count: {} liveCell producer remaining :{} ,duration time:{:?}, duration tps:{} ", count,live_cell_receiver.len(),elapsed,duration_count*1000/elapsed.as_millis());
                     duration_count = 0;
                     start_time = Instant::now();
                 }
@@ -306,7 +311,7 @@ impl TransactionConsumer {
         t_tx_interval: Duration,
         t_bench: Duration) {
         let start_time = Instant::now();
-        let mut last_log_time = Instant::now();
+        let mut last_log_duration = Instant::now();
         let mut benched_transactions = 0;
         let mut duplicated_transactions = 0;
         let mut loop_count = 0;
@@ -382,23 +387,24 @@ impl TransactionConsumer {
                 transactions_total_time.fetch_add(use_time.as_millis() as usize, Ordering::Relaxed);
             }
 
-            if last_log_time.elapsed() > Duration::from_secs(log_duration_time) {
-                last_log_time = Instant::now();
+            if last_log_duration.elapsed() > Duration::from_secs(log_duration_time) {
+                let elapsed = start_time.elapsed();
+                last_log_duration = Instant::now();
                 let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
                 let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
                 let mut duration_tps = 0;
                 let mut duration_delay = 0;
                 if duration_count != 0 {
                     duration_delay = duration_total_time / (duration_count as usize);
-                    duration_tps = duration_count / (log_duration_time as usize);
+                    duration_tps = duration_count *1000 / (elapsed.as_millis() as usize);
                 }
                 ckb_testkit::info!(
-                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {} s,duration send tx tps {},duration avg delay {}ms",
+                "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {}ms",
                 loop_count,
                 benched_transactions,
                 duplicated_transactions,
                 transaction_receiver.len(),
-                log_duration_time,
+                elapsed,
                 duration_tps,
                 duration_delay
             );
