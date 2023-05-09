@@ -224,6 +224,7 @@ impl TransactionProducer {
                     .values()
                     .map(|cell| {
                         // use tx_index as random number
+                        let lock_hash = cell.cell_output.calc_lock_hash();
                         let tx_index = cell.transaction_info.as_ref().unwrap().index;
                         let user = self.users.get(&lock_hash).expect("should be ok");
                         match tx_index % 3 {
@@ -301,9 +302,9 @@ impl TransactionConsumer {
     pub async fn run(
         self,
         transaction_receiver: Receiver<TransactionView>,
-                     max_concurrent_requests: usize,
-                     t_tx_interval: Duration,
-                     t_bench: Duration) {
+        max_concurrent_requests: usize,
+        t_tx_interval: Duration,
+        t_bench: Duration) {
         let start_time = Instant::now();
         let mut last_log_time = Instant::now();
         let mut benched_transactions = 0;
