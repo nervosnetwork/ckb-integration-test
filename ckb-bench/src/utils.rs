@@ -44,7 +44,6 @@ pub async fn maybe_retry_send_transaction_async(node: &Node, tx: &TransactionVie
             Ok(_hash) => return Ok(true),
             Err(err) => {
                 let raw_err = err.to_string();
-                ckb_testkit::info!("error:{}",raw_err);
                 if raw_err.contains("PoolIsFull") {
                     async_sleep(Duration::from_millis(10)).await;
                     if last_logging_time.elapsed() >= Duration::from_secs(5) {
