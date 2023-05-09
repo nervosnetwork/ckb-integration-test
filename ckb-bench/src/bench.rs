@@ -388,7 +388,7 @@ impl TransactionConsumer {
             }
 
             if last_log_duration.elapsed() > Duration::from_secs(log_duration_time) {
-                let elapsed = start_time.elapsed();
+                let elapsed = last_log_duration.elapsed();
                 last_log_duration = Instant::now();
                 let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
                 let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
