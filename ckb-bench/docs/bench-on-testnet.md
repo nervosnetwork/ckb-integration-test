@@ -29,7 +29,7 @@
     --concurrent-requests 10 
   ```
 
-2. Cleanup. Collect cells back to owner.
+4. Cleanup. Collect cells back to owner.
 
   ```shell
   CKB_BENCH_OWNER_PRIVKEY=af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94 \
