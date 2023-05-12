@@ -7,15 +7,15 @@ mod watcher;
 #[cfg(test)]
 mod tests;
 
-use crate::bench::{LiveCellProducer, TransactionProducer};
+use tokio::runtime::Runtime;
+use crate::bench::{LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
-use crate::utils::maybe_retry_send_transaction;
 use crate::watcher::Watcher;
 use ckb_testkit::ckb_crypto::secp::Privkey;
 use ckb_testkit::ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
 use ckb_testkit::{Node, Nodes, User};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
-use crossbeam_channel::bounded;
+use crossbeam_channel::{bounded};
 use std::env;
 use std::ops::Div;
 use std::path::PathBuf;
@@ -24,6 +24,7 @@ use std::str::FromStr;
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use url::Url;
+
 
 #[macro_export]
 macro_rules! prompt_and_exit {
@@ -278,19 +279,20 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .collect::<Vec<_>>()
             };
             let is_smoking_test = arguments.is_present("is-smoking-test");
+            let bench_concurrent_requests_number = value_t_or_exit!(arguments, "concurrent-requests", usize);
             let (live_cell_sender, live_cell_receiver) = bounded(10000000);
             let (transaction_sender, transaction_receiver) = bounded(1000000);
 
             wait_for_nodes_sync(&nodes);
             wait_for_indexer_synced(&nodes);
             ckb_testkit::info!(
-                "bench with params --n-users {} --n-inout {} --tx-interval-ms {} --bench-time-ms {}",
-                users.len(), n_inout, t_tx_interval.as_millis(), t_bench.as_millis(),
+                "bench with params --n-users {} --n-inout {} --tx-interval-ms {} --bench-time-ms {} --concurrent-requests {}",
+                users.len(), n_inout, t_tx_interval.as_millis(), t_bench.as_millis(),bench_concurrent_requests_number
             );
 
             let live_cell_producer = LiveCellProducer::new(users.clone(), nodes.clone());
             spawn(move || {
-                live_cell_producer.run(live_cell_sender);
+                live_cell_producer.run(live_cell_sender, 3);
             });
 
             let transaction_producer = TransactionProducer::new(
@@ -299,7 +301,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 n_inout,
             );
             spawn(move || {
-                transaction_producer.run(live_cell_receiver, transaction_sender);
+                transaction_producer.run(live_cell_receiver, transaction_sender, 3);
             });
 
             let watcher = Watcher::new(nodes.clone().into());
@@ -314,53 +316,11 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             }
 
             let zero_load_number = watcher.get_fixed_header().number();
-            let mut i = 0;
-            let start_time = Instant::now();
-            let mut last_log_time = Instant::now();
-            let mut benched_transactions = 0u64;
-            let mut duplicated_transactions = 0u64;
-            loop {
-                let tx = transaction_receiver
-                    .recv_timeout(Duration::from_secs(60 * 3))
-                    .expect("timeout to wait transaction_receiver");
-                if t_tx_interval.as_millis() != 0 {
-                    sleep(t_tx_interval);
-                }
-
-                i = (i + 1) % nodes.len();
-                match maybe_retry_send_transaction(&nodes[i], &tx) {
-                    Ok(is_accepted) => {
-                        if is_accepted {
-                            benched_transactions += 1;
-                        } else {
-                            duplicated_transactions += 1;
-                        }
-                    }
-                    Err(err) => {
-                        // double spending, discard this transaction
-                        if !err.contains("TransactionFailedToResolve") {
-                            ckb_testkit::error!(
-                                "failed to send tx {:#x}, error: {}",
-                                tx.hash(),
-                                err
-                            );
-                        }
-                    }
-                }
-
-                if last_log_time.elapsed() > Duration::from_secs(30) {
-                    last_log_time = Instant::now();
-                    ckb_testkit::info!(
-                        "benched {} transactions, {} duplicated",
-                        benched_transactions,
-                        duplicated_transactions
-                    );
-                }
-                if start_time.elapsed() > t_bench {
-                    break;
-                }
-            }
-
+            let rt = Runtime::new().unwrap();
+            let tx_consumer = TransactionConsumer::new(nodes.clone());
+            rt.block_on(
+                tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
+            );
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
                     sleep(Duration::from_secs(10));
@@ -517,6 +477,15 @@ fn clap_app() -> App<'static, 'static> {
                     Arg::with_name("is-smoking-test")
                         .long("is-smoking-test")
                         .help("Whether the target network is production network, like mainnet, testnet, devnet"),
+                )
+                .arg(
+                    Arg::with_name("concurrent-requests")
+                        .long("concurrent-requests")
+                        .value_name("NUMBER")
+                        .takes_value(true)
+                        .default_value("1")
+                        .help("Bench concurrent requests")
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
                 ),
         )
         .subcommand(
@@ -568,7 +537,7 @@ fn clap_app() -> App<'static, 'static> {
                         .value_name("PATH")
                         .default_value("./data")
                         .help("Data directory"),
-                ),
+                )
         )
         .subcommand(
             SubCommand::with_name("collect")
