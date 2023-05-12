@@ -270,7 +270,7 @@ dependencies = [
 
 [[package]]
 name = "ckb-bench"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "ckb-hash 0.43.2",
  "ckb-logger-config",
@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "ckb-testkit"
-version = "0.0.1"
+version = "0.0.6"
 dependencies = [
  "ckb-crypto",
  "ckb-error 0.101.3",
