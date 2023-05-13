@@ -95,11 +95,10 @@ impl LiveCellProducer {
                         start_time = Instant::now();
                     }
                 }
-
-                if fist_send_finished {
-                    fist_send_finished = false;
-                    self.seen_out_points.resize(count + 10)
-                }
+            }
+            if fist_send_finished {
+                fist_send_finished = false;
+                self.seen_out_points.resize(count + 10)
             }
             // ckb_testkit::debug!("[LiveCellProducer] delay:{:?}",current_loop_start_time.elapsed());
         }
