@@ -431,7 +431,7 @@ dependencies = [
 
 [[package]]
 name = "ckb-integration-test"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "ckb-logger-config",
  "ckb-logger-service",
@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "ckb-testkit"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "ckb-crypto",
  "ckb-error 0.101.3",
