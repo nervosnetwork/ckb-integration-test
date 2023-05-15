@@ -9,6 +9,12 @@ ckb-testkit:
 ckb-bench:
 	cd ckb-bench && cargo build
 
+.PHONY: check
+check:
+	cd ckb-testkit && cargo check
+	cd ckb-bench && cargo check
+	cd ckb-integration-test && cargo check
+
 .PHONY: fmt
 fmt:
 	cd ckb-testkit && cargo fmt --all
