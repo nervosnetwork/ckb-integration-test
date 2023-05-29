@@ -1,17 +1,18 @@
 use crate::utils::maybe_retry_send_transaction;
-use ckb_testkit::ckb_crypto::secp::{Message, Privkey};
-use ckb_testkit::ckb_jsonrpc_types::Status;
-use ckb_testkit::ckb_types::{
-    bytes::Bytes,
-    core::{cell::CellMeta, Capacity, TransactionBuilder},
-    packed::{Byte32, CellInput, CellOutput, OutPoint, WitnessArgs},
-    prelude::*,
-};
-use ckb_testkit::{Node, User};
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
 use std::thread::sleep;
+use ckb_crypto::secp::{Message, Privkey};
 use std::time::{Duration, Instant};
+use ckb_jsonrpc_types::{ Status};
+use ckb_jsonrpc_types::OutputsValidator::Passthrough;
+use ckb_sdk::rpc::ckb_indexer::Cell;
+use ckb_types::bytes::Bytes;
+use ckb_types::core::{Capacity, TransactionBuilder};
+use ckb_types::packed::{Byte32, CellInput, CellOutput, OutPoint, WitnessArgs};
+use ckb_types::prelude::{Builder, Entity, Pack, Unpack};
+use crate::node::Node;
+use crate::user::User;
 
 /// count of two-in-two-out txs a block should capable to package.
 pub const TWO_IN_TWO_OUT_COUNT: u64 = 1_000;
@@ -25,20 +26,20 @@ pub fn dispatch(
     cells_per_user: u64,
     capacity_per_cell: u64,
 ) {
-    ckb_testkit::info!(
+    crate::info!(
         "dispatch with params --n-users {} --cells-per-user {} --capacity-per-cell {}",
         users.len(),
         cells_per_user,
         capacity_per_cell
     );
 
-    let mut live_cells: VecDeque<CellMeta> = owner
+    let mut live_cells: VecDeque<Cell> = owner
         .get_spendable_single_secp256k1_cells(&nodes[0])
         .into_iter()
         .collect();
 
     {
-        let total_capacity: u64 = live_cells.iter().map(|cell| cell.capacity().as_u64()).sum();
+        let total_capacity: u64 = live_cells.iter().map(|cell| cell.output.capacity.value()).sum();
         let total_fee = users.len() as u64 * cells_per_user * FEE_RATE_OF_OUTPUT;
         let need_capacity = users.len() as u64 * cells_per_user * capacity_per_cell + total_fee;
         assert!(
@@ -63,7 +64,7 @@ pub fn dispatch(
     while let Some(input) = live_cells.pop_front() {
         inputs.push(input);
 
-        let inputs_capacity: u64 = inputs.iter().map(|input| input.capacity().as_u64()).sum();
+        let inputs_capacity: u64 = inputs.iter().map(|input| input.output.capacity.value()).sum();
         // TODO estimate tx fee
         let fee = MAX_OUT_COUNT * FEE_RATE_OF_OUTPUT;
         let outputs_capacity = inputs_capacity - fee;
@@ -99,7 +100,7 @@ pub fn dispatch(
                 .inputs(
                     inputs
                         .iter()
-                        .map(|input| CellInput::new(input.out_point.clone(), 0)),
+                        .map(|input| CellInput::new(input.out_point.clone().into(), 0)),
                 )
                 .outputs_data(
                     (0..outputs.len())
@@ -122,7 +123,7 @@ pub fn dispatch(
         let result = maybe_retry_send_transaction(&nodes[0], &signed_tx);
         if last_logging_time.elapsed() > Duration::from_secs(30) {
             last_logging_time = Instant::now();
-            ckb_testkit::info!("dispatching {}/{} outputs", i_out + 1, total_outs)
+            crate::info!("dispatching {}/{} outputs", i_out + 1, total_outs);
         }
         assert!(
             result.is_ok(),
@@ -142,14 +143,32 @@ pub fn dispatch(
         // Reuse the change output, we can construct chained transactions
         if signed_tx.outputs().len() > n_outs {
             // the 1st output is a change cell, push it back into live_cells as it is a live cell
+
+            //pub struct Cell {
+            //     pub output: CellOutput,
+            //     pub output_data: Option<JsonBytes>,
+            //     pub out_point: OutPoint,
+            //     pub block_number: BlockNumber,
+            //     pub tx_index: Uint32,
+            // }
+
             let change_live_cell = {
                 let cell_output = signed_tx.output(0).expect("1st output exists");
                 let out_point = OutPoint::new(signed_tx.hash(), 0);
-                CellMeta {
-                    cell_output,
-                    out_point,
-                    ..Default::default()
+                //{
+                //                     cell_output,
+                //                     out_point,
+                //                     ..Default::default()
+                //                 }
+
+                Cell {
+                    output:cell_output.into(),
+                    output_data: None,
+                    out_point:out_point.into(),
+                    block_number:0.into(),
+                    tx_index:1.into(),
                 }
+
             };
             live_cells.push_back(change_live_cell);
         }
@@ -159,7 +178,7 @@ pub fn dispatch(
     let mut last_txs_len = sent_n_transactions;
     let mut last_sent_time = Instant::now();
     loop {
-        ckb_testkit::info!(
+        crate::info!(
             "waiting dispatch-transactions been committed, rest {}/{}",
             txs.len(),
             sent_n_transactions
@@ -168,13 +187,13 @@ pub fn dispatch(
         txs = txs
             .into_iter()
             .filter(|tx| {
-                let txstatus_opt = nodes[0].rpc_client().get_transaction(tx.hash());
+                let txstatus_opt = nodes[0].rpc_client().get_transaction(tx.hash().unpack()).unwrap();
                 if let Some(txstatus) = txstatus_opt {
                     if txstatus.tx_status.status == Status::Committed {
                         return false;
                     }
                 } else {
-                    ckb_testkit::error!("tx {:#x} disappeared!", tx.hash());
+                    crate::error!("tx {:#x} disappeared!", tx.hash());
                 }
                 true
             })
@@ -187,14 +206,14 @@ pub fn dispatch(
                 txs.iter().for_each(|tx| {
                     let result = nodes[0]
                         .rpc_client()
-                        .send_transaction_result(tx.data().into());
+                        .send_transaction(tx.data().into(),Some(Passthrough));
                     match result {
-                        Ok(_) => {
-                            ckb_testkit::info!("resend tx {:#x} success", tx.hash());
+                        Ok(tx) => {
+                            crate::info!("resend tx {:#x} success", tx.pack());
                         }
                         Err(err) => {
                             if !err.to_string().contains("Duplicated") {
-                                ckb_testkit::error!(
+                                crate::error!(
                                     "failed to send tx {:#x}, error: {}",
                                     tx.hash(),
                                     err
@@ -217,11 +236,11 @@ pub fn dispatch(
         i_out,
         total_outs
     );
-    ckb_testkit::info!("finished dispatch");
+    crate::info!("finished dispatch");
 }
 
 pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
-    ckb_testkit::info!("collect with params --n-users {}", users.len());
+    crate::info!("collect with params --n-users {}", users.len());
     let mut users_map = HashMap::new();
     for user in users {
         users_map.insert(
@@ -265,24 +284,24 @@ pub fn collect(nodes: &[Node], owner: &User, users: &[User]) {
         i_user += 1;
         if last_logging_time.elapsed() > Duration::from_secs(30) {
             last_logging_time = Instant::now();
-            ckb_testkit::info!("already collected {}/{} users", i_user, n_users)
+            crate::info!("already collected {}/{} users", i_user, n_users);
         }
     }
 
     if !pending_inputs.is_empty() {
         collect_inputs(nodes, owner, &pending_inputs, &users_map);
     }
-    ckb_testkit::info!("already collected {}/{} users", i_user, n_users);
-    ckb_testkit::info!("finished collecting");
+    crate::info!("already collected {}/{} users", i_user, n_users);
+    crate::info!("finished collecting");
 }
 
 fn collect_inputs(
     nodes: &[Node],
     owner: &User,
-    inputs: &[CellMeta],
+    inputs: &[Cell],
     users: &HashMap<Byte32, User>,
 ) {
-    let inputs_capacity: u64 = inputs.iter().map(|cell| cell.capacity().as_u64()).sum();
+    let inputs_capacity: u64 = inputs.iter().map(|cell| cell.output.capacity.value()).sum();
     // TODO estimate tx fee
     let fee = inputs.len() as u64 * 1000;
     let output = CellOutput::new_builder()
@@ -293,7 +312,7 @@ fn collect_inputs(
         .inputs(
             inputs
                 .iter()
-                .map(|cell| CellInput::new(cell.out_point.clone(), 0)),
+                .map(|cell| CellInput::new(cell.out_point.clone().into(), 0)),
         )
         .output(output)
         .output_data(Default::default())
@@ -303,7 +322,7 @@ fn collect_inputs(
     let sorted_script_groups = {
         let mut script_groups = HashMap::new();
         for input in inputs.iter() {
-            let lock = input.cell_output.lock();
+            let lock = input.output.lock.clone();
             script_groups
                 .entry(lock)
                 .and_modify(|cnt| *cnt += 1)
@@ -312,8 +331,8 @@ fn collect_inputs(
 
         let mut sorted_script_groups = Vec::new();
         for input in inputs.iter() {
-            if let Some(cnt) = script_groups.remove(&input.cell_output.lock()) {
-                sorted_script_groups.push((input.cell_output.lock(), cnt));
+            if let Some(cnt) = script_groups.remove(&input.output.lock.clone()) {
+                sorted_script_groups.push((input.output.lock.clone(), cnt));
             }
         }
         sorted_script_groups
@@ -342,7 +361,7 @@ fn collect_inputs(
             let mut message = [0u8; 32];
             blake2b.finalize(&mut message);
             let sig = users
-                .get(&script.calc_script_hash())
+                .get(&ckb_types::packed::Script::from(script.clone()).calc_script_hash())
                 .unwrap()
                 .sign_recoverable(&Message::from(message));
             let first_witness = WitnessArgs::new_builder()

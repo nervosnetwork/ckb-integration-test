@@ -1,5 +1,5 @@
-use ckb_testkit::ckb_types::core::HeaderView;
-use ckb_testkit::Nodes;
+use ckb_jsonrpc_types::HeaderView;
+use crate::nodes::Nodes;
 
 /// Watcher watches the CKB node, it
 /// - Judge whether the CKB is zero-load.
@@ -21,7 +21,7 @@ impl Watcher {
 
     pub fn is_zero_load(&self) -> bool {
         self.nodes.nodes().all(|node| {
-            let tx_pool_info = node.rpc_client().tx_pool_info();
+            let tx_pool_info = node.rpc_client().tx_pool_info().unwrap();
             // TODO FIXME tx-pool stat issue
             // if tx_pool_info.total_tx_cycles.value() != 0 || tx_pool_info.total_tx_size.value() != 0
             // {
@@ -34,11 +34,11 @@ impl Watcher {
                 return false;
             }
 
-            let mut number = node.get_tip_block_number();
+            let mut number = node.rpc_client().get_tip_block_number().unwrap().value();
             let mut n_recent_blocks = N_BLOCKS;
             while number > 0 && n_recent_blocks > 0 {
-                let block = node.get_block_by_number(number);
-                if block.transactions().len() > 1 {
+                let block = node.rpc_client().get_block_by_number(number.into()).unwrap().unwrap();
+                if block.transactions.len() > 1 {
                     return false;
                 }
 

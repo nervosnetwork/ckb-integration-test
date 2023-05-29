@@ -1,19 +1,23 @@
-mod bench;
-mod prepare;
-mod stat;
-mod utils;
-mod watcher;
 
+mod logger;
+mod  node;
+mod nodes;
+pub mod util;
+mod watcher;
+mod utils;
+mod user;
+mod stat;
+mod prepare;
+mod bench;
 #[cfg(test)]
 mod tests;
+mod rpc;
 
 use tokio::runtime::Runtime;
-use crate::bench::{LiveCellProducer, TransactionConsumer, TransactionProducer};
+use crate::bench::{AddTxParam, LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
 use crate::watcher::Watcher;
-use ckb_testkit::ckb_crypto::secp::Privkey;
-use ckb_testkit::ckb_types::{core::BlockNumber, packed::Byte32, prelude::*, H256};
-use ckb_testkit::{Node, Nodes, User};
+use ckb_types::core::{BlockNumber};
 use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use crossbeam_channel::{bounded};
 use std::env;
@@ -23,14 +27,21 @@ use std::process::exit;
 use std::str::FromStr;
 use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
+use ckb_types::H256;
+use ckb_types::packed::{Byte32};
+use ckb_types::prelude::Entity;
 use url::Url;
+use crate::nodes::Nodes;
+use crate::user::User;
+use ckb_crypto::secp::{Privkey};
+use crate::node::Node;
 
 
 #[macro_export]
 macro_rules! prompt_and_exit {
     ($($arg:tt)*) => ({
         eprintln!($($arg)*);
-        ckb_testkit::error!($($arg)*);
+        crate::error!($($arg)*);
         ::std::process::exit(1);
     })
 }
@@ -48,17 +59,17 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mining_interval_ms = value_t_or_exit!(arguments, "mining-interval-ms", u64);
             let nodes: Nodes = rpc_urls
                 .iter()
-                .map(|url| Node::init_from_url(url.as_str(), Default::default()))
+                .map(|url| Node::init(url.as_str(),url.as_str() ))
                 .collect::<Vec<_>>()
                 .into();
 
             // ensure nodes be out of ibd
             let max_tip_number = nodes
                 .nodes()
-                .map(|node| node.get_tip_block_number())
+                .map(|node| node.rpc_client().get_tip_block_number().unwrap())
                 .max()
                 .unwrap();
-            if max_tip_number == 0 {
+            if max_tip_number.value() == 0 {
                 for node in nodes.nodes() {
                     node.mine(1);
                     break;
@@ -66,18 +77,19 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             }
 
             // connect nodes
-            nodes.p2p_connect();
+            // nodes.p2p_connect();
+
             let max_tip_number = nodes
                 .nodes()
-                .map(|node| node.get_tip_block_number())
+                .map(|node| node.rpc_client().get_tip_block_number().unwrap())
                 .max()
                 .unwrap();
             while nodes
                 .nodes()
-                .any(|node| node.get_tip_block_number() < max_tip_number)
+                .any(|node| node.rpc_client().get_tip_block_number().unwrap() < max_tip_number)
             {
                 sleep(Duration::from_secs(10));
-                ckb_testkit::info!("wait nodes sync");
+                crate::info!("wait nodes sync");
             }
 
             // mine `n_blocks`
@@ -94,17 +106,17 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     if last_print_instant.elapsed() >= Duration::from_secs(10) {
                         last_print_instant = Instant::now();
                         if n_blocks == 0 {
-                            ckb_testkit::info!(
+                            crate::info!(
                                 "mined {} blocks, fixed_tip_number: {}",
                                 mined_n_blocks,
-                                nodes.get_fixed_header().number()
+                                nodes.get_fixed_header().inner.number.value()
                             );
                         } else {
-                            ckb_testkit::info!(
+                            crate::info!(
                                 "mined {}/{} blocks, fixed_tip_number: {}",
                                 mined_n_blocks,
                                 n_blocks,
-                                nodes.get_fixed_header().number()
+                                nodes.get_fixed_header().inner.number.value()
                             );
                         }
                     }
@@ -131,7 +143,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                         )
                     });
 
-                    Node::init_from_url(url.as_str(), node_data_dir)
+                    Node::init(url.as_str(), url.as_str())
                 })
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
@@ -143,7 +155,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     err
                 )
             });
-            let genesis_block = nodes[0].get_block_by_number(0);
+            let genesis_block = nodes[0].clone().genesis_block.unwrap();
             let owner = {
                 let owner_privkey = Privkey::from_str(&owner_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
@@ -168,8 +180,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
-            wait_for_nodes_sync(&nodes);
-            wait_for_indexer_synced(&nodes);
             dispatch(&nodes, &owner, &users, cells_per_user, capacity_per_cell);
         }
         ("collect", Some(arguments)) => {
@@ -188,7 +198,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                             err
                         )
                     });
-                    Node::init_from_url(url.as_str(), node_data_dir)
+                    Node::init(url.as_str(), url.as_str())
                 })
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
@@ -198,7 +208,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     err
                 )
             });
-            let genesis_block = nodes[0].get_block_by_number(0);
+            let genesis_block = nodes[0].clone().genesis_block.unwrap();
             let owner = {
                 let owner_privkey = Privkey::from_str(&owner_raw_privkey).unwrap_or_else(|err| {
                     prompt_and_exit!(
@@ -223,8 +233,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
-            wait_for_nodes_sync(&nodes);
-            wait_for_indexer_synced(&nodes);
             collect(&nodes, &owner, &users);
         }
         ("bench", Some(arguments)) => {
@@ -243,7 +251,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                             err
                         )
                     });
-                    Node::init_from_url(url.as_str(), node_data_dir)
+                    Node::init(url.as_str(), url.as_str())
                 })
                 .collect::<Vec<_>>();
             let n_users = value_t_or_exit!(arguments, "n-users", usize);
@@ -262,7 +270,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     err
                 )
             });
-            let genesis_block = nodes[0].get_block_by_number(0);
+            let genesis_block = nodes[0].clone().genesis_block.unwrap();
             let users = {
                 let owner_byte32_privkey =
                     Byte32::from_slice(H256::from_str(&owner_raw_privkey).unwrap().as_bytes())
@@ -283,9 +291,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let (live_cell_sender, live_cell_receiver) = bounded(10000000);
             let (transaction_sender, transaction_receiver) = bounded(1000000);
 
-            wait_for_nodes_sync(&nodes);
-            wait_for_indexer_synced(&nodes);
-            ckb_testkit::info!(
+            crate::info!(
                 "bench with params --n-users {} --n-inout {} --tx-interval-ms {} --bench-time-ms {} --concurrent-requests {}",
                 users.len(), n_inout, t_tx_interval.as_millis(), t_bench.as_millis(),bench_concurrent_requests_number
             );
@@ -295,10 +301,12 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 live_cell_producer.run(live_cell_sender, 3);
             });
 
+
             let transaction_producer = TransactionProducer::new(
                 users.clone(),
                 vec![users[0].single_secp256k1_cell_dep()],
                 n_inout,
+                AddTxParam::new()
             );
             spawn(move || {
                 transaction_producer.run(live_cell_receiver, transaction_sender, 3);
@@ -308,39 +316,42 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
                     sleep(Duration::from_secs(10));
-                    ckb_testkit::info!(
+                    crate::info!(
                         "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
-                        watcher.get_fixed_header().number()
+                        watcher.get_fixed_header().inner.number.value()
                     );
                 }
             }
 
-            let zero_load_number = watcher.get_fixed_header().number();
+            let zero_load_number = watcher.get_fixed_header().inner.number;
             let rt = Runtime::new().unwrap();
             let tx_consumer = TransactionConsumer::new(nodes.clone());
+            crate::info!("---- tx_consumer------");
+
             rt.block_on(
+
                 tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
             );
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
                     sleep(Duration::from_secs(10));
-                    ckb_testkit::info!(
+                    crate::info!(
                         "[Watcher] is waiting the node become zero-load, fixed_tip_number: {}",
-                        watcher.get_fixed_header().number()
+                        watcher.get_fixed_header().inner.number.value()
                     );
                 }
             }
 
             let t_stat = t_bench.div(2);
-            let fixed_tip_number = watcher.get_fixed_header().number();
+            let fixed_tip_number = watcher.get_fixed_header().inner.number;
             let report = stat::stat(
                 &nodes[0],
-                zero_load_number + 1,
-                fixed_tip_number,
+                (zero_load_number.value() + 1).into(),
+                fixed_tip_number.into(),
                 t_stat,
                 Some(t_tx_interval),
             );
-            ckb_testkit::info!(
+            crate::info!(
                 "markdown report: | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
                 report.ckb_version,
                 report.transactions_per_second,
@@ -356,7 +367,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 report.total_transactions_size,
                 report.transactions_size_per_second,
             );
-            ckb_testkit::info!("metrics: {}", serde_json::json!(report));
+            crate::info!("metrics: {}", serde_json::json!(report));
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
@@ -364,9 +375,9 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let to_number = value_t_or_exit!(arguments, "to-number", BlockNumber);
             let stat_time_ms = value_t_or_exit!(arguments, "stat-period-ms", u64);
             let t_stat = Duration::from_millis(stat_time_ms);
-            let node = Node::init_from_url(rpc_urls[0].as_str(), Default::default());
+            let node = Node::init(rpc_urls[0].as_str(), rpc_urls[0].as_str());
             let report = stat::stat(&node, from_number, to_number, t_stat, None);
-            ckb_testkit::info!("metrics: {}", serde_json::json!(report));
+            crate::info!("metrics: {}", serde_json::json!(report));
         }
         _ => {
             eprintln!("wrong usage");
@@ -633,48 +644,47 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
         .unwrap_or_else(|err| panic!("failed to init the logger service, error: {}", err))
 }
 
-fn wait_for_nodes_sync(nodes: &Vec<Node>) {
-    ckb_testkit::info!("wait_for_nodes_sync");
-    for node_a in nodes.iter() {
-        for node_b in nodes.iter() {
-            if node_a.p2p_address() != node_b.p2p_address() && !node_a.is_p2p_connected(node_b) {
-                if node_a.get_tip_block_number() < node_b.get_tip_block_number() {
-                    // An ibd node will not request GetHeaders from inbound peers.
-                    // https://github.com/nervosnetwork/ckb/blob/78fb281317aeaaa8b2621908cda79928ac697df4/sync/src/synchronizer/mod.rs#L543
-                    node_a.p2p_connect(node_b);
-                } else {
-                    node_b.p2p_connect(node_a);
-                }
-            }
-        }
-    }
-
-    let target_tip_number = nodes
-        .iter()
-        .map(|node| node.get_tip_block_number())
-        .max()
-        .expect("should be ok for multiple nodes");
-    loop {
-        let min_tip_number = nodes
-            .iter()
-            .map(|node| node.get_tip_block_number())
-            .min()
-            .expect("should be ok for multiple nodes");
-        if min_tip_number >= target_tip_number {
-            break;
-        }
-        ckb_testkit::info!(
-            "wait_for_nodes_sync, target_tip_number is {}, min_tip_number is {}",
-            target_tip_number,
-            min_tip_number
-        );
-        sleep(Duration::from_secs(10));
-    }
-}
-
-fn wait_for_indexer_synced(nodes: &Vec<Node>) {
-    ckb_testkit::info!("wait_for_indexer_synced");
-    for node in nodes.iter() {
-        let _wait_indexing_to_tip = node.indexer();
-    }
-}
+//
+//
+// mod logger;
+// mod  node;
+// mod nodes;
+// pub mod util;
+// mod watcher;
+// mod utils;
+// mod user;
+// mod stat;
+// mod prepare;
+// mod bench;
+//
+// fn main() {
+//     let _logger = init_logger();
+//     // use ckb_sdk::rpc::CkbRpcClient;
+//     //
+//     // let mut ckb_client = CkbRpcClient::new("https://testnet.ckb.dev");
+//     // let block = ckb_client.get_block_by_number(0.into()).unwrap();
+//     // println!("block: {}", serde_json::to_string_pretty(&block).unwrap());
+//     let mut node = Node::init("https://testnet.ckb.dev", "https://testnet.ckb.dev");
+//     let block = node.rpc_client.get_block_by_number(0.into()).unwrap();
+//     // println!("block: {}", serde_json::to_string_pretty(&block).unwrap());
+//
+//
+// }
+//
+//
+// fn init_logger() -> ckb_logger_service::LoggerInitGuard {
+//     let filter = match env::var("RUST_LOG") {
+//         Ok(filter) if filter.is_empty() => Some("info".to_string()),
+//         Ok(filter) => Some(filter.to_string()),
+//         Err(_) => Some("info".to_string()),
+//     };
+//     let config = ckb_logger_config::Config {
+//         filter,
+//         color: false,
+//         log_to_file: false,
+//         log_to_stdout: true,
+//         ..Default::default()
+//     };
+//     ckb_logger_service::init(None, config)
+//         .unwrap_or_else(|err| panic!("failed to init the logger service, error: {}", err))
+// }

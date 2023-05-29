@@ -1,7 +1,7 @@
-use ckb_testkit::ckb_types::core::BlockNumber;
-use ckb_testkit::Node;
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
+use ckb_types::core::{BlockNumber, BlockView, HeaderView};
+use crate::node::Node;
 
 /// On-chain report
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -54,10 +54,17 @@ pub fn stat(
     let mut n_inout = 0;
     let mut best_report = Report::default();
     loop {
-        let block_i = node.get_block_by_number(i);
+        let block_i = {
+            let block = node.rpc_client().get_block_by_number(i.into()).unwrap();
+            BlockView::from(block.unwrap())
+        };
+
         let mut block_j_timestamp = 0;
         while j <= to_number {
-            let block_j = node.get_block_by_number(j);
+            let block_j = {
+                let block = node.rpc_client().get_block_by_number(j.into()).unwrap();
+                BlockView::from(block.unwrap())
+            };
             block_j_timestamp = block_j.timestamp();
             if block_j.timestamp().saturating_sub(block_i.timestamp())
                 >= stat_time.as_millis() as u64
@@ -78,7 +85,10 @@ pub fn stat(
             j = to_number;
         }
 
-        let header_j = node.get_header_by_number(j);
+        let header_j = {
+            let block = node.rpc_client().get_header_by_number(j.into()).unwrap();
+            HeaderView::from(block.unwrap())
+        };
         let tps = (total_transactions as f64 * 1000.0
             / (block_j_timestamp.saturating_sub(block_i.timestamp())) as f64)
             as u64;
@@ -110,7 +120,7 @@ pub fn stat(
         i += 1;
     }
 
-    let local_node_info = node.rpc_client().local_node_info();
+    let local_node_info = node.rpc_client().local_node_info().unwrap();
     best_report.ckb_version = local_node_info.version;
     best_report.n_nodes = local_node_info.connections.value() as usize + 1;
     best_report.n_inout = n_inout;
