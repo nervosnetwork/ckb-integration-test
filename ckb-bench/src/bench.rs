@@ -330,7 +330,7 @@ impl TransactionProducer {
                         .pack()
                 });
                 let signed_tx = raw_tx.as_advanced_builder().witnesses(witnesses).build();
-                crate::info!("signed tx:{:?}",signed_tx.to_string());
+                crate::debug!("signed tx:{:?}",signed_tx.to_string());
                 if transaction_sender.send(TransactionView::from(signed_tx)).is_err() {
                     // SendError occurs, the corresponding transaction receiver is dead
                     return;
