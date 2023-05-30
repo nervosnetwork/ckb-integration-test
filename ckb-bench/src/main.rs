@@ -1,6 +1,5 @@
-
 mod logger;
-mod  node;
+mod node;
 mod nodes;
 pub mod util;
 mod watcher;
@@ -13,12 +12,14 @@ mod bench;
 mod tests;
 mod rpc;
 
+use std::fs::File;
+use std::io::Read;
 use tokio::runtime::Runtime;
 use crate::bench::{AddTxParam, LiveCellProducer, TransactionConsumer, TransactionProducer};
 use crate::prepare::{collect, derive_privkeys, dispatch};
 use crate::watcher::Watcher;
 use ckb_types::core::{BlockNumber};
-use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use clap::{value_t_or_exit, values_t_or_exit, App, Arg, ArgMatches, SubCommand, value_t};
 use crossbeam_channel::{bounded};
 use std::env;
 use std::ops::Div;
@@ -29,7 +30,7 @@ use std::thread::{sleep, spawn};
 use std::time::{Duration, Instant};
 use ckb_types::H256;
 use ckb_types::packed::{Byte32};
-use ckb_types::prelude::Entity;
+use ckb_types::prelude::{Entity};
 use url::Url;
 use crate::nodes::Nodes;
 use crate::user::User;
@@ -59,7 +60,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let mining_interval_ms = value_t_or_exit!(arguments, "mining-interval-ms", u64);
             let nodes: Nodes = rpc_urls
                 .iter()
-                .map(|url| Node::init(url.as_str(),url.as_str() ))
+                .map(|url| Node::init(url.as_str(), url.as_str()))
                 .collect::<Vec<_>>()
                 .into();
 
@@ -237,20 +238,9 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
         }
         ("bench", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
-            let data_dir = value_t_or_exit!(arguments, "data-dir", PathBuf);
             let nodes = rpc_urls
                 .iter()
                 .map(|url| {
-                    let port = url.port().unwrap();
-                    let host = url.host_str().unwrap();
-                    let node_data_dir = data_dir.join(&format!("{}:{}", host, port));
-                    ::std::fs::create_dir_all(&node_data_dir).unwrap_or_else(|err| {
-                        panic!(
-                            "failed to create dir \"{}\", error: {}",
-                            node_data_dir.display(),
-                            err
-                        )
-                    });
                     Node::init(url.as_str(), url.as_str())
                 })
                 .collect::<Vec<_>>();
@@ -286,6 +276,14 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                     .map(|privkey| User::new(genesis_block.clone(), Some(privkey)))
                     .collect::<Vec<_>>()
             };
+            let add_tx_params_path = match value_t!(arguments, "add-tx-params", String) {
+                Ok(path) => {
+                    path
+                }
+                Err(_) => {
+                    "".to_string()
+                }
+            };
             let is_smoking_test = arguments.is_present("is-smoking-test");
             let bench_concurrent_requests_number = value_t_or_exit!(arguments, "concurrent-requests", usize);
             let (live_cell_sender, live_cell_receiver) = bounded(10000000);
@@ -306,12 +304,17 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 users.clone(),
                 vec![users[0].single_secp256k1_cell_dep()],
                 n_inout,
-                AddTxParam::new()
+                {
+                    get_add_tx_param_by_path(add_tx_params_path.into())
+                },
             );
             spawn(move || {
                 transaction_producer.run(live_cell_receiver, transaction_sender, 3);
             });
-
+            let watcher_status = Watcher::new(nodes.clone().into());
+            spawn(move || {
+                watcher_status.check_statue(3, t_bench);
+            });
             let watcher = Watcher::new(nodes.clone().into());
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
@@ -329,7 +332,6 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             crate::info!("---- tx_consumer------");
 
             rt.block_on(
-
                 tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
             );
             if !is_smoking_test {
@@ -368,6 +370,18 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 report.transactions_size_per_second,
             );
             crate::info!("metrics: {}", serde_json::json!(report));
+        }
+        ("watch", Some(arguments)) => {
+            let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
+            let internal_s1 = value_t_or_exit!(arguments, "interval-s", u64);
+            let time_s = value_t_or_exit!(arguments, "time-s", u64);
+            let nodes: Nodes = rpc_urls
+                .iter()
+                .map(|url| Node::init(url.as_str(), url.as_str()))
+                .collect::<Vec<_>>()
+                .into();
+            let watch = Watcher::new(nodes);
+            watch.check_statue(internal_s1, Duration::from_secs(time_s));
         }
         ("stat", Some(arguments)) => {
             let rpc_urls = values_t_or_exit!(arguments, "rpc-urls", Url);
@@ -429,13 +443,12 @@ fn clap_app() -> App<'static, 'static> {
             SubCommand::with_name("bench")
                 .about("bench the target ckb nodes")
                 .arg(
-                    Arg::with_name("data-dir")
-                        .long("data-dir")
-                        .required(true)
+                    Arg::with_name("add-tx-params")
+                        .long("add-tx-params")
+                        .required(false)
                         .takes_value(true)
                         .value_name("PATH")
-                        .default_value("./data")
-                        .help("Data directory"),
+                        .help("add tx  params"),
                 )
                 .arg(
                     Arg::with_name("rpc-urls")
@@ -582,7 +595,39 @@ fn clap_app() -> App<'static, 'static> {
                         .default_value("./data")
                         .help("Data directory"),
                 ),
+        ).subcommand(
+        SubCommand::with_name("watch")
+            .about("watch chain stat")
+            .arg(
+                Arg::with_name("rpc-urls")
+                    .long("rpc-urls")
+                    .value_name("URLS")
+                    .long_help("CKB rpc urls, prefix with network protocol, delimited by comma, e.g. \"http://127.0.0.1:8114,http://127.0.0.2.8114\"")
+                    .required(true)
+                    .takes_value(true)
+                    .multiple(true)
+                    .use_delimiter(true)
+                    .validator(|s| Url::parse(&s).map(|_| ()).map_err(|err| err.to_string())),
+            ).arg(
+            Arg::with_name("interval-s")
+                .long("interval-s")
+                .value_name("NUMBER")
+                .takes_value(false)
+                .default_value("3")
+                .help("interval time")
+                .required(true)
+                .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+        ).arg(
+            Arg::with_name("time-s")
+                .long("time-s")
+                .value_name("NUMBER")
+                .takes_value(false)
+                .default_value("600")
+                .help("long time")
+                .required(true)
+                .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
         )
+    )
         .subcommand(
             SubCommand::with_name("stat")
                 .about("report chain stat")
@@ -688,3 +733,34 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
 //     ckb_logger_service::init(None, config)
 //         .unwrap_or_else(|err| panic!("failed to init the logger service, error: {}", err))
 // }
+
+
+// fn main() {
+//
+//     let args: Vec<String> = env::args().collect();
+//
+//     if args.len() < 2 {
+//         panic!("Please provide the file path as an argument");
+//     }
+//
+//     let dd = get_add_tx_param_by_path(file_path);
+//
+//     // let mut scpt: ScriptOpt = {
+//     //     if deserialized_object._type == ckb_jsonrpc_types::Script::default(){
+//     //         // return Some(ckb_types::packed::Script::from(deserialized_object._type.into()).clone())
+//     //
+//     //     }
+//     //     None
+//     // };
+// }
+
+fn get_add_tx_param_by_path(file_path: String) -> AddTxParam {
+    if file_path == ""{
+        return AddTxParam::new()
+    }
+    let mut file =  File::open(file_path).expect("not found file path");
+    let mut json_content = String::new();
+    file.read_to_string(&mut json_content).expect("Failed to read the file");
+    let deserialized_object: AddTxParam = serde_json::from_str(&json_content).expect("Failed to deserialize JSON");
+    deserialized_object
+}

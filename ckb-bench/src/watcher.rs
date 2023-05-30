@@ -1,4 +1,6 @@
-use ckb_jsonrpc_types::HeaderView;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
+use ckb_jsonrpc_types::{HeaderView, TxPoolInfo};
 use crate::nodes::Nodes;
 
 /// Watcher watches the CKB node, it
@@ -12,11 +14,57 @@ pub struct Watcher {
     nodes: Nodes,
 }
 
+pub struct NodeStatus{
+    node_id:String,
+    tx_pool_info:TxPoolInfo
+}
+
 const N_BLOCKS: usize = 5;
 
 impl Watcher {
     pub fn new(nodes: Nodes) -> Self {
         Self { nodes }
+    }
+
+    pub fn check_statue(
+         &self,
+        log_duration: u64,
+        t_bench: Duration
+    ) {
+        let start_time = Instant::now();
+
+        loop {
+
+            let nodes_status = self.nodes.nodes().map(|node|{
+                let raw_tx_pool = node.rpc_client().tx_pool_info().unwrap();
+                NodeStatus{
+                    node_id: node.node_name().into(),
+                    tx_pool_info: raw_tx_pool,
+                }
+            });
+            if self.nodes.nodes().len() > 1{
+                println!()
+            }
+            nodes_status.for_each(|status|
+                {
+                    crate::info!("[node] node_id:{:?}, tip_number:{:?}, pool msg: pending :{:?},orphan:{:?},proposed: {:?} ",
+                    status.node_id,
+                    status.tx_pool_info.tip_number.value(),
+                    status.tx_pool_info.pending.value(),
+                    status.tx_pool_info.orphan.value(),
+                    status.tx_pool_info.proposed.value());
+                }
+            );
+            sleep(Duration::from_secs(log_duration));
+            if start_time.elapsed() > t_bench {
+                break;
+            }
+
+
+        }
+
+
+
     }
 
     pub fn is_zero_load(&self) -> bool {

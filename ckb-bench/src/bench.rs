@@ -9,11 +9,12 @@ use futures::{FutureExt, StreamExt};
 use tokio::time::sleep as async_sleep;
 use crate::utils::maybe_retry_send_transaction_async;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use ckb_jsonrpc_types::{OutPoint};
+use ckb_jsonrpc_types::{OutPoint, CellDep as CellDepJson, Script as ScriptJson,  JsonBytes};
 use ckb_types::core::{TransactionBuilder, TransactionView};
 use ckb_sdk::rpc::ckb_indexer::Cell;
 use ckb_types::core::EpochNumberWithFraction;
-use ckb_types::packed::{Byte32, ScriptOpt, CellDep, CellInput, CellOutput};
+use ckb_types::H256;
+use ckb_types::packed::{Byte32, ScriptOpt, OutPoint as OutPointByte, CellDep, CellInput, CellOutput, Script};
 use ckb_types::prelude::{Builder, Entity, Pack};
 use ckb_bench::util::since_from_absolute_epoch_number_with_fraction;
 use crate::node::Node;
@@ -101,17 +102,52 @@ impl LiveCellProducer {
     }
 }
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug,Serialize, Deserialize)]
 pub struct AddTxParam{
-    deps:Vec<CellDep>,
-    _type:ScriptOpt,
+    pub deps:Vec<CellDepJson>,
+    pub _type:ScriptJson,
+    pub output_data: JsonBytes
+}
+
+impl AddTxParam {
+    pub(crate) fn get_output_data(&mut self) ->ckb_types::packed::Bytes {
+        ckb_types::packed::Bytes::from(self.output_data.clone())
+    }
 }
 
 impl AddTxParam {
     pub fn new () -> Self {
        Self {
            deps: vec![],
-           _type: ScriptOpt::default()
+           _type: ScriptJson::default(),
+           output_data:Default::default()
        }
+    }
+
+    pub fn get_cell_deps(&mut self) -> Vec<CellDep>{
+        let mut updated_vec: Vec<CellDep> = Vec::new();
+        for item in self.deps.iter() {
+            updated_vec.push( CellDep::new_builder()
+                .out_point(
+                    OutPointByte::new(item.out_point.tx_hash.pack(),item.out_point.index.value())
+                ).dep_type(ckb_types::core::DepType::from(item.dep_type.clone()).into())
+                .build())
+        }
+        updated_vec
+    }
+    pub fn get_script_obj(&mut self) -> ScriptOpt{
+        // if self._type
+        if self._type.code_hash ==  H256::default() {
+            ScriptOpt::default()
+        }else {
+            Some(Script::new_builder()
+                .code_hash(self._type.code_hash.pack())
+                .args(self._type.args.clone().into_bytes().pack())
+                .hash_type(ckb_types::core::ScriptHashType::from(self._type.hash_type.clone()).into())
+                .build()).pack()
+        }
     }
 }
 pub struct TransactionProducer {
@@ -192,8 +228,9 @@ impl TransactionProducer {
         let mut start_time = Instant::now();
         let mut duration_count = 0;
 
+
         let mut tx_cell_deps = self.cell_deps.clone();
-        tx_cell_deps.extend(self.add_tx_param.deps.clone());
+        tx_cell_deps.extend(self.add_tx_param.get_cell_deps());
 
         while let Ok(live_cell) = live_cell_receiver.recv() {
             let lock_hash = ckb_types::packed::Script::from(live_cell.output.lock.clone()).calc_script_hash();
@@ -249,25 +286,25 @@ impl TransactionProducer {
                             0 => CellOutput::new_builder()
                                 .capacity((cell.output.capacity.value() - 1000).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
-                                .type_(self.add_tx_param._type.clone())
+                                .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             1 => CellOutput::new_builder()
                                 .capacity((cell.output.capacity.value()  - 1000).pack())
                                 .lock(user.single_secp256k1_lock_script_via_type())
-                                .type_(self.add_tx_param._type.clone())
+                                .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             2 => {
                                 if enabled_data1_script {
                                     CellOutput::new_builder()
                                         .capacity((cell.output.capacity.value()  - 1000).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data1())
-                                        .type_(self.add_tx_param._type.clone())
+                                        .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 } else {
                                     CellOutput::new_builder()
                                         .capacity((cell.output.capacity.value()  - 1000).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data())
-                                        .type_(self.add_tx_param._type.clone())
+                                        .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 }
                             }
@@ -275,7 +312,7 @@ impl TransactionProducer {
                         }
                     })
                     .collect::<Vec<_>>();
-                let outputs_data = live_cells.values().map(|_| Default::default());
+                let outputs_data = live_cells.values().map(|_| self.add_tx_param.get_output_data());
                 let raw_tx = TransactionBuilder::default()
                     .inputs(inputs)
                     .outputs(outputs)
@@ -293,7 +330,7 @@ impl TransactionProducer {
                         .pack()
                 });
                 let signed_tx = raw_tx.as_advanced_builder().witnesses(witnesses).build();
-
+                crate::info!("signed tx:{:?}",signed_tx.to_string());
                 if transaction_sender.send(TransactionView::from(signed_tx)).is_err() {
                     // SendError occurs, the corresponding transaction receiver is dead
                     return;
