@@ -1,6 +1,6 @@
 [package]
 name = "ckb-integration-test"
-version = "0.0.1"
+version = "0.0.7"
 authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
 homepage = "https://github.com/keroro520/ckb"
