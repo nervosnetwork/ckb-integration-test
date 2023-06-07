@@ -1,0 +1,4 @@
+all:
+  hosts:
+    225.225.225.225:
+      ansible_user: xxx

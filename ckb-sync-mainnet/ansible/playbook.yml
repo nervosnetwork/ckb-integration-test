@@ -19,6 +19,7 @@
         - ckb_miner_restart
         - ckb_miner_start
         - ckb_miner_stop
+        - ckb_clean
 
     - name: Wait For CKB Synchronization
       block:
