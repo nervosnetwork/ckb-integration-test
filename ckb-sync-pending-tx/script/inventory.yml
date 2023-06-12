@@ -1,0 +1,5 @@
+all:
+  hosts:
+    225.225.225.225:
+      ansible_user: xxx
+      internal_ip: 192.168.1.100

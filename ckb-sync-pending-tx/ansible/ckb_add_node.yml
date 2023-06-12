@@ -1,0 +1,16 @@
+- name: node1 Get ip and port
+  -debug: "todo"
+
+- name: node1 RPC Call `local_node_info` get node id
+  -debug: "todo"
+
+- name: Get node1  internal ip
+  -debug: "todo"
+
+- name: echo node1 add node msg
+  -debug: "todo"
+- name: node2 RPC Call `add_node`
+  -debug: "todo"
+
+- name: wait node1 and node2 linked
+  -debug: "todo"
