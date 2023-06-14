@@ -6,7 +6,6 @@
 #   * AWS_SECRET_KEY, required, the AWS secret key
 #   * AWS_EC2_TYPE, optional, default is c5.xlarge, the AWS EC2 type
 #   * GITHUB_TOKEN, required, GitHub API authentication token
-
 set -euo pipefail
 
 AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
@@ -14,6 +13,7 @@ AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_EC2_TYPE=${AWS_EC2_TYPE:-"c5.xlarge"}
 GITHUB_TOKEN=${GITHUB_TOKEN}
 
+download_ckb_version="latest"
 JOB_ID=${JOB_ID:-"sync-mainnet-$(date +'%Y-%m-%d')-in-10h"}
 TAR_FILENAME="ckb.sync-mainnet-$(date +'%Y-%m-%d')-in-10h.tar.gz"
 SCRIPT_PATH="$(
@@ -105,15 +105,35 @@ ansible_setup() {
 }
 
 # Deploy CKB onto target AWS EC2 instances.
-ansible_deploy_ckb() {
+ansible_deploy_download_ckb() {
   ansible_config
 
+  if [ ${download_ckb_version} == "latest" ]; then
+    ckb_remote_url=`curl --silent "https://api.github.com/repos/nervosnetwork/ckb/releases/latest" | jq -r ".assets[].browser_download_url" | grep unknown-linux-gnu-portable | grep -v asc`
+    cd $ANSIBLE_DIRECTORY
+    ansible-playbook playbook.yml \
+      -e "ckb_download_url=$ckb_remote_url" \
+      -t ckb_install,ckb_configure
+    return
+  fi
+  ckb_remote_url="https://github.com/nervosnetwork/ckb/releases/download/${download_ckb_version}/ckb_${download_ckb_version}_x86_64-unknown-centos-gnu.tar.gz"
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -e "ckb_download_url=$ckb_remote_url" \
+    -t ckb_install,ckb_configure
+
+}
+
+ansible_deploy_local_ckb(){
+  ansible_config
   cd $ANSIBLE_DIRECTORY
   ckb_local_source=$JOB_DIRECTORY/ckb/target/release/"$TAR_FILENAME"
   ansible-playbook playbook.yml \
     -e "ckb_local_source=$ckb_local_source" \
     -t ckb_install,ckb_configure
 }
+
+
 
 # Wait for CKB synchronization completion.
 ansible_wait_ckb_synchronization() {
@@ -167,6 +187,13 @@ github_add_comment() {
 
   CKB_HEAD_REF=$(cd $JOB_DIRECTORY/ckb && git log --pretty=format:'%h' -n 1)
   $SCRIPT_PATH/ok.sh add_commit_comment nervosnetwork/ckb $CKB_HEAD_REF "$report"
+}
+
+clean_ckb_env(){
+  ansible_config
+  cd $ANSIBLE_DIRECTORY
+  ansible-playbook playbook.yml \
+    -t ckb_clean
 }
 
 build_ckb() {
@@ -227,7 +254,7 @@ main() {
       job_setup
       terraform_apply
       build_ckb
-      ansible_deploy_ckb
+      ansible_deploy_local_ckb
       ansible_wait_ckb_synchronization
       github_add_comment "$(markdown_report)"
       ;;
@@ -241,7 +268,7 @@ main() {
       terraform_apply
       ;;
     "ansible")
-      ansible_deploy_ckb
+      ansible_deploy_download_ckb
       ansible_wait_ckb_synchronization
       markdown_report
       ;;
@@ -252,7 +279,13 @@ main() {
       terraform_destroy
       job_clean
       ;;
-    "insert_report_to_postgres")
+   "clean_ckb_env")
+      clean_ckb_env
+      ;;
+   "clean_job")
+      job_clean
+      ;;
+   "insert_report_to_postgres")
       insert_report_to_postgres
       ;;
   esac
