@@ -1,0 +1,40 @@
+
+- name: Load variables from var file
+  include_vars: "{{ n1 }}.yml"  # Replace with the actual var file path
+
+- name: "wait tx_pool_info.pending until connections == {{ pending }}"
+  uri:
+    url: "http://{{ hostvars[n1]['ansible_host'] }}:{{ ckb_rpc_listen_address | regex_search('(\\d+)$', '\\1') | first }}"
+    method: POST
+    body_format: json
+    body:
+      id: 0
+      jsonrpc: "2.0"
+      method: "tx_pool_info"
+      params: []
+    headers:
+      Content-Type: "application/json"
+    return_content: yes
+  register: response
+
+- debug:
+    msg: "The value of response.json.result.pending is {{ response.json.result.pending[2:]|int(16) }}"
+
+
+- name: "wait tx_pool_info.pending until connections == {{ pending }}"
+  uri:
+    url: "http://{{ hostvars[n1]['ansible_host'] }}:{{ ckb_rpc_listen_address | regex_search('(\\d+)$', '\\1') | first }}"
+    method: POST
+    body_format: json
+    body:
+      id: 0
+      jsonrpc: "2.0"
+      method: "tx_pool_info"
+      params: []
+    headers:
+      Content-Type: "application/json"
+    return_content: yes
+  register: response
+  until: response.json.result.pending[2:] | int(base=16) == pending  | int
+  retries: 60000
+  delay: 10

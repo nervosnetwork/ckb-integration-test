@@ -1,16 +1,94 @@
-- name: node1 Get ip and port
-  -debug: "todo"
+- name: Get node1 internal ip
+  set_fact:
+    node1_p2p_ip: "{{ hostvars[n1]['internal_ip'] }}"
+  when: hostvars[n1]['internal_ip'] is defined
+
+- name: Get node1 external ip
+  set_fact:
+    node1_p2p_ip: "{{ hostvars[n1]['ansible_host'] }}"
+  when: hostvars[n1]['internal_ip'] is not defined
+
+
+- name: Load variables from var file
+  include_vars: "{{ n1 }}.yml"  # Replace with the actual var file path
+
+- name: Get node1 p2p port number from ckb_network_listen_addresses
+  set_fact:
+    node1_p2p_port_number: "{{ ckb_network_listen_addresses[0] | regex_search('(\\d+)$', '\\1') | first }}"
+
+- name: get node1 rpc port
+  set_fact:
+    node1_rpc_port_number: "{{ ckb_rpc_listen_address | regex_search('(\\d+)$', '\\1') | first }}"
 
 - name: node1 RPC Call `local_node_info` get node id
-  -debug: "todo"
+  uri:
+    url: "http://{{ hostvars[n1]['ansible_host'] }}:{{ node1_rpc_port_number }}"
+    method: POST
+    body_format: json
+    body:
+      id: 0
+      jsonrpc: "2.0"
+      method: "local_node_info"
+      params: []
+    headers:
+      Content-Type: "application/json"
+  register: local_node_info
 
-- name: Get node1  internal ip
-  -debug: "todo"
+- name: Print `local_node_info`
+  debug:
+    msg: "{{ local_node_info.json.result }}"
 
-- name: echo node1 add node msg
-  -debug: "todo"
-- name: node2 RPC Call `add_node`
-  -debug: "todo"
+- name: Set node node_id
+  set_fact:
+    node1_node_id: "{{ local_node_info.json.result.node_id }}"
 
-- name: wait node1 and node2 linked
-  -debug: "todo"
+
+- name: Get node2 external ip
+  set_fact:
+    node2_p2p_ip: "{{ hostvars[n2]['ansible_host'] }}"
+
+
+
+- name: Load variables from var file
+  include_vars: "{{ n2 }}.yml"  # Replace with the actual var file path
+
+
+- name: get node2 rpc port
+  set_fact:
+    node2_rpc_port_number: "{{ ckb_rpc_listen_address | regex_search('(\\d+)$', '\\1') | first }}"
+
+
+- name: add node
+  uri:
+    url: "http://{{ hostvars[n2]['ansible_host'] }}:{{ node2_rpc_port_number }}"
+    method: POST
+    body_format: json
+    body:
+      id: 0
+      jsonrpc: "2.0"
+      method: "add_node"
+      params: [
+        "{{ node1_node_id }}",
+        "/ip4/{{ node1_p2p_ip }}/tcp/{{ node1_p2p_port_number }}"
+      ]
+    headers:
+      Content-Type: "application/json"
+
+
+- name: wait local_node_info.connections until connections > 1
+  uri:
+    url: "http://{{ hostvars[n2]['ansible_host'] }}:{{ node2_rpc_port_number }}"
+    method: POST
+    body_format: json
+    body:
+      id: 0
+      jsonrpc: "2.0"
+      method: "local_node_info"
+      params: []
+    headers:
+      Content-Type: "application/json"
+    return_content: yes
+  register: response
+  until: response.json.result.connections[2:]|int(16) > 0
+  retries: 10
+  delay: 10

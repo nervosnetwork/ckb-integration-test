@@ -58,6 +58,37 @@
         - ckb_benchmark_prepare
         - ckb_benchmark_start
 
+    ##  ansible-playbook playbook.yml \
+    #    -e "node=localhost" \
+    #    -e "n1=node1" \
+    #    -e "n2=node2" \
+    #    -t ckb_add_node
+    - name: add node
+      import_tasks: ckb_add_node.yml
+      tags:
+        - ckb_add_node
+
+    ### usege:
+    ##  ansible-playbook playbook.yml \
+    ##        -e "node=localhost" \
+    ##        -e "n1=node1" \
+    ##        -e "network_status=false" \
+    ##        -t ckb_set_network_active
+    - name: set network active
+      import_tasks: ckb_set_network_active.yml
+      tags:
+        - ckb_set_network_active
+
+    ## ansible-playbook playbook.yml \
+    #    -e "node=localhost" \
+    #    -e "n1=node1" \
+    #    -e "pending=10" \
+    #    -t ckb_wait_pending
+    - name: ckb_wait_pending_load.yml
+      import_tasks: ckb_wait_pending_load.yml
+      tags:
+        - ckb_wait_pending_load
+
     - name: Fetch CKB Benchmark Logfiles
       become: true
       fetch:
@@ -70,7 +101,3 @@
         - { src: "/var/lib/ckb-benchmark/data/ckb-bench.brief.md", dest: "ckb-bench.brief.md" }
       tags:
         - process_result
-
-    - include: ckb_add_node.yml
-      -tag:
-        - ckb_add_node

@@ -1,0 +1,25 @@
+- name: Load variables from var file
+  include_vars: "{{ n1 }}.yml"  # Replace with the actual var file path
+
+- name: get node2 rpc port
+  set_fact:
+    node1_rpc_port_number: "{{ ckb_rpc_listen_address | regex_search('(\\d+)$', '\\1') | first }}"
+
+- name: rpc call `set_network_active`
+  uri:
+    url: "http://{{ hostvars[n1]['ansible_host'] }}:{{ node1_rpc_port_number }}"
+    method: POST
+    body_format: json
+    body:
+      id: 0
+      jsonrpc: "2.0"
+      method: "set_network_active"
+      params: "[ {{ network_status }} ]"
+    headers:
+      Content-Type: "application/json"
+
+#  register: set_network_active1
+#
+#- name: Print `set_network_active1`
+#  debug:
+#    msg: "{{ set_network_active1 }}"
