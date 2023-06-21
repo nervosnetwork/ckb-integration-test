@@ -155,7 +155,8 @@ impl Node {
         for _ in 0..n_blocks {
             let template = self.rpc_client().get_block_template(None, None, None).unwrap();
             let block = packed::Block::from(template);
-            self.rpc_client().submit_block("1".into(), block.into()).unwrap();
+            self.rpc_client().submit_block("".into(), block.into()).unwrap();
+            self.wait_for_tx_pool();
         }
     }
 
