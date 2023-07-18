@@ -9,7 +9,7 @@ use futures::{FutureExt, StreamExt};
 use tokio::time::sleep as async_sleep;
 use crate::utils::maybe_retry_send_transaction_async;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use ckb_jsonrpc_types::{OutPoint, CellDep as CellDepJson, Script as ScriptJson,  JsonBytes};
+use ckb_jsonrpc_types::{OutPoint, CellDep as CellDepJson, Script as ScriptJson, JsonBytes};
 use ckb_types::core::{TransactionBuilder, TransactionView};
 use ckb_sdk::rpc::ckb_indexer::Cell;
 use ckb_types::core::EpochNumberWithFraction;
@@ -34,7 +34,7 @@ impl LiveCellProducer {
         // step_by: 20 : using a sampling method to find the user who owns the highest number of cells.
         // seen_out_points lruCache cache size = user_unused_max_cell_count_cache * n_users + 10
         // seen_out_points lruCache: preventing unused cells on the chain from being reused.
-        for i in (0..=users.len()-1).step_by(20) {
+        for i in (0..=users.len() - 1).step_by(20) {
             let user_unused_cell_count_cache = users.get(i).expect("out of bound").get_spendable_single_secp256k1_cells(&nodes[0]).len();
             if user_unused_cell_count_cache > user_unused_max_cell_count_cache && user_unused_cell_count_cache <= 10000 {
                 user_unused_max_cell_count_cache = user_unused_cell_count_cache;
@@ -73,7 +73,7 @@ impl LiveCellProducer {
                         if self.seen_out_points.contains(&cell.out_point) {
                             return false;
                         }
-                       if cell.block_number > min_tip_number {
+                        if cell.block_number > min_tip_number {
                             return false;
                         }
                         true
@@ -104,44 +104,46 @@ impl LiveCellProducer {
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug,Serialize, Deserialize)]
-pub struct AddTxParam{
-    pub deps:Vec<CellDepJson>,
-    pub _type:ScriptJson,
-    pub output_data: JsonBytes
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddTxParam {
+    pub deps: Vec<CellDepJson>,
+    pub _type: ScriptJson,
+    pub output_data: JsonBytes,
+    pub fee: u64,
 }
 
 impl AddTxParam {
-    pub(crate) fn get_output_data(&mut self) ->ckb_types::packed::Bytes {
+    pub(crate) fn get_output_data(&mut self) -> ckb_types::packed::Bytes {
         ckb_types::packed::Bytes::from(self.output_data.clone())
     }
 }
 
 impl AddTxParam {
-    pub fn new () -> Self {
-       Self {
-           deps: vec![],
-           _type: ScriptJson::default(),
-           output_data:Default::default()
-       }
+    pub fn new() -> Self {
+        Self {
+            deps: vec![],
+            _type: ScriptJson::default(),
+            output_data: Default::default(),
+            fee: 1000,
+        }
     }
 
-    pub fn get_cell_deps(&mut self) -> Vec<CellDep>{
+    pub fn get_cell_deps(&mut self) -> Vec<CellDep> {
         let mut updated_vec: Vec<CellDep> = Vec::new();
         for item in self.deps.iter() {
-            updated_vec.push( CellDep::new_builder()
+            updated_vec.push(CellDep::new_builder()
                 .out_point(
-                    OutPointByte::new(item.out_point.tx_hash.pack(),item.out_point.index.value())
+                    OutPointByte::new(item.out_point.tx_hash.pack(), item.out_point.index.value())
                 ).dep_type(ckb_types::core::DepType::from(item.dep_type.clone()).into())
                 .build())
         }
         updated_vec
     }
-    pub fn get_script_obj(&mut self) -> ScriptOpt{
+    pub fn get_script_obj(&mut self) -> ScriptOpt {
         // if self._type
-        if self._type.code_hash ==  H256::default() {
+        if self._type.code_hash == H256::default() {
             ScriptOpt::default()
-        }else {
+        } else {
             Some(Script::new_builder()
                 .code_hash(self._type.code_hash.pack())
                 .args(self._type.args.clone().into_bytes().pack())
@@ -149,7 +151,12 @@ impl AddTxParam {
                 .build()).pack()
         }
     }
+
+    pub fn get_fee(&mut self) -> u64 {
+        self.fee
+    }
 }
+
 pub struct TransactionProducer {
     // #{ lock_hash => user }
     users: HashMap<Byte32, User>,
@@ -163,7 +170,7 @@ pub struct TransactionProducer {
 }
 
 impl TransactionProducer {
-    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize,add_tx_param:AddTxParam) -> Self {
+    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize, add_tx_param: AddTxParam) -> Self {
         let mut users_map = HashMap::new();
         for user in users {
             // To support environment `CKB_BENCH_ENABLE_DATA1_SCRIPT`, we have to index 3
@@ -284,25 +291,25 @@ impl TransactionProducer {
                         let user = self.users.get(&lock_hash).expect("should be ok");
                         match tx_index % 3 {
                             0 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value() - 1000).pack())
+                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
                                 .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             1 => CellOutput::new_builder()
-                                .capacity((cell.output.capacity.value()  - 1000).pack())
+                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                 .lock(user.single_secp256k1_lock_script_via_type())
                                 .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             2 => {
                                 if enabled_data1_script {
                                     CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value()  - 1000).pack())
+                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data1())
                                         .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 } else {
                                     CellOutput::new_builder()
-                                        .capacity((cell.output.capacity.value()  - 1000).pack())
+                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data())
                                         .type_(self.add_tx_param.get_script_obj())
                                         .build()
@@ -322,8 +329,7 @@ impl TransactionProducer {
                 // NOTE: We know the transaction's inputs and outputs are paired by index, so this
                 // signed way is okay.
                 let witnesses = live_cells.values().map(|cell| {
-
-                    let lock_hash =  ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
+                    let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
                     let user = self.users.get(&lock_hash).expect("should be ok");
                     user.single_secp256k1_signed_witness(&raw_tx)
                         .as_bytes()
@@ -449,7 +455,7 @@ impl TransactionConsumer {
                 let mut duration_delay = 0;
                 if duration_count != 0 {
                     duration_delay = duration_total_time / (duration_count as usize);
-                    duration_tps = duration_count *1000 / (elapsed.as_millis() as usize);
+                    duration_tps = duration_count * 1000 / (elapsed.as_millis() as usize);
                 }
                 crate::info!(
                 "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {}ms",

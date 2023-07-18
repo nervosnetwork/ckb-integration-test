@@ -64,7 +64,7 @@ CKB-bench provides several options for specifying benchmark scenarios. Here is a
 
 File format : contract.json 
 ```json
-{"deps":[{"dep_type":"code","out_point":{"tx_hash":"0xdd71f517ef4cd619f656d3e83d2000bf2f14ebdb0d786e019310acaa9c431c69","index":"0x0"}}],"_type":{"code_hash":"0x4a27458674f2e96f84b727f89bd7dab18dbfb74265d5977f215324715570b36b","hash_type":"data1","args":"0x02"},"output_data":"0x005a6202000000000000000000000000"}
+{"deps":[{"dep_type":"code","out_point":{"tx_hash":"0xdd71f517ef4cd619f656d3e83d2000bf2f14ebdb0d786e019310acaa9c431c69","index":"0x0"}}],"_type":{"code_hash":"0x4a27458674f2e96f84b727f89bd7dab18dbfb74265d5977f215324715570b36b","hash_type":"data1","args":"0x02"},"output_data":"0x005a6202000000000000000000000000","fee":1000}
 ```
 Ckb-bench continuously performs these tasks for `bench-time-ms` duration:
   - collects unspent cells of derived users

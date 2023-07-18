@@ -285,6 +285,7 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
                 }
             };
             let is_smoking_test = arguments.is_present("is-smoking-test");
+            let is_skip_report = arguments.is_present("is-skip-report");
             let bench_concurrent_requests_number = value_t_or_exit!(arguments, "concurrent-requests", usize);
             let (live_cell_sender, live_cell_receiver) = bounded(10000000);
             let (transaction_sender, transaction_receiver) = bounded(1000000);
@@ -334,6 +335,10 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             rt.block_on(
                 tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
             );
+            if is_skip_report {
+                crate::info!("----finished-----");
+                return;
+            }
             if !is_smoking_test {
                 while !watcher.is_zero_load() {
                     sleep(Duration::from_secs(10));
@@ -501,6 +506,11 @@ fn clap_app() -> App<'static, 'static> {
                     Arg::with_name("is-smoking-test")
                         .long("is-smoking-test")
                         .help("Whether the target network is production network, like mainnet, testnet, devnet"),
+                )
+                .arg(
+                    Arg::with_name("is-skip-report")
+                        .long("is-skip-report")
+                        .help("skip collect report"),
                 )
                 .arg(
                     Arg::with_name("concurrent-requests")
@@ -755,10 +765,10 @@ fn init_logger() -> ckb_logger_service::LoggerInitGuard {
 // }
 
 fn get_add_tx_param_by_path(file_path: String) -> AddTxParam {
-    if file_path == ""{
-        return AddTxParam::new()
+    if file_path == "" {
+        return AddTxParam::new();
     }
-    let mut file =  File::open(file_path).expect("not found file path");
+    let mut file = File::open(file_path).expect("not found file path");
     let mut json_content = String::new();
     file.read_to_string(&mut json_content).expect("Failed to read the file");
     let deserialized_object: AddTxParam = serde_json::from_str(&json_content).expect("Failed to deserialize JSON");
