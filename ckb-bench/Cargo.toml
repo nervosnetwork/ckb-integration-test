@@ -32,3 +32,4 @@ ckb-crypto = { version = "=0.108.0", features = ["secp"] }
 reqwest = { version = "0.10.9", features = ["blocking", "json"] }
 ckb-error = "0.101.0"
 jsonrpc-core = "14.0"
+rand = "0.8"

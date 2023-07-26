@@ -19,6 +19,7 @@ use ckb_types::prelude::{Builder, Entity, Pack};
 use ckb_bench::util::since_from_absolute_epoch_number_with_fraction;
 use crate::node::Node;
 use crate::user::User;
+use rand::Rng;
 
 pub struct LiveCellProducer {
     users: Vec<User>,
@@ -109,7 +110,8 @@ pub struct AddTxParam {
     pub deps: Vec<CellDepJson>,
     pub _type: ScriptJson,
     pub output_data: JsonBytes,
-    pub fee: u64,
+    pub min_fee: u64,
+    pub max_fee: u64,
 }
 
 impl AddTxParam {
@@ -124,7 +126,8 @@ impl AddTxParam {
             deps: vec![],
             _type: ScriptJson::default(),
             output_data: Default::default(),
-            fee: 1000,
+            min_fee: 1000,
+            max_fee: 1000,
         }
     }
 
@@ -153,7 +156,8 @@ impl AddTxParam {
     }
 
     pub fn get_fee(&mut self) -> u64 {
-        self.fee
+        let mut rng = rand::thread_rng();
+        rng.gen_range(self.min_fee..=self.max_fee)
     }
 }
 
