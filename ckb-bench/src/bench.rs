@@ -1,6 +1,7 @@
 use crossbeam_channel::{Receiver, Sender};
 use lru::LruCache;
 use std::collections::HashMap;
+use std::ops::{Add, Sub};
 use std::sync::{Arc};
 use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
@@ -20,6 +21,8 @@ use ckb_bench::util::since_from_absolute_epoch_number_with_fraction;
 use crate::node::Node;
 use crate::user::User;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+
 
 pub struct LiveCellProducer {
     users: Vec<User>,
@@ -103,7 +106,6 @@ impl LiveCellProducer {
     }
 }
 
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddTxParam {
@@ -371,11 +373,12 @@ impl TransactionConsumer {
     }
 
     pub async fn run(
-        self,
+        &self,
         transaction_receiver: Receiver<TransactionView>,
         max_concurrent_requests: usize,
         t_tx_interval: Duration,
-        t_bench: Duration) {
+        t_bench: Duration)
+    {
         let start_time = Instant::now();
         let mut last_log_duration = Instant::now();
         let mut benched_transactions = 0;
@@ -477,4 +480,162 @@ impl TransactionConsumer {
             }
         }
     }
+
+
+    pub async fn run_tps(
+        &self,
+        transaction_receiver: Receiver<TransactionView>,
+        max_concurrent_requests: usize,
+        tps: usize,
+        t_bench: Duration)
+    {
+        let start_time = Instant::now();
+        let mut last_log_duration = Instant::now();
+        let mut benched_transactions = 0;
+        let mut duplicated_transactions = 0;
+        let mut loop_count = 0;
+        let mut i = 0;
+        let log_duration_time = 3;
+        let mut t_tx_interval = Duration::from_millis((Duration::from_secs(max_concurrent_requests as u64).as_millis() / (tps as u128 as u128)) as u64);
+        let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
+        let transactions_processed = Arc::new(AtomicUsize::new(0));
+        let transactions_total_time = Arc::new(AtomicUsize::new(0));
+
+        let mut pending_tasks = FuturesUnordered::new();
+
+        loop {
+            loop_count += 1;
+            let tx = transaction_receiver
+                .recv_timeout(Duration::from_secs(60 * 3))
+                .expect("timeout to wait transaction_receiver");
+            i = (i + 1) % self.nodes.len();
+            let node = self.nodes[i].clone();
+            let permit = semaphore.clone().acquire_owned().await;
+            let tx_hash = tx.hash();
+            let task = async move {
+                let begin_time = Instant::now();
+                let result = maybe_retry_send_transaction_async(&node, &tx).await;
+                let end_time = begin_time.elapsed();
+                if t_tx_interval.as_millis() != 0 {
+                    async_sleep(t_tx_interval).await;
+                }
+                drop(permit);
+                (result, tx_hash, end_time)
+            };
+
+            pending_tasks.push(tokio::spawn(task));
+            while let Some(result) = pending_tasks.next().now_or_never() {
+                transactions_processed.fetch_add(1, Ordering::Relaxed);
+
+                let mut use_time = Duration::from_millis(0);
+
+                match result {
+                    Some(Ok((Ok(is_accepted), _tx_hash, cost_time))) => {
+                        use_time = cost_time;
+                        if is_accepted {
+                            benched_transactions += 1;
+                        } else {
+                            duplicated_transactions += 1;
+                        }
+                    }
+                    Some(Ok((Err(err), tx_hash, cost_time))) => {
+                        use_time = cost_time;
+                        // double spending, discard this transaction
+                        crate::info!(
+                            "consumer count :{} failed to send tx {:#x}, error: {}",
+                            loop_count,
+                            tx_hash,
+                            err
+                        );
+                        if !err.contains("TransactionFailedToResolve") {
+                            crate::error!(
+                                "failed to send tx {:#x}, error: {}",
+                                tx_hash,
+                                err
+                            );
+                        }
+                    }
+                    Some(Err(e)) => {
+                        eprintln!("Error in task: {:?}", e);
+                    }
+                    None => break,
+                }
+                transactions_total_time.fetch_add(use_time.as_micros() as usize, Ordering::Relaxed);
+            }
+
+            if last_log_duration.elapsed() > Duration::from_secs(log_duration_time) {
+                let elapsed = last_log_duration.elapsed();
+                last_log_duration = Instant::now();
+                let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
+                let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
+                let mut duration_tps = 0;
+                let mut duration_delay = 0;
+                if duration_count != 0 {
+                    duration_delay = duration_total_time / (duration_count as usize);
+                    duration_tps = duration_count * 1000000 / (elapsed.as_micros() as usize);
+                }
+                crate::info!(
+                    "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {:?}",
+                        loop_count,
+                        benched_transactions,
+                        duplicated_transactions,
+                        transaction_receiver.len(),
+                        elapsed,
+                        duration_tps,
+                        Duration::from_micros(duration_delay as u64)
+                );
+                t_tx_interval = dynamic_adjustment_internal(max_concurrent_requests, tps, duration_tps, t_tx_interval, Duration::from_micros(duration_delay as u64));
+            }
+            if start_time.elapsed() > t_bench {
+                break;
+            }
+        }
+    }
+}
+
+/// Calculates and adjusts the internal interval for dynamic adjustment.
+///
+/// This function takes into account the provided parameters and calculates the
+/// appropriate internal interval for achieving the desired Transactions Per Second (TPS).
+/// It considers the actual TPS, latest interval, and adjustment interval to determine
+/// if the target TPS can be achieved.
+///
+/// # Arguments
+///
+/// * `max_concurrent_requests` - The maximum concurrent requests allowed.
+/// * `tps` - The target Transactions Per Second (TPS).
+/// * `latest_tps` - The most recent TPS measurement.
+/// * `latest_adjustment_interval` - The most recent adjustment interval.
+/// * `latest_interval` - The most recent interval.
+///
+/// # Returns
+///
+/// The adjusted internal interval.
+fn dynamic_adjustment_internal(max_concurrent_requests: usize, tps: usize, latest_tps: usize, latest_adjustment_interval: Duration, latest_interval: Duration) -> Duration {
+
+    // Calculate the other cost time = Actual Interval: (1s / Actual TPS) - (Adjusted Interval + Transaction Sending Delay)
+    let mut other_cost_time = Duration::from_micros(0);
+    if latest_tps != 0 && Duration::from_micros(Duration::from_secs(1).as_micros() as u64 * max_concurrent_requests as u64 / latest_tps as u64) > latest_interval.add(latest_adjustment_interval) {
+        other_cost_time = Duration::from_micros(Duration::from_secs(1).as_micros() as u64 * max_concurrent_requests as u64 / latest_tps as u64).sub(latest_interval).sub(latest_adjustment_interval);
+    }
+
+    // Maximum Adjustment Interval
+    let max_requests_internal = Duration::from_micros((max_concurrent_requests as u64 * 1_000_000) / tps as u64);
+
+    // > Maximum Adjustment Interval
+    if latest_interval + other_cost_time > max_requests_internal {
+        crate::warn!("Cannot achieve the target TPS");
+        return Duration::from_millis(0);
+    }
+
+    // < Maximum Adjustment Interval
+    let adjusted_interval = max_requests_internal - latest_interval - other_cost_time;
+    crate::info!(
+            "Max Requests Duration: {:?}, Adjusted Interval: {:?}, Latest Interval: {:?}, Other Cost Time: {:?}",
+                max_requests_internal,
+                adjusted_interval,
+                latest_interval,
+                other_cost_time
+        );
+    adjusted_interval
 }

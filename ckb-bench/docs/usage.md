@@ -71,6 +71,26 @@ Ckb-bench continuously performs these tasks for `bench-time-ms` duration:
   - and constructs specified transactions from them
   - and sends transactions with a delay of *tx-interval-ms* between sending continuous transactions
 
+#### Fixed TPS Transaction Sending
+
+  ```shell
+  CKB_BENCH_OWNER_PRIVKEY=af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94 \
+  ./ckb-bench bench \
+    --rpc-urls http://127.0.0.1:8111 \
+    --n-users 9000 \
+    --n-inout 2 \
+    --bench-time-ms 300000 \
+    --tx-interval-ms 10 \
+    --concurrent-requests 10 \
+    --tps 1000 
+  ```
+- `--n-users 9000`: Use the `9000` derived users to bench
+- `--n-inout 2`: Construct 2-in-2-out transactions
+- `--bench-time-ms 300000`: Bench `300000` milliseconds
+- `--tx-interval-ms 10`: Delay 10 milliseconds between sending continuous transactions
+- `--concurrent-requests 10` : 10 users are conducting load testing simultaneously.
+- `--tps 1000` : Send 1000 transactions per second. The `tx-interval-ms` will be dynamically adjusted. If you cannot achieve the target TPS, please increase the `concurrent-requests`.
+
 ### Generate On-chain Report
 
 After benching, CKB-bench generates an on-chain report. Also, you can do it via `ckb-bench stat`.

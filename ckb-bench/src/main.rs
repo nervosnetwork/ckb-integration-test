@@ -332,9 +332,20 @@ pub fn entrypoint(clap_arg_match: ArgMatches<'static>) {
             let tx_consumer = TransactionConsumer::new(nodes.clone());
             crate::info!("---- tx_consumer------");
 
-            rt.block_on(
-                tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
-            );
+            match value_t!(arguments, "tps", usize) {
+                Ok(tps) => {
+                    rt.block_on(
+                        tx_consumer.run_tps(transaction_receiver, bench_concurrent_requests_number, tps, t_bench)
+                    );
+                }
+                Err(_) => {
+                    rt.block_on(
+                        tx_consumer.run(transaction_receiver, bench_concurrent_requests_number, t_tx_interval, t_bench)
+                    );
+                }
+            }
+
+
             if is_skip_report {
                 crate::info!("----finished-----");
                 return;
@@ -520,7 +531,16 @@ fn clap_app() -> App<'static, 'static> {
                         .default_value("1")
                         .help("Bench concurrent requests")
                         .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
-                ),
+                )
+                .arg(
+                    Arg::with_name("tps")
+                        .long("tps")
+                        .value_name("NUMBER")
+                        .required(false)
+                        .help("Set the fixed load for transactions per second (TPS)")
+                        .validator(|s| s.parse::<u64>().map(|_| ()).map_err(|err| err.to_string())),
+                )
+            ,
         )
         .subcommand(
             SubCommand::with_name("dispatch")
