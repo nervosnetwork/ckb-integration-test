@@ -1,15 +1,7 @@
-use ckb_testkit::ckb_types::core::{EpochNumberWithFraction, TransactionBuilder, TransactionView};
-use ckb_testkit::ckb_types::packed::{CellDep, CellOutput};
-use ckb_testkit::ckb_types::{
-    core::cell::CellMeta,
-    packed::{Byte32, CellInput, OutPoint},
-    prelude::*,
-};
-use ckb_testkit::util::since_from_absolute_epoch_number_with_fraction;
-use ckb_testkit::{Node, User};
 use crossbeam_channel::{Receiver, Sender};
 use lru::LruCache;
 use std::collections::HashMap;
+use std::ops::{Add, Sub};
 use std::sync::{Arc};
 use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
@@ -18,6 +10,19 @@ use futures::{FutureExt, StreamExt};
 use tokio::time::sleep as async_sleep;
 use crate::utils::maybe_retry_send_transaction_async;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use ckb_jsonrpc_types::{OutPoint, CellDep as CellDepJson, Script as ScriptJson, JsonBytes};
+use ckb_types::core::{TransactionBuilder, TransactionView};
+use ckb_sdk::rpc::ckb_indexer::Cell;
+use ckb_types::core::EpochNumberWithFraction;
+use ckb_types::H256;
+use ckb_types::packed::{Byte32, ScriptOpt, OutPoint as OutPointByte, CellDep, CellInput, CellOutput, Script};
+use ckb_types::prelude::{Builder, Entity, Pack};
+use ckb_bench::util::since_from_absolute_epoch_number_with_fraction;
+use crate::node::Node;
+use crate::user::User;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+
 
 pub struct LiveCellProducer {
     users: Vec<User>,
@@ -33,16 +38,16 @@ impl LiveCellProducer {
         // step_by: 20 : using a sampling method to find the user who owns the highest number of cells.
         // seen_out_points lruCache cache size = user_unused_max_cell_count_cache * n_users + 10
         // seen_out_points lruCache: preventing unused cells on the chain from being reused.
-        for i in (0..=users.len()-1).step_by(20) {
+        for i in (0..=users.len() - 1).step_by(20) {
             let user_unused_cell_count_cache = users.get(i).expect("out of bound").get_spendable_single_secp256k1_cells(&nodes[0]).len();
             if user_unused_cell_count_cache > user_unused_max_cell_count_cache && user_unused_cell_count_cache <= 10000 {
                 user_unused_max_cell_count_cache = user_unused_cell_count_cache;
             }
-            ckb_testkit::debug!("idx:{}:user_unused_cell_count_cache:{}",i,user_unused_cell_count_cache)
+            crate::debug!("idx:{}:user_unused_cell_count_cache:{}",i,user_unused_cell_count_cache);
         }
-        ckb_testkit::debug!("user max cell count cache:{}",user_unused_max_cell_count_cache);
+        crate::debug!("user max cell count cache:{}",user_unused_max_cell_count_cache);
         let lrc_cache_size = n_users * user_unused_max_cell_count_cache + 10;
-        ckb_testkit::info!("init unused cache size:{}",lrc_cache_size);
+        crate::info!("init unused cache size:{}",lrc_cache_size);
         Self {
             users,
             nodes,
@@ -50,17 +55,17 @@ impl LiveCellProducer {
         }
     }
 
-    pub fn run(mut self, live_cell_sender: Sender<CellMeta>, log_duration: u64) {
+    pub fn run(mut self, live_cell_sender: Sender<Cell>, log_duration: u64) {
         let mut count = 0;
         let mut start_time = Instant::now();
         let mut duration_count = 0;
         let mut fist_send_finished = true;
         loop {
-            // let mut current_loop_start_time = Instant::now();
+            let current_loop_start_time = Instant::now();
             let min_tip_number = self
                 .nodes
                 .iter()
-                .map(|node| node.get_tip_block_number())
+                .map(|node| node.rpc_client().get_tip_block_number().unwrap())
                 .min()
                 .unwrap();
             for user in self.users.iter() {
@@ -72,11 +77,7 @@ impl LiveCellProducer {
                         if self.seen_out_points.contains(&cell.out_point) {
                             return false;
                         }
-                        let tx_info = cell
-                            .transaction_info
-                            .as_ref()
-                            .expect("live cell's transaction info should be ok");
-                        if tx_info.block_number > min_tip_number {
+                        if cell.block_number > min_tip_number {
                             return false;
                         }
                         true
@@ -84,13 +85,13 @@ impl LiveCellProducer {
                     .collect::<Vec<_>>();
                 for cell in live_cells {
                     self.seen_out_points
-                        .put(cell.out_point.clone(), Instant::now());
+                        .put(cell.out_point.clone().into(), Instant::now());
                     let _ignore = live_cell_sender.send(cell);
                     count += 1;
                     duration_count += 1;
                     if Instant::now().duration_since(start_time) >= Duration::from_secs(log_duration) {
                         let elapsed = start_time.elapsed();
-                        ckb_testkit::info!("[LiveCellProducer] producer count: {} ,duration time:{:?} , duration tps:{}", count,elapsed,duration_count*1000/elapsed.as_millis());
+                        crate::info!("[LiveCellProducer] producer count: {} ,duration time:{:?} , duration tps:{}", count,elapsed,duration_count*1000/elapsed.as_millis());
                         duration_count = 0;
                         start_time = Instant::now();
                     }
@@ -100,8 +101,65 @@ impl LiveCellProducer {
                 fist_send_finished = false;
                 self.seen_out_points.resize(count + 10)
             }
-            // ckb_testkit::debug!("[LiveCellProducer] delay:{:?}",current_loop_start_time.elapsed());
+            crate::debug!("[LiveCellProducer] delay:{:?},total producer:{}",current_loop_start_time.elapsed(),count);
         }
+    }
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddTxParam {
+    pub deps: Vec<CellDepJson>,
+    pub _type: ScriptJson,
+    pub output_data: JsonBytes,
+    pub min_fee: u64,
+    pub max_fee: u64,
+}
+
+impl AddTxParam {
+    pub(crate) fn get_output_data(&mut self) -> ckb_types::packed::Bytes {
+        ckb_types::packed::Bytes::from(self.output_data.clone())
+    }
+}
+
+impl AddTxParam {
+    pub fn new() -> Self {
+        Self {
+            deps: vec![],
+            _type: ScriptJson::default(),
+            output_data: Default::default(),
+            min_fee: 1000,
+            max_fee: 1000,
+        }
+    }
+
+    pub fn get_cell_deps(&mut self) -> Vec<CellDep> {
+        let mut updated_vec: Vec<CellDep> = Vec::new();
+        for item in self.deps.iter() {
+            updated_vec.push(CellDep::new_builder()
+                .out_point(
+                    OutPointByte::new(item.out_point.tx_hash.pack(), item.out_point.index.value())
+                ).dep_type(ckb_types::core::DepType::from(item.dep_type.clone()).into())
+                .build())
+        }
+        updated_vec
+    }
+    pub fn get_script_obj(&mut self) -> ScriptOpt {
+        // if self._type
+        if self._type.code_hash == H256::default() {
+            ScriptOpt::default()
+        } else {
+            Some(Script::new_builder()
+                .code_hash(self._type.code_hash.pack())
+                .args(self._type.args.clone().into_bytes().pack())
+                .hash_type(ckb_types::core::ScriptHashType::from(self._type.hash_type.clone()).into())
+                .build()).pack()
+        }
+    }
+
+    pub fn get_fee(&mut self) -> u64 {
+        let mut rng = rand::thread_rng();
+        rng.gen_range(self.min_fee..=self.max_fee)
     }
 }
 
@@ -111,13 +169,14 @@ pub struct TransactionProducer {
     cell_deps: Vec<CellDep>,
     n_inout: usize,
     // #{ lock_hash => live_cell }
-    live_cells: HashMap<Byte32, CellMeta>,
+    live_cells: HashMap<Byte32, Cell>,
     // #{ out_point => live_cell }
-    backlogs: HashMap<Byte32, Vec<CellMeta>>,
+    backlogs: HashMap<Byte32, Vec<Cell>>,
+    add_tx_param: AddTxParam,
 }
 
 impl TransactionProducer {
-    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize) -> Self {
+    pub fn new(users: Vec<User>, cell_deps: Vec<CellDep>, n_inout: usize, add_tx_param: AddTxParam) -> Self {
         let mut users_map = HashMap::new();
         for user in users {
             // To support environment `CKB_BENCH_ENABLE_DATA1_SCRIPT`, we have to index 3
@@ -145,12 +204,13 @@ impl TransactionProducer {
             n_inout,
             live_cells: HashMap::new(),
             backlogs: HashMap::new(),
+            add_tx_param,
         }
     }
 
     pub fn run(
         mut self,
-        live_cell_receiver: Receiver<CellMeta>,
+        live_cell_receiver: Receiver<Cell>,
         transaction_sender: Sender<TransactionView>,
         log_duration: u64,
     ) {
@@ -159,7 +219,7 @@ impl TransactionProducer {
         let enabled_data1_script = match ::std::env::var("CKB_BENCH_ENABLE_DATA1_SCRIPT") {
             Ok(raw) => {
                 raw.parse()
-                    .map_err(|err| ckb_testkit::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
+                    .map_err(|err| crate::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_DATA1_SCRIPT={}\", error: {}", raw, err))
                     .unwrap_or(false)
             }
             Err(_) => false,
@@ -167,13 +227,13 @@ impl TransactionProducer {
         let enabled_invalid_since_epoch = match ::std::env::var("CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH") {
             Ok(raw) => {
                 raw.parse()
-                    .map_err(|err| ckb_testkit::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH={}\", error: {}", raw, err))
+                    .map_err(|err| crate::error!("failed to parse environment variable \"CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH={}\", error: {}", raw, err))
                     .unwrap_or(false)
             }
             Err(_) => false,
         };
-        ckb_testkit::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data1_script);
-        ckb_testkit::info!(
+        crate::info!("CKB_BENCH_ENABLE_DATA1_SCRIPT = {}", enabled_data1_script);
+        crate::info!(
             "CKB_BENCH_ENABLE_INVALID_SINCE_EPOCH = {}",
             enabled_invalid_since_epoch
         );
@@ -181,8 +241,12 @@ impl TransactionProducer {
         let mut start_time = Instant::now();
         let mut duration_count = 0;
 
+
+        let mut tx_cell_deps = self.cell_deps.clone();
+        tx_cell_deps.extend(self.add_tx_param.get_cell_deps());
+
         while let Ok(live_cell) = live_cell_receiver.recv() {
-            let lock_hash = live_cell.cell_output.calc_lock_hash();
+            let lock_hash = ckb_types::packed::Script::from(live_cell.output.lock.clone()).calc_script_hash();
 
             if let Some(_live_cell_in_map) = self.live_cells.get(&lock_hash) {
                 self.backlogs
@@ -218,7 +282,7 @@ impl TransactionProducer {
                     .values()
                     .map(|cell| {
                         CellInput::new_builder()
-                            .previous_output(cell.out_point.clone())
+                            .previous_output(cell.out_point.clone().into())
                             .since(since.pack())
                             .build()
                     })
@@ -227,28 +291,33 @@ impl TransactionProducer {
                     .values()
                     .map(|cell| {
                         // use tx_index as random number
-                        let lock_hash = cell.cell_output.calc_lock_hash();
-                        let tx_index = cell.transaction_info.as_ref().unwrap().index;
+
+                        let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
+                        let tx_index = cell.tx_index.value();
                         let user = self.users.get(&lock_hash).expect("should be ok");
                         match tx_index % 3 {
                             0 => CellOutput::new_builder()
-                                .capacity((cell.capacity().as_u64() - 1000).pack())
+                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                 .lock(user.single_secp256k1_lock_script_via_data())
+                                .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             1 => CellOutput::new_builder()
-                                .capacity((cell.capacity().as_u64() - 1000).pack())
+                                .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                 .lock(user.single_secp256k1_lock_script_via_type())
+                                .type_(self.add_tx_param.get_script_obj())
                                 .build(),
                             2 => {
                                 if enabled_data1_script {
                                     CellOutput::new_builder()
-                                        .capacity((cell.capacity().as_u64() - 1000).pack())
+                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data1())
+                                        .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 } else {
                                     CellOutput::new_builder()
-                                        .capacity((cell.capacity().as_u64() - 1000).pack())
+                                        .capacity((cell.output.capacity.value() - self.add_tx_param.get_fee()).pack())
                                         .lock(user.single_secp256k1_lock_script_via_data())
+                                        .type_(self.add_tx_param.get_script_obj())
                                         .build()
                                 }
                             }
@@ -256,25 +325,25 @@ impl TransactionProducer {
                         }
                     })
                     .collect::<Vec<_>>();
-                let outputs_data = live_cells.values().map(|_| Default::default());
+                let outputs_data = live_cells.values().map(|_| self.add_tx_param.get_output_data());
                 let raw_tx = TransactionBuilder::default()
                     .inputs(inputs)
                     .outputs(outputs)
                     .outputs_data(outputs_data)
-                    .cell_deps(self.cell_deps.clone())
+                    .cell_deps(tx_cell_deps.clone())
                     .build();
                 // NOTE: We know the transaction's inputs and outputs are paired by index, so this
                 // signed way is okay.
                 let witnesses = live_cells.values().map(|cell| {
-                    let lock_hash = cell.cell_output.calc_lock_hash();
+                    let lock_hash = ckb_types::packed::Script::from(cell.output.lock.clone()).calc_script_hash();
                     let user = self.users.get(&lock_hash).expect("should be ok");
                     user.single_secp256k1_signed_witness(&raw_tx)
                         .as_bytes()
                         .pack()
                 });
                 let signed_tx = raw_tx.as_advanced_builder().witnesses(witnesses).build();
-
-                if transaction_sender.send(signed_tx).is_err() {
+                crate::debug!("signed tx:{:?}",signed_tx.to_string());
+                if transaction_sender.send(TransactionView::from(signed_tx)).is_err() {
                     // SendError occurs, the corresponding transaction receiver is dead
                     return;
                 }
@@ -282,7 +351,7 @@ impl TransactionProducer {
                 duration_count += 1;
                 if Instant::now().duration_since(start_time) >= Duration::from_secs(log_duration) {
                     let elapsed = start_time.elapsed();
-                    ckb_testkit::info!("[TransactionProducer] producer count: {} liveCell producer remaining :{} ,duration time:{:?}, duration tps:{} ", count,live_cell_receiver.len(),elapsed,duration_count*1000/elapsed.as_millis());
+                    crate::info!("[TransactionProducer] producer count: {} liveCell producer remaining :{} ,duration time:{:?}, duration tps:{} ", count,live_cell_receiver.len(),elapsed,duration_count*1000/elapsed.as_millis());
                     duration_count = 0;
                     start_time = Instant::now();
                 }
@@ -304,11 +373,12 @@ impl TransactionConsumer {
     }
 
     pub async fn run(
-        self,
+        &self,
         transaction_receiver: Receiver<TransactionView>,
         max_concurrent_requests: usize,
         t_tx_interval: Duration,
-        t_bench: Duration) {
+        t_bench: Duration)
+    {
         let start_time = Instant::now();
         let mut last_log_duration = Instant::now();
         let mut benched_transactions = 0;
@@ -321,9 +391,6 @@ impl TransactionConsumer {
         let transactions_processed = Arc::new(AtomicUsize::new(0));
         let transactions_total_time = Arc::new(AtomicUsize::new(0));
 
-
-        // let logger_task = print_transactions_processed(transactions_processed.clone(), transactions_total_time.clone());
-        // tokio::spawn(logger_task);
         let mut pending_tasks = FuturesUnordered::new();
 
         loop {
@@ -364,14 +431,14 @@ impl TransactionConsumer {
                     Some(Ok((Err(err), tx_hash, cost_time))) => {
                         use_time = cost_time;
                         // double spending, discard this transaction
-                        ckb_testkit::info!(
+                        crate::info!(
                     "consumer count :{} failed to send tx {:#x}, error: {}",
                     loop_count,
                     tx_hash,
                     err
                 );
                         if !err.contains("TransactionFailedToResolve") {
-                            ckb_testkit::error!(
+                            crate::error!(
                         "failed to send tx {:#x}, error: {}",
                         tx_hash,
                         err
@@ -395,9 +462,9 @@ impl TransactionConsumer {
                 let mut duration_delay = 0;
                 if duration_count != 0 {
                     duration_delay = duration_total_time / (duration_count as usize);
-                    duration_tps = duration_count *1000 / (elapsed.as_millis() as usize);
+                    duration_tps = duration_count * 1000 / (elapsed.as_millis() as usize);
                 }
-                ckb_testkit::info!(
+                crate::info!(
                 "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {}ms",
                 loop_count,
                 benched_transactions,
@@ -413,5 +480,162 @@ impl TransactionConsumer {
             }
         }
     }
+
+
+    pub async fn run_tps(
+        &self,
+        transaction_receiver: Receiver<TransactionView>,
+        max_concurrent_requests: usize,
+        tps: usize,
+        t_bench: Duration)
+    {
+        let start_time = Instant::now();
+        let mut last_log_duration = Instant::now();
+        let mut benched_transactions = 0;
+        let mut duplicated_transactions = 0;
+        let mut loop_count = 0;
+        let mut i = 0;
+        let log_duration_time = 3;
+        let mut t_tx_interval = Duration::from_millis((Duration::from_secs(max_concurrent_requests as u64).as_millis() / (tps as u128 as u128)) as u64);
+        let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
+        let transactions_processed = Arc::new(AtomicUsize::new(0));
+        let transactions_total_time = Arc::new(AtomicUsize::new(0));
+
+        let mut pending_tasks = FuturesUnordered::new();
+
+        loop {
+            loop_count += 1;
+            let tx = transaction_receiver
+                .recv_timeout(Duration::from_secs(60 * 3))
+                .expect("timeout to wait transaction_receiver");
+            i = (i + 1) % self.nodes.len();
+            let node = self.nodes[i].clone();
+            let permit = semaphore.clone().acquire_owned().await;
+            let tx_hash = tx.hash();
+            let task = async move {
+                let begin_time = Instant::now();
+                let result = maybe_retry_send_transaction_async(&node, &tx).await;
+                let end_time = begin_time.elapsed();
+                if t_tx_interval.as_millis() != 0 {
+                    async_sleep(t_tx_interval).await;
+                }
+                drop(permit);
+                (result, tx_hash, end_time)
+            };
+
+            pending_tasks.push(tokio::spawn(task));
+            while let Some(result) = pending_tasks.next().now_or_never() {
+                transactions_processed.fetch_add(1, Ordering::Relaxed);
+
+                let mut use_time = Duration::from_millis(0);
+
+                match result {
+                    Some(Ok((Ok(is_accepted), _tx_hash, cost_time))) => {
+                        use_time = cost_time;
+                        if is_accepted {
+                            benched_transactions += 1;
+                        } else {
+                            duplicated_transactions += 1;
+                        }
+                    }
+                    Some(Ok((Err(err), tx_hash, cost_time))) => {
+                        use_time = cost_time;
+                        // double spending, discard this transaction
+                        crate::info!(
+                            "consumer count :{} failed to send tx {:#x}, error: {}",
+                            loop_count,
+                            tx_hash,
+                            err
+                        );
+                        if !err.contains("TransactionFailedToResolve") {
+                            crate::error!(
+                                "failed to send tx {:#x}, error: {}",
+                                tx_hash,
+                                err
+                            );
+                        }
+                    }
+                    Some(Err(e)) => {
+                        eprintln!("Error in task: {:?}", e);
+                    }
+                    None => break,
+                }
+                transactions_total_time.fetch_add(use_time.as_micros() as usize, Ordering::Relaxed);
+            }
+
+            if last_log_duration.elapsed() > Duration::from_secs(log_duration_time) {
+                let elapsed = last_log_duration.elapsed();
+                last_log_duration = Instant::now();
+                let duration_count = transactions_processed.swap(0, Ordering::Relaxed);
+                let duration_total_time = transactions_total_time.swap(0, Ordering::Relaxed);
+                let mut duration_tps = 0;
+                let mut duration_delay = 0;
+                if duration_count != 0 {
+                    duration_delay = duration_total_time / (duration_count as usize);
+                    duration_tps = duration_count * 1000000 / (elapsed.as_micros() as usize);
+                }
+                crate::info!(
+                    "[TransactionConsumer] consumer :{} transactions, {} duplicated {} , transaction producer  remaining :{}, log duration {:?} ,duration send tx tps {},duration avg delay {:?}",
+                        loop_count,
+                        benched_transactions,
+                        duplicated_transactions,
+                        transaction_receiver.len(),
+                        elapsed,
+                        duration_tps,
+                        Duration::from_micros(duration_delay as u64)
+                );
+                t_tx_interval = dynamic_adjustment_internal(max_concurrent_requests, tps, duration_tps, t_tx_interval, Duration::from_micros(duration_delay as u64));
+            }
+            if start_time.elapsed() > t_bench {
+                break;
+            }
+        }
+    }
 }
 
+/// Calculates and adjusts the internal interval for dynamic adjustment.
+///
+/// This function takes into account the provided parameters and calculates the
+/// appropriate internal interval for achieving the desired Transactions Per Second (TPS).
+/// It considers the actual TPS, latest interval, and adjustment interval to determine
+/// if the target TPS can be achieved.
+///
+/// # Arguments
+///
+/// * `max_concurrent_requests` - The maximum concurrent requests allowed.
+/// * `tps` - The target Transactions Per Second (TPS).
+/// * `latest_tps` - The most recent TPS measurement.
+/// * `latest_adjustment_interval` - The most recent adjustment interval.
+/// * `latest_interval` - The most recent interval.
+///
+/// # Returns
+///
+/// The adjusted internal interval.
+fn dynamic_adjustment_internal(max_concurrent_requests: usize, tps: usize, latest_tps: usize, latest_adjustment_interval: Duration, latest_interval: Duration) -> Duration {
+
+    // Calculate the other cost time = Actual Interval: (1s / Actual TPS) - (Adjusted Interval + Transaction Sending Delay)
+    let mut other_cost_time = Duration::from_micros(0);
+    if latest_tps != 0 && Duration::from_micros(Duration::from_secs(1).as_micros() as u64 * max_concurrent_requests as u64 / latest_tps as u64) > latest_interval.add(latest_adjustment_interval) {
+        other_cost_time = Duration::from_micros(Duration::from_secs(1).as_micros() as u64 * max_concurrent_requests as u64 / latest_tps as u64).sub(latest_interval).sub(latest_adjustment_interval);
+    }
+
+    // Maximum Adjustment Interval
+    let max_requests_internal = Duration::from_micros((max_concurrent_requests as u64 * 1_000_000) / tps as u64);
+
+    // > Maximum Adjustment Interval
+    if latest_interval + other_cost_time > max_requests_internal {
+        crate::warn!("Cannot achieve the target TPS");
+        return Duration::from_millis(0);
+    }
+
+    // < Maximum Adjustment Interval
+    let adjusted_interval = max_requests_internal - latest_interval - other_cost_time;
+    crate::info!(
+            "Max Requests Duration: {:?}, Adjusted Interval: {:?}, Latest Interval: {:?}, Other Cost Time: {:?}",
+                max_requests_internal,
+                adjusted_interval,
+                latest_interval,
+                other_cost_time
+        );
+    adjusted_interval
+}

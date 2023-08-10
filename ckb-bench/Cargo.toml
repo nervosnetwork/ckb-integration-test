@@ -1,24 +1,35 @@
 [package]
 name = "ckb-bench"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["keroro <keroroxx520@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-ckb-testkit = { path = "../ckb-testkit" }
-
-ckb-hash = "0.43.0"
-ckb-logger-config = "0.43.0"
-ckb-logger-service = "0.43.0"
+ckb-types = "0.108.0"
+ckb-sdk = { git="https://github.com/nervosnetwork/ckb-sdk-rust.git",branch="master" }
+ckb-hash = "0.108.0"
+ckb-logger-config = "0.108.0"
+ckb-logger-service = "0.108.0"
 clap = { version = "2" }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 url_serde = "0.2.0"
+ckb-jsonrpc-types = "=0.108.0"
 url = "1.7.2"
 toml = "0.5"
 lru = "0.6.0"
 crossbeam-channel = "0.5.1"
 git-version = "0.3.5"
+#tokio = { version = "1", features = ["sync", "macros"] }
 tokio = { version = "1.14.0", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
 futures = "0.3"
+log = "0.4"
+lazy_static = "1.4.0"
+tempfile = "3.0"
+ckb-crypto = { version = "=0.108.0", features = ["secp"] }
+reqwest = { version = "0.10.9", features = ["blocking", "json"] }
+ckb-error = "0.101.0"
+jsonrpc-core = "14.0"
+rand = "0.8"

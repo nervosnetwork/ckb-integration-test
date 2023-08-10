@@ -51,7 +51,8 @@ CKB-bench provides several options for specifying benchmark scenarios. Here is a
     --n-inout 2 \
     --bench-time-ms 300000 \
     --tx-interval-ms 10 \
-    --concurrent-requests 10 
+    --concurrent-requests 10 \
+    --add-tx-params contract.json
   ```
 
 - `--n-users 9000`: Use the `9000` derived users to bench
@@ -59,11 +60,36 @@ CKB-bench provides several options for specifying benchmark scenarios. Here is a
 - `--bench-time-ms 300000`: Bench `300000` milliseconds
 - `--tx-interval-ms 10`: Delay 10 milliseconds between sending continuous transactions
 - `--concurrent-requests 10` : 10 users are conducting load testing simultaneously.
+- `add-tx-params contract.json` When constructing a transaction, include `dep` and `type`, `data`.
 
+File format : contract.json 
+```json
+{"deps":[{"dep_type":"code","out_point":{"tx_hash":"0xdd71f517ef4cd619f656d3e83d2000bf2f14ebdb0d786e019310acaa9c431c69","index":"0x0"}}],"_type":{"code_hash":"0x4a27458674f2e96f84b727f89bd7dab18dbfb74265d5977f215324715570b36b","hash_type":"data1","args":"0x02"},"output_data":"0x005a6202000000000000000000000000","min_fee":1000,"max_fee":1000}
+```
 Ckb-bench continuously performs these tasks for `bench-time-ms` duration:
   - collects unspent cells of derived users
   - and constructs specified transactions from them
   - and sends transactions with a delay of *tx-interval-ms* between sending continuous transactions
+
+#### Fixed TPS Transaction Sending
+
+  ```shell
+  CKB_BENCH_OWNER_PRIVKEY=af44a4755acccdd932561db5163d5c2ac025faa00877719c78bb0b5d61da8c94 \
+  ./ckb-bench bench \
+    --rpc-urls http://127.0.0.1:8111 \
+    --n-users 9000 \
+    --n-inout 2 \
+    --bench-time-ms 300000 \
+    --tx-interval-ms 10 \
+    --concurrent-requests 10 \
+    --tps 1000 
+  ```
+- `--n-users 9000`: Use the `9000` derived users to bench
+- `--n-inout 2`: Construct 2-in-2-out transactions
+- `--bench-time-ms 300000`: Bench `300000` milliseconds
+- `--tx-interval-ms 10`: Delay 10 milliseconds between sending continuous transactions
+- `--concurrent-requests 10` : 10 users are conducting load testing simultaneously.
+- `--tps 1000` : Send 1000 transactions per second. The `tx-interval-ms` will be dynamically adjusted. If you cannot achieve the target TPS, please increase the `concurrent-requests`.
 
 ### Generate On-chain Report
 
@@ -113,4 +139,25 @@ pub struct Report {
     /// Total transactions size
     pub total_transactions_size: usize,
 }
+```
+### watch node status
+monitor node tx pool info
+```
+./ckb-bench watch --rpc-urls http://18.162.180.86:8131/ --interval-s 3 --time-s 600
+```
+- `--interval-s 3`: Call the tx pool every 3 seconds.
+- `--time-s 600`: Monitor for a duration of 600 seconds.
+
+example
+```
+
+2023-05-30 09:13:12.148 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.235.225:8564/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
+2023-05-30 09:13:12.278 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.180.86:8120/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
+2023-05-30 09:13:12.413 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.180.86:8131/", tip_number:115443, pool msg: pending :0,orphan:100,proposed: 0 
+2023-05-30 09:13:12.541 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.235.225:8565/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
+
+2023-05-30 09:13:15.684 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.235.225:8564/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
+2023-05-30 09:13:15.815 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.180.86:8120/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
+2023-05-30 09:13:15.955 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.180.86:8131/", tip_number:115443, pool msg: pending :0,orphan:100,proposed: 0 
+2023-05-30 09:13:16.090 +00:00 main INFO ckb_bench::watcher  [node] node_id:"http://18.162.235.225:8565/", tip_number:115443, pool msg: pending :0,orphan:0,proposed: 0 
 ```
