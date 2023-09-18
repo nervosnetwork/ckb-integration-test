@@ -1,0 +1,43 @@
+name: bench-ckb-bench-server
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-20.04
+    env:
+      SSH_ID: ${{ secrets.SSH_ID }}
+      SSH_ID_PUB: ${{ secrets.SSH_ID_PUB }}
+      GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+      ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup upterm session
+        if: ${{ always() }}
+        uses: lhotari/action-upterm@v1
+      - name: Start
+        run: |
+          cd ckb-bench-server
+          bash run.sh
+
+      - name: Set test state when benchmark success.
+        if: ${{ success() }}
+        run: echo "GITHUB_RUN_STATE=0" >> $GITHUB_ENV
+      - name: Set test state when benchmark failed.
+        if: ${{ failure() }}
+        run: echo "GITHUB_RUN_STATE=1" >> $GITHUB_ENV
+
+      - name: Publish reports
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: jfoa-build-reports-${{ runner.os }}
+          path: ckb-bench-server/job/benchmark-in-10h/ansible/logs
+      - name: Clean Up
+        if: ${{ always() }}
+        run: ｜
+          bash /home/runner/work/ckb-integration-test/ckb-integration-test/ckb-bench-server/script/benchmark.sh clean
