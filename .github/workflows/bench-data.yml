@@ -1,6 +1,8 @@
 name: Benchmark
 
 on:
+  schedule:
+    - cron: '0 12 * * *' # 在北京时间每天的12点触发
   workflow_dispatch:
 
 jobs:
